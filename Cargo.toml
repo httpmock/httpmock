@@ -57,7 +57,7 @@ env_logger = "0.11"
 actix-rt = "2"
 colored = "3"
 # Disable default features to avoid pulling in OpenSSL via native-tls; use rustls instead.
-reqwest = { version = "0.12", default-features = false, features = ["blocking", "cookies", "rustls-tls", "rustls-tls-native-roots"] }
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "cookies", "rustls-tls-native-roots"] }
 syn = { version = "2", features = ["full"] }
 urlencoding = "2"
 smol = "2"
