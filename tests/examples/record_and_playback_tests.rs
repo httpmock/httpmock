@@ -74,14 +74,14 @@ fn record_with_proxy_example_test() {
 
     // Create an HTTP client configured to route requests
     // through the mock proxy server
-    let github_client = Client::builder()
+    let client = Client::builder()
         // Set the proxy URL to the mock server's URL
         .proxy(reqwest::Proxy::all(recording_proxy_server.base_url()).unwrap())
         .build()
         .unwrap();
 
     // Send a GET request using the client, which will be proxied by the mock server
-    let response = github_client.get("https://httpmock.rs").send().unwrap();
+    let response = client.get("https://httpmock.rs").send().unwrap();
 
     // Since the request was forwarded, we should see a GitHub API response.
     assert_eq!(response.status().as_u16(), 200);
@@ -92,9 +92,24 @@ fn record_with_proxy_example_test() {
 
     // Save the recording to
     // "target/httpmock/recordings/website-via-proxy_<timestamp>.yaml".
-    recording
+    let recording_file_path = recording
         .save("website-via-proxy")
         .expect("could not save the recording");
+
+    // Start a new mock server instance for playback
+    let playback_server = MockServer::start();
+
+    // Load the recorded interactions into the new mock server
+    playback_server.playback(recording_file_path);
+
+    // Send a request to the playback server and verify the response
+    // matches the recorded data
+    let response = client.get(playback_server.base_url()).send().unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(response
+        .text()
+        .unwrap()
+        .contains("Simple yet powerful HTTP mocking library for Rust"));
 }
 // @example-end
 
@@ -136,9 +151,24 @@ fn record_with_forwarding_example_test() {
 
     // Save the recording to
     // "target/httpmock/recordings/website-via-forwarding_<timestamp>.yaml".
-    recording
+    let recording_file_path = recording
         .save("website-via-forwarding")
         .expect("cannot store recording on disk");
+
+    // Start a new mock server instance for playback
+    let playback_server = MockServer::start();
+
+    // Load the recorded interactions into the new mock server
+    playback_server.playback(recording_file_path);
+
+    // Send a request to the playback server and verify the response
+    // matches the recorded data
+    let response = client.get(playback_server.base_url()).send().unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(response
+        .text()
+        .unwrap()
+        .contains("Simple yet powerful HTTP mocking library for Rust"));
 }
 // @example-end
 
