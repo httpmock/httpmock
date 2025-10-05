@@ -143,7 +143,7 @@ fn record_github_api_with_forwarding_test() {
 // @example-end
 
 // @example-start: playback-forwarding-github
-#[cfg(all(feature = "record", feature = "https"))]
+#[cfg(all(feature = "record"))]
 #[test]
 fn playback_github_api() {
     // Start a mock server for the test
