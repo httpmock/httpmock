@@ -35,7 +35,6 @@ fn forwarding_test() {
 }
 // @example-end
 
-// @example-start: forwarding-github
 #[cfg(feature = "proxy")]
 #[test]
 fn forward_to_website() {
@@ -65,4 +64,3 @@ fn forward_to_website() {
         .unwrap()
         .contains("Simple yet powerful HTTP mocking library for Rust"));
 }
-// @example-end

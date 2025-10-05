@@ -417,6 +417,16 @@ where
         uri_parts.scheme = to_base_uri.scheme().map(|s| s.clone()).or(uri_parts.scheme);
         req_parts.uri = Uri::from_parts(uri_parts).unwrap();
 
+        // Record the upstream scheme (http/https) so the HttpClient can reconstruct
+        // an absolute target URI after converting to origin-form.
+        let upstream_scheme: &'static str = match to_base_uri.scheme_str() {
+            Some("https") => "https",
+            _ => "http",
+        };
+        req_parts
+            .extensions
+            .insert(crate::server::RequestMetadata::new(upstream_scheme));
+
         if !rule.config.request_header.is_empty() {
             for (key, value) in &rule.config.request_header {
                 let key = HeaderName::from_str(key).map_err(|err| {

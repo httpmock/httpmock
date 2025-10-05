@@ -13,7 +13,6 @@ fn record_with_forwarding_test() {
     });
 
     let recording_server = MockServer::start();
-
     recording_server.forward_to(target_server.base_url(), |rule| {
         rule.filter(|when| {
             when.path("/hello");
@@ -49,10 +48,10 @@ fn record_with_forwarding_test() {
     assert_eq!(response.text().unwrap(), "Hi from fake GitHub!");
 }
 
-// @example-start: record-proxy-github
+// @example-start: record-proxy-website
 #[cfg(all(feature = "proxy", feature = "https", feature = "record"))]
 #[test]
-fn record_with_proxy_test() {
+fn record_with_proxy_example_test() {
     use httpmock::RecordingRuleBuilder;
 
     // Start a mock server to act as a proxy for the HTTP client
@@ -75,14 +74,14 @@ fn record_with_proxy_test() {
 
     // Create an HTTP client configured to route requests
     // through the mock proxy server
-    let github_client = Client::builder()
+    let client = Client::builder()
         // Set the proxy URL to the mock server's URL
         .proxy(reqwest::Proxy::all(recording_proxy_server.base_url()).unwrap())
         .build()
         .unwrap();
 
     // Send a GET request using the client, which will be proxied by the mock server
-    let response = github_client.get("https://httpmock.rs").send().unwrap();
+    let response = client.get("https://httpmock.rs").send().unwrap();
 
     // Since the request was forwarded, we should see a GitHub API response.
     assert_eq!(response.status().as_u16(), 200);
@@ -91,17 +90,33 @@ fn record_with_proxy_test() {
         .unwrap()
         .contains("Simple yet powerful HTTP mocking library for Rust"));
 
-    // Save the recorded HTTP interactions to a file for future reference or testing
-    recording
-        .save("my_scenario_name")
+    // Save the recording to
+    // "target/httpmock/recordings/website-via-proxy_<timestamp>.yaml".
+    let recording_file_path = recording
+        .save("website-via-proxy")
         .expect("could not save the recording");
+
+    // Start a new mock server instance for playback
+    let playback_server = MockServer::start();
+
+    // Load the recorded interactions into the new mock server
+    playback_server.playback(recording_file_path);
+
+    // Send a request to the playback server and verify the response
+    // matches the recorded data
+    let response = client.get(playback_server.base_url()).send().unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(response
+        .text()
+        .unwrap()
+        .contains("Simple yet powerful HTTP mocking library for Rust"));
 }
 // @example-end
 
-// @example-start: record-forwarding-github
-#[cfg(all(feature = "record", feature = "https"))]
+// @example-start: record-forwarding-website
+#[cfg(all(feature = "record"))]
 #[test]
-fn record_github_api_with_forwarding_test() {
+fn record_with_forwarding_example_test() {
     // Let's create our mock server for the test
     let server = MockServer::start();
 
@@ -135,15 +150,30 @@ fn record_github_api_with_forwarding_test() {
         .contains("Simple yet powerful HTTP mocking library for Rust"));
 
     // Save the recording to
-    // "target/httpmock/recordings/github-torvalds-scenario_<timestamp>.yaml".
-    recording
-        .save("github-torvalds-scenario")
-        .expect("cannot store scenario on disk");
+    // "target/httpmock/recordings/website-via-forwarding_<timestamp>.yaml".
+    let recording_file_path = recording
+        .save("website-via-forwarding")
+        .expect("cannot store recording on disk");
+
+    // Start a new mock server instance for playback
+    let playback_server = MockServer::start();
+
+    // Load the recorded interactions into the new mock server
+    playback_server.playback(recording_file_path);
+
+    // Send a request to the playback server and verify the response
+    // matches the recorded data
+    let response = client.get(playback_server.base_url()).send().unwrap();
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(response
+        .text()
+        .unwrap()
+        .contains("Simple yet powerful HTTP mocking library for Rust"));
 }
 // @example-end
 
-// @example-start: playback-forwarding-github
-#[cfg(all(feature = "record", feature = "https"))]
+// @example-start: playback-forwarding-website
+#[cfg(all(feature = "record"))]
 #[test]
 fn playback_github_api() {
     // Start a mock server for the test
