@@ -1,3 +1,4 @@
+use std::time::Duration;
 use httpmock::prelude::*;
 
 use reqwest::blocking::{Client, ClientBuilder};
@@ -49,7 +50,7 @@ fn record_with_forwarding_test() {
 }
 
 // @example-start: record-proxy-website
-#[cfg(all(feature = "proxy", feature = "https", feature = "record"))]
+#[cfg(all(feature = "https", feature = "record"))]
 #[test]
 fn record_with_proxy_example_test() {
     use httpmock::RecordingRuleBuilder;
@@ -96,15 +97,26 @@ fn record_with_proxy_example_test() {
         .save("website-via-proxy")
         .expect("could not save the recording");
 
+    // ******************************************************
+    // Playback
+
     // Start a new mock server instance for playback
     let playback_server = MockServer::start();
 
     // Load the recorded interactions into the new mock server
     playback_server.playback(recording_file_path);
 
-    // Send a request to the playback server and verify the response
+    // Create an HTTP client configured to route requests
+    // through the playback mock proxy server
+    let client = Client::builder()
+        // Set the proxy URL to the mock server's URL
+        .proxy(reqwest::Proxy::all(playback_server.base_url()).unwrap())
+        .build()
+        .unwrap();
+
+    // Send a request to the httpmock website which will be responded this time with the proxy server playback server and verify the response
     // matches the recorded data
-    let response = client.get(playback_server.base_url()).send().unwrap();
+    let response = client.get("https://httpmock.rs").send().unwrap();
     assert_eq!(response.status().as_u16(), 200);
     assert!(response
         .text()
