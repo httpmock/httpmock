@@ -13,7 +13,6 @@ fn record_with_forwarding_test() {
     });
 
     let recording_server = MockServer::start();
-
     recording_server.forward_to(target_server.base_url(), |rule| {
         rule.filter(|when| {
             when.path("/hello");
@@ -49,10 +48,10 @@ fn record_with_forwarding_test() {
     assert_eq!(response.text().unwrap(), "Hi from fake GitHub!");
 }
 
-// @example-start: record-proxy-github
+// @example-start: record-proxy-website
 #[cfg(all(feature = "proxy", feature = "https", feature = "record"))]
 #[test]
-fn record_with_proxy_test() {
+fn record_with_proxy_example_test() {
     use httpmock::RecordingRuleBuilder;
 
     // Start a mock server to act as a proxy for the HTTP client
@@ -91,17 +90,18 @@ fn record_with_proxy_test() {
         .unwrap()
         .contains("Simple yet powerful HTTP mocking library for Rust"));
 
-    // Save the recorded HTTP interactions to a file for future reference or testing
+    // Save the recording to
+    // "target/httpmock/recordings/website-via-proxy_<timestamp>.yaml".
     recording
-        .save("my_scenario_name")
+        .save("website-via-proxy")
         .expect("could not save the recording");
 }
 // @example-end
 
-// @example-start: record-forwarding-github
-#[cfg(all(feature = "record", feature = "https"))]
+// @example-start: record-forwarding-website
+#[cfg(all(feature = "record"))]
 #[test]
-fn record_github_api_with_forwarding_test() {
+fn record_with_forwarding_example_test() {
     // Let's create our mock server for the test
     let server = MockServer::start();
 
@@ -135,14 +135,14 @@ fn record_github_api_with_forwarding_test() {
         .contains("Simple yet powerful HTTP mocking library for Rust"));
 
     // Save the recording to
-    // "target/httpmock/recordings/github-torvalds-scenario_<timestamp>.yaml".
+    // "target/httpmock/recordings/website-via-forwarding_<timestamp>.yaml".
     recording
-        .save("github-torvalds-scenario")
-        .expect("cannot store scenario on disk");
+        .save("website-via-forwarding")
+        .expect("cannot store recording on disk");
 }
 // @example-end
 
-// @example-start: playback-forwarding-github
+// @example-start: playback-forwarding-website
 #[cfg(all(feature = "record"))]
 #[test]
 fn playback_github_api() {
