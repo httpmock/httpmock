@@ -96,15 +96,25 @@ fn record_with_proxy_example_test() {
         .save("website-via-proxy")
         .expect("could not save the recording");
 
+    // **********************************************************************
+    // Playback
+
     // Start a new mock server instance for playback
     let playback_server = MockServer::start();
 
     // Load the recorded interactions into the new mock server
     playback_server.playback(recording_file_path);
 
-    // Send a request to the playback server and verify the response
+    // Create an HTTP client configured to route requests through the playback mock proxy server
+    let client = Client::builder()
+        // Set the proxy URL to the mock server's URL
+        .proxy(reqwest::Proxy::all(playback_server.base_url()).unwrap())
+        .build()
+        .unwrap();
+
+    // Send a request to the httpmock website which will be responded this time with the proxy s
     // matches the recorded data
-    let response = client.get(playback_server.base_url()).send().unwrap();
+    let response = client.get("https://httpmock.rs").send().unwrap();
     assert_eq!(response.status().as_u16(), 200);
     assert!(response
         .text()
