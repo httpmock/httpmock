@@ -22,7 +22,7 @@
 //!
 //! ```toml
 //! [dev-dependencies]
-//! httpmock = "0.8.0"
+//! httpmock = "0.8.1"
 //! ```
 //!
 //! You can then use `httpmock` as follows:
@@ -73,7 +73,7 @@
 //!     1. word=hello
 //!
 //! Matcher:  query_param
-//! Docs:     https://docs.rs/httpmock/0.8.0/httpmock/struct.When.html#method.query_param
+//! Docs:     https://docs.rs/httpmock/0.8.1/httpmock/struct.When.html#method.query_param
 //! ```
 //!
 //! # Usage
