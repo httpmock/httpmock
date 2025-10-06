@@ -12,6 +12,7 @@ use std::{
     path::{Path, PathBuf},
     rc::Rc,
 };
+use bytes::Bytes;
 
 /// Represents a forwarding rule on a [MockServer](struct.MockServer.html), allowing HTTP requests
 /// that meet specific criteria to be redirected to a designated destination. Each rule is
@@ -152,6 +153,38 @@ impl<'a> Recording<'a> {
             .expect("could not delete mock from server");
     }
 
+    /// Synchronously export the recording as YAML.
+    ///
+    /// # Returns
+    /// Returns a `Result` containing the YAML of the recording as `Option<Bytes>` (absent when no recording could be found),
+    /// or an error if the export operation fails.
+    ///
+    /// # Errors
+    /// Errors if the recording cannot be created due to serialization issues or issues with connecting to a remote server.
+    #[cfg(feature = "record")]
+    pub fn export(&self) -> Result<Option<Bytes>, Box<dyn std::error::Error>> {
+        self.export_async().join()
+    }
+
+    /// Asynchronously export the recording as YAML.
+    ///
+    /// # Returns
+    /// Returns a `Result` containing the YAML of the recording as `Option<Bytes>` (absent when no recording could be found),
+    /// or an error if the export operation fails.
+    ///
+    /// # Errors
+    /// Errors if the recording cannot be created due to serialization issues or issues with connecting to a remote server.
+    #[cfg(feature = "record")]
+    pub async fn export_async(&self) -> Result<Option<Bytes>, Box<dyn std::error::Error>> {
+        let rec = self.server
+            .server_adapter
+            .as_ref()
+            .unwrap()
+            .export_recording(self.id)
+            .await?;
+        Ok(rec)
+    }
+
     /// Synchronously saves the recording to a specified directory with a timestamped filename.
     /// The file is named using a combination of the provided scenario name and a UNIX timestamp, formatted as YAML.
     ///
@@ -187,13 +220,7 @@ impl<'a> Recording<'a> {
         dir: PathRef,
         scenario: IntoString,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        let rec = self
-            .server
-            .server_adapter
-            .as_ref()
-            .unwrap()
-            .export_recording(self.id)
-            .await?;
+        let rec = self.export_async().await?;
 
         let scenario = scenario.into();
         let dir = dir.as_ref();
