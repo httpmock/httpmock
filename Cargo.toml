@@ -56,7 +56,8 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"], optional = tr
 env_logger = "0.11"
 actix-rt = "2"
 colored = "3"
-reqwest = { version = "0.12", features = ["blocking", "cookies", "rustls-tls", "rustls-tls-native-roots"] }
+# Disable default features to avoid pulling in OpenSSL via native-tls; use rustls instead.
+reqwest = { version = "0.12", default-features = false, features = ["blocking", "cookies", "rustls-tls-native-roots"] }
 syn = { version = "2", features = ["full"] }
 urlencoding = "2"
 smol = "2"
