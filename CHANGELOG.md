@@ -1,5 +1,11 @@
 # Changelog
 
+## Version 0.8.1
+This release contains bugfixes and documentation improvements.
+
+The following pull requests have been merged:
+- [#179](https://github.com/httpmock/httpmock/pull/179): "Use scheme of target url for forwarding"
+
 ## Version 0.8.0
 This release includes refactoring, dependency updates, and internal cleanups.
 No breaking changes expected.
