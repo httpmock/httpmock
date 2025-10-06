@@ -7,12 +7,12 @@ use crate::{
     },
     When,
 };
+use bytes::Bytes;
 use std::{
     cell::Cell,
     path::{Path, PathBuf},
     rc::Rc,
 };
-use bytes::Bytes;
 
 /// Represents a forwarding rule on a [MockServer](struct.MockServer.html), allowing HTTP requests
 /// that meet specific criteria to be redirected to a designated destination. Each rule is
@@ -176,7 +176,8 @@ impl<'a> Recording<'a> {
     /// Errors if the recording cannot be created due to serialization issues or issues with connecting to a remote server.
     #[cfg(feature = "record")]
     pub async fn export_async(&self) -> Result<Option<Bytes>, Box<dyn std::error::Error>> {
-        let rec = self.server
+        let rec = self
+            .server
             .server_adapter
             .as_ref()
             .unwrap()
