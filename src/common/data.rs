@@ -234,11 +234,11 @@ impl HttpMockRequest {
         self.headers.as_ref()
     }
 
-    pub fn query_params(&self) -> HashMap<String, String> {
-        self.query_params_vec().into_iter().collect()
+    pub fn query_params_map(&self) -> HashMap<String, String> {
+        self.query_params().into_iter().collect()
     }
 
-    pub fn query_params_vec(&self) -> Vec<(String, String)> {
+    pub fn query_params(&self) -> Vec<(String, String)> {
         // There doesn't seem to be a way to just parse Query string with `url` crate, so we're
         // prefixing a dummy URL for parsing.
         let url = format!("http://dummy?{}", self.uri().query().unwrap_or(""));
@@ -247,6 +247,15 @@ impl HttpMockRequest {
         url.query_pairs()
             .map(|(k, v)| (k.into_owned(), v.into_owned()))
             .collect()
+    }
+
+    pub fn query_param_length(&self) -> usize {
+        // There doesn't seem to be a way to just parse Query string with `url` crate, so we're
+        // prefixing a dummy URL for parsing.
+        let url = format!("http://dummy?{}", self.uri().query().unwrap_or(""));
+        let url = Url::parse(&url).unwrap();
+
+        url.query_pairs().count()
     }
 
     pub fn body(&self) -> &HttpMockBytes {
