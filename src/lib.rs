@@ -119,7 +119,8 @@ pub use api::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        api::MockServer, common::data::HttpMockRequest, Method, Method::DELETE, Method::GET,
-        Method::OPTIONS, Method::PATCH, Method::POST, Method::PUT, Regex,
+        api::MockServer, common::data::HttpMockRequest, common::data::HttpMockResponse,
+        common::data::MockServerHttpResponse, Method, Method::DELETE, Method::GET, Method::OPTIONS,
+        Method::PATCH, Method::POST, Method::PUT, Regex,
     };
 }
