@@ -21,7 +21,9 @@ use crate::common::http::{Error as HttpClientError, HttpClient};
 
 use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
 
-use crate::prelude::HttpMockRequest;
+use crate::common::data;
+use crate::prelude::{HttpMockRequest, HttpMockResponse};
+use crate::server::handler::Error::ResponseDataConversionError;
 use async_trait::async_trait;
 use http::{HeaderMap, HeaderName, HeaderValue, StatusCode, Uri};
 use http_body_util::BodyExt;
@@ -50,6 +52,8 @@ pub enum Error {
     ResponseBodySerializeError(serde_json::Error),
     #[error("cannot convert response body: {0}")]
     ResponseBodyConversionError(http::Error),
+    #[error("cannot convert response body: {0}")]
+    ResponseDataConversionError(data::Error),
     #[error("expected URL parameters not found")]
     ParamError,
     #[error("URL parameter format is invalid: {0}")]
@@ -480,46 +484,40 @@ where
         Ok(self.http_client.send(req).await?)
     }
 
-    async fn serve_mock(&self, req: &HttpMockRequest) -> Result<Response<Bytes>, Error> {
-        let mock_response = self.state.serve_mock(req)?;
+    async fn serve_mock(
+        &self,
+        req: &HttpMockRequest,
+    ) -> Result<http::Response<bytes::Bytes>, Error> {
+        let Some(definition) = self.state.serve_mock(req)? else {
+            return response(
+                http::StatusCode::NOT_FOUND,
+                Some(ErrorResponse::new(
+                    &"Request did not match any route or mock",
+                )),
+            );
+        };
 
-        if let Some(mock_response) = mock_response {
-            let status_code = match mock_response.status.as_ref() {
-                None => StatusCode::OK,
-                Some(c) => StatusCode::from_u16(c.clone())?,
-            };
-
-            let mut builder = Response::builder().status(status_code);
-
-            if let Some(headers) = mock_response.headers {
-                for (name, value) in headers {
-                    builder = builder.header(name, value);
-                }
-            }
-
-            let response = builder
-                .body(
-                    mock_response
-                        .body
-                        .map_or(Bytes::new(), |bytes| bytes.to_bytes()),
-                )
-                .map_err(|e| ResponseBodyConversionError(e))?;
-
-            if let Some(duration) = mock_response.delay {
-                runtime::sleep(Duration::from_millis(duration)).await;
-            }
-
-            return Ok(response);
+        if let Some(duration) = definition.delay {
+            runtime::sleep(std::time::Duration::from_millis(duration)).await;
         }
 
-        let status_code = mock_response.map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
+        // Resolve dynamic vs. static response into HttpMockResponse
+        let resp_def: HttpMockResponse =
+            definition
+                .reply_with
+                .map(|f| f(req))
+                .unwrap_or_else(|| HttpMockResponse {
+                    status: definition.status,
+                    headers: definition.headers,
+                    body: definition.body,
+                });
 
-        return response(
-            status_code,
-            Some(ErrorResponse::new(
-                &"Request did not match any route or mock",
-            )),
-        );
+        // Convert via your TryFrom<HttpMockResponse> impl
+        let http_resp: http::Response<bytes::Bytes> = resp_def
+            .try_into()
+            .map_err(|e| ResponseDataConversionError(e))?;
+
+        Ok(http_resp)
     }
 }
 

@@ -1,3 +1,4 @@
+use crate::prelude::HttpMockResponse;
 use crate::{
     common::{
         data::{MockServerHttpResponse, RequestRequirements},
@@ -5367,6 +5368,19 @@ impl Then {
     ///
     /// // The `and` method keeps the setup intuitively readable as a continuous chain
     /// ```
+    /// Sets a dynamic responder invoked for each matching request (local server only).
+    /// When set, it fully determines the response (status, headers, body, delay).
+    /// Note: This is not supported by remote/standalone servers and will be rejected there.
+    pub fn reply_with<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync + 'static,
+    {
+        update_cell(&self.response_template, |r| {
+            r.reply_with = Some(std::sync::Arc::new(f));
+        });
+        self
+    }
+
     pub fn and(mut self, func: impl FnOnce(Then) -> Then) -> Self {
         func(self)
     }
