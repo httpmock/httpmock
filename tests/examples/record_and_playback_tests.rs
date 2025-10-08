@@ -141,19 +141,16 @@ fn record_with_forwarding_example_test() {
     });
 
     let recording = server.record(|rule| {
-        rule.record_request_header("User-Agent").filter(|when| {
+        rule.filter(|when| {
             when.any_request(); // Ensure all requests are recorded.
         });
     });
 
     // Now let's send an HTTP request to the mock server. The request
     // will be forwarded to the GitHub API, as we configured before.
-    let client = Client::builder().build().unwrap();
+    let client = Client::new();
 
-    let response = client
-        .get(server.url("/?hello=peter&useTranslation"))
-        .send()
-        .unwrap();
+    let response = client.get(server.base_url()).send().unwrap();
 
     // Since the request was forwarded, we should see a GitHub API response.
     assert_eq!(response.status().as_u16(), 200);
