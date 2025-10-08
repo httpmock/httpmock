@@ -645,7 +645,7 @@ pub mod request_value {
     #[inline]
     pub fn query_params(req: &HttpMockRequest) -> Option<Vec<(String, Option<String>)>> {
         Some(
-            req.query_params_vec()
+            req.query_params()
                 .iter()
                 .map(|(k, v)| (k.into(), Some(v.into())))
                 .collect(),

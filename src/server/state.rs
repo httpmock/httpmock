@@ -638,7 +638,11 @@ fn build_mock_definition(
         query_param_suffix_not: None,
         query_param_matches: None,
         query_param_count: None,
-        query_param: None,
+        query_param: if request.query_param_length() == 0 {
+            None
+        } else {
+            Some(request.query_params())
+        },
         form_urlencoded_tuple_exists: None,
         form_urlencoded_tuple_missing: None,
         form_urlencoded_tuple_includes: None,

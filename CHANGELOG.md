@@ -4,6 +4,7 @@
 
 The following pull requests have been merged:
 - [#178](https://github.com/httpmock/httpmock/pull/178): "Expose proxy method to obtain the recorded yaml without saving to a file" (thanks [@janeisklar](https://github.com/janeisklar))
+- [#180](https://github.com/httpmock/httpmock/pull/180): "Add missing query parameters in recordings"
 
 ## Version 0.8.1
 This release includes bug fixes and documentation enhancements.

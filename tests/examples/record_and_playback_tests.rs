@@ -240,3 +240,74 @@ fn playback_github_api() {
         .contains("Simple yet powerful HTTP mocking library for Rust"));
 }
 // @example-end
+
+#[cfg(all(feature = "record"))]
+#[test]
+fn record_with_forwarding_all_request_parts_test() {
+    let server = MockServer::start();
+
+    server.forward_to("https://httpmock.rs", |rule| {
+        rule.filter(|when| {
+            when.any_request(); // Ensure all requests are forwarded.
+        });
+    });
+
+    let recording = server.record(|rule| {
+        rule.record_request_headers(vec![
+            String::from("X-Auth-Token"),
+            String::from("Accept-Language"),
+        ])
+        .filter(|when| {
+            when.any_request(); // Ensure all requests are recorded.
+        });
+    });
+
+    let client = Client::new();
+
+    // Example headers
+    let mut headers = reqwest::header::HeaderMap::new();
+    headers.insert("X-Auth-Token", "secret123".parse().unwrap());
+    headers.insert("Accept-Language", "en-US".parse().unwrap());
+
+    // Query Parameters
+    let mut query_params = std::collections::HashMap::new();
+    query_params.insert("this", "is");
+    query_params.insert("a", "test");
+    query_params.insert("empty", "");
+
+    let response = client
+        .get(server.base_url())
+        .headers(headers.clone())
+        .query(&query_params)
+        .send()
+        .unwrap();
+
+    // Send "original" request
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(response
+        .text()
+        .unwrap()
+        .contains("Simple yet powerful HTTP mocking library for Rust"));
+
+    let recording_file_path = recording
+        .save("website-via-forwarding")
+        .expect("cannot store recording on disk");
+
+    // Start a new mock server instance for playback
+    let playback_server = MockServer::start();
+    playback_server.playback(recording_file_path);
+
+    // Send a request to playback server
+    let response = client
+        .get(playback_server.base_url())
+        .headers(headers)
+        .query(&query_params)
+        .send()
+        .unwrap();
+
+    assert_eq!(response.status().as_u16(), 200);
+    assert!(response
+        .text()
+        .unwrap()
+        .contains("Simple yet powerful HTTP mocking library for Rust"));
+}
