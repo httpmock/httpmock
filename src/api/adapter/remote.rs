@@ -177,6 +177,34 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         Ok(())
     }
 
+    async fn delete_mock_after_calls(
+        &self,
+        mock_id: usize,
+        count: usize,
+    ) -> Result<(), ServerAdapterError> {
+        let request = Request::builder()
+            .method("POST")
+            .uri(format!(
+                "http://{}/__httpmock__/mocks/{}/delete_after/{}",
+                &self.address(),
+                mock_id,
+                count
+            ))
+            .body(Bytes::new())
+            .map_err(|e| UpstreamError(e.to_string()))?;
+
+        let (status, body) = self.do_request(request).await?;
+
+        if status != StatusCode::NO_CONTENT {
+            return Err(UpstreamError(format!(
+                "Could not set delete_after_calls on the mock server. Expected response status 204 but was {} (response body = '{}')",
+                status, body
+            )));
+        }
+
+        Ok(())
+    }
+
     async fn delete_all_mocks(&self) -> Result<(), ServerAdapterError> {
         let request = Request::builder()
             .method("DELETE")

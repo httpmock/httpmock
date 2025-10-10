@@ -75,6 +75,19 @@ impl MockServerAdapter for LocalMockServerAdapter {
         Ok(())
     }
 
+    async fn delete_mock_after_calls(
+        &self,
+        mock_id: usize,
+        count: usize,
+    ) -> Result<(), ServerAdapterError> {
+        self.state
+            .delete_mock_after_calls(mock_id, count)
+            .map_err(|e| {
+                UpstreamError(format!("Cannot set delete_after_calls on mock: {:?}", e))
+            })?;
+        Ok(())
+    }
+
     async fn delete_all_mocks(&self) -> Result<(), ServerAdapterError> {
         self.state.delete_all_mocks();
         Ok(())
