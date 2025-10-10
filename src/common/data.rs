@@ -224,7 +224,7 @@ impl HttpMockRequest {
             let header_name = http::HeaderName::from_bytes(key.as_bytes()).unwrap();
             let header_value = http::HeaderValue::from_str(&value).unwrap();
 
-            header_map.insert(header_name, header_value);
+            header_map.append(header_name, header_value);
         }
 
         header_map

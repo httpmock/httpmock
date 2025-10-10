@@ -437,7 +437,7 @@ where
                     InvalidHeader(format!("invalid header value: {}", err.to_string()))
                 })?;
 
-                req_parts.headers.insert(key, value);
+                req_parts.headers.append(key, value);
             }
         }
 
@@ -468,7 +468,7 @@ where
                     InvalidHeader(format!("invalid header value: {}", err.to_string()))
                 })?;
 
-                headers.insert(key, value);
+                headers.append(key, value);
             }
         }
 
