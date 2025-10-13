@@ -1,4 +1,6 @@
 use httpmock::prelude::*;
+use reqwest::blocking::Client;
+use std::sync::Mutex;
 
 #[test]
 fn my_custom_request_matcher_test() {
@@ -16,4 +18,84 @@ fn my_custom_request_matcher_test() {
     // Assert
     mock.assert();
     assert_eq!(response.status(), 201);
+}
+
+#[test]
+fn dynamic_responder_test() {
+    // Arrange
+    let server = MockServer::start();
+
+    // This is our counter that will determine the response later.
+    // It needs to be protected by a mutex the custom respond method
+    // is called from the HTTP server thread.
+    let call_count = Mutex::new(0);
+
+    let mock = server.mock(|when, then| {
+        when.method("GET");
+        then.reply_with(move |_req: &HttpMockRequest | {
+            let mut count = call_count.lock().unwrap();
+            *count += 1;
+
+            return HttpMockResponse::builder().status(200 + *count).build();
+        });
+    });
+
+    // Act
+    let client = Client::new();
+
+    let response1 = client.get(server.base_url()).send().unwrap();
+    let response2 = client.get(server.base_url()).send().unwrap();
+    let response3 = client.get(server.base_url()).send().unwrap();
+
+    // Assert
+    mock.assert_calls(3);
+
+    assert_eq!(response1.status(), 201);
+    assert_eq!(response2.status(), 202);
+    assert_eq!(response3.status(), 203);
+}
+
+#[test]
+fn dynamic_responder_http_crate_test() {
+    // Arrange
+    let server = MockServer::start();
+
+    // This is our counter that will determine the response later.
+    // It needs to be protected by a mutex the custom respond method
+    // is called from the HTTP server thread.
+    let call_count = Mutex::new(0);
+
+    let mock = server.mock(|when, then| {
+        when.method("GET");
+        then.reply_with(move |req: &HttpMockRequest | {
+            // Convert the HttpMockRequest to a http creates Request object
+            let req : http::Request<String> = req.try_into().unwrap();
+            println!("{:?}", req.uri().path());
+
+            let mut count = call_count.lock().unwrap();
+            *count += 1;
+
+            // Return a http crate Response object which will automatically be converted into
+            // a HttpMockResponse internally
+            http::Response::builder()
+                .status(200 + *count)
+                .body(())
+                .unwrap()
+                .into()
+        });
+    });
+
+    // Act
+    let client = Client::new();
+
+    let response1 = client.get(server.base_url()).send().unwrap();
+    let response2 = client.get(server.base_url()).send().unwrap();
+    let response3 = client.get(server.base_url()).send().unwrap();
+
+    // Assert
+    mock.assert_calls(3);
+
+    assert_eq!(response1.status(), 201);
+    assert_eq!(response2.status(), 202);
+    assert_eq!(response3.status(), 203);
 }

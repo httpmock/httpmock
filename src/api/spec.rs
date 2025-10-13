@@ -5368,8 +5368,13 @@ impl Then {
     ///
     /// // The `and` method keeps the setup intuitively readable as a continuous chain
     /// ```
-    /// Sets a dynamic responder invoked for each matching request (local server only).
-    /// When set, it fully determines the response (status, headers, body, delay).
+    pub fn and(mut self, func: impl FnOnce(Then) -> Then) -> Self {
+        func(self)
+    }
+    // @docs-group: Miscellaneous
+
+    /// Sets a dynamic responder invoked for each matching request.
+    /// When set, it fully determines the response (status, headers, body).
     /// Note: This is not supported by remote/standalone servers and will be rejected there.
     pub fn reply_with<F>(mut self, f: F) -> Self
     where
@@ -5380,9 +5385,4 @@ impl Then {
         });
         self
     }
-
-    pub fn and(mut self, func: impl FnOnce(Then) -> Then) -> Self {
-        func(self)
-    }
-    // @docs-group: Miscellaneous
 }

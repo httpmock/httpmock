@@ -146,7 +146,7 @@ mod test {
 }
 
 /// A wrapper around `bytes::Bytes` providing utility methods for common operations.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+#[derive(Serialize, Deserialize, Clone, PartialEq, Eq)]
 pub struct HttpMockBytes(pub Bytes);
 
 impl HttpMockBytes {
@@ -244,23 +244,75 @@ impl HttpMockBytes {
     }
 }
 
-impl Into<Bytes> for HttpMockBytes {
-    fn into(self) -> Bytes {
-        self.0.clone()
-    }
-}
-
 impl From<Bytes> for HttpMockBytes {
     fn from(value: Bytes) -> Self {
-        HttpMockBytes(value)
+        Self(value)
     }
 }
 
-impl PartialEq for HttpMockBytes {
-    fn eq(&self, other: &Self) -> bool {
-        self.0 == other.0
+impl From<&Bytes> for HttpMockBytes {
+    fn from(value: &Bytes) -> Self {
+        Self(value.clone())
+    } // cheap clone handle
+}
+
+impl From<bytes::BytesMut> for HttpMockBytes {
+    fn from(value: bytes::BytesMut) -> Self {
+        Self(value.freeze())
     }
 }
+
+// Copying conversions
+impl From<Vec<u8>> for HttpMockBytes {
+    fn from(value: Vec<u8>) -> Self {
+        Self(Bytes::from(value))
+    }
+}
+
+impl From<&[u8]> for HttpMockBytes {
+    fn from(value: &[u8]) -> Self {
+        Self(Bytes::copy_from_slice(value))
+    }
+}
+
+impl From<String> for HttpMockBytes {
+    fn from(value: String) -> Self {
+        Self(Bytes::from(value))
+    }
+}
+
+impl From<&str> for HttpMockBytes {
+    fn from(value: &str) -> Self {
+        Self(Bytes::copy_from_slice(value.as_bytes()))
+    }
+}
+
+impl<'a> From<Cow<'a, str>> for HttpMockBytes {
+    fn from(value: Cow<'a, str>) -> Self {
+        match value {
+            Cow::Borrowed(s) => Self::from(s),
+            Cow::Owned(s) => Self::from(s),
+        }
+    }
+}
+
+impl<'a> From<Cow<'a, [u8]>> for HttpMockBytes {
+    fn from(value: Cow<'a, [u8]>) -> Self {
+        match value {
+            Cow::Borrowed(b) => Self::from(b),
+            Cow::Owned(v) => Self::from(v),
+        }
+    }
+}
+
+// Reverse: HttpMockBytes -> Bytes
+impl From<HttpMockBytes> for Bytes {
+    fn from(value: HttpMockBytes) -> Bytes {
+        value.0
+    }
+}
+
+/* ===== AsRef / Borrow / Deref-ish ergonomics ===== */
 
 impl AsRef<[u8]> for HttpMockBytes {
     fn as_ref(&self) -> &[u8] {
@@ -268,11 +320,74 @@ impl AsRef<[u8]> for HttpMockBytes {
     }
 }
 
+impl std::borrow::Borrow<[u8]> for HttpMockBytes {
+    fn borrow(&self) -> &[u8] {
+        self.0.as_ref()
+    }
+}
+
+/* ===== Friendly equality with common counterparts ===== */
+
+impl PartialEq<[u8]> for HttpMockBytes {
+    fn eq(&self, other: &[u8]) -> bool {
+        self.0.as_ref() == other
+    }
+}
+
+impl PartialEq<&[u8]> for HttpMockBytes {
+    fn eq(&self, other: &&[u8]) -> bool {
+        self.0.as_ref() == *other
+    }
+}
+
+impl PartialEq<Vec<u8>> for HttpMockBytes {
+    fn eq(&self, other: &Vec<u8>) -> bool {
+        self.0.as_ref() == other.as_slice()
+    }
+}
+
+impl PartialEq<Bytes> for HttpMockBytes {
+    fn eq(&self, other: &Bytes) -> bool {
+        &self.0 == other
+    }
+}
+
+impl PartialEq<&str> for HttpMockBytes {
+    fn eq(&self, other: &&str) -> bool {
+        self.0.as_ref() == other.as_bytes()
+    }
+}
+
+impl PartialEq<String> for HttpMockBytes {
+    fn eq(&self, other: &String) -> bool {
+        self.0.as_ref() == other.as_bytes()
+    }
+}
+
+/* ===== Display / Debug ===== */
+
 impl std::fmt::Display for HttpMockBytes {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match std::str::from_utf8(&self.0) {
-            Ok(result) => write!(f, "{}", result),
+            Ok(s) => write!(f, "{s}"),
             Err(_) => write!(f, "{}", base64::encode(&self.0)),
+        }
+    }
+}
+
+impl std::fmt::Debug for HttpMockBytes {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        // Show UTF-8 inline when possible; otherwise prefix and base64
+        match std::str::from_utf8(&self.0) {
+            Ok(s) => f.debug_tuple("HttpMockBytes").field(&s).finish(),
+            Err(_) => f
+                .debug_tuple("HttpMockBytes")
+                .field(&format!(
+                    "<{} bytes, b64:{}>",
+                    self.0.len(),
+                    base64::encode(&self.0)
+                ))
+                .finish(),
         }
     }
 }

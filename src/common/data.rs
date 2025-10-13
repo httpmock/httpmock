@@ -384,6 +384,12 @@ pub struct HttpMockResponse {
     pub body: Option<HttpMockBytes>,
 }
 
+impl HttpMockResponse {
+    pub fn builder() -> HttpMockResponseBuilder {
+        HttpMockResponseBuilder::new()
+    }
+}
+
 /// Converts an `HttpMockResponse` into a real `http::Response<Bytes>`.
 impl TryFrom<HttpMockResponse> for http::Response<bytes::Bytes> {
     type Error = Error;
@@ -494,30 +500,119 @@ impl<'a> IntoMockBytes for std::borrow::Cow<'a, str> {
     }
 }
 
-impl<B> TryFrom<http::Response<B>> for HttpMockResponse
+// Support empty bodies like `http::Response::builder().body(())` used in tests
+impl IntoMockBytes for () {
+    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
+        Ok(bytes::Bytes::new())
+    }
+}
+
+impl<B> TryFrom<&http::Response<B>> for HttpMockResponse
 where
-    B: IntoMockBytes,
+    B: Clone + IntoMockBytes, // Clone only if you need to read body/headers without moving
 {
     type Error = Error;
 
-    fn try_from(resp: http::Response<B>) -> Result<Self, Self::Error> {
-        let (parts, body) = resp.into_parts();
-
-        // Strict header conversion (String-based HttpMockResponse)
-        let mut headers = Vec::with_capacity(parts.headers.len());
-        for (name, value) in parts.headers.iter() {
+    fn try_from(resp: &http::Response<B>) -> Result<Self, Self::Error> {
+        // headers -> Vec<(String, String)> (UTF-8 strict)
+        let mut headers = Vec::with_capacity(resp.headers().len());
+        for (name, value) in resp.headers() {
             let name = name.as_str().to_string();
-            let val = value.to_str().map_err(|_| {
-                Error::ResponseConversionError(format!("non-utf8 header value for '{}'", name))
-            })?;
+            let val = value.to_str()
+                .map_err(|_| Error::ResponseConversionError(format!("non-utf8 header value for '{}'", name)))?;
             headers.push((name, val.to_string()));
         }
 
+        // Body: need a `B` value. Since we only have `&Response<B>`, either:
+        //  - require `B: Clone` and clone it, or
+        //  - restrict this impl to specific `B` you can borrow from (e.g., Bytes)
+        let body_bytes = resp.body().clone().into_httpmock_bytes()?;
+
         Ok(HttpMockResponse {
-            status: Some(parts.status.as_u16()),
+            status: Some(resp.status().as_u16()),
             headers: Some(headers),
-            body: Some(HttpMockBytes(body.into_httpmock_bytes()?)),
+            body: Some(HttpMockBytes(body_bytes)),
         })
+    }
+}
+
+impl<B> From<http::Response<B>> for HttpMockResponse
+where
+    B: IntoMockBytes,
+{
+    fn from(resp: http::Response<B>) -> Self {
+        HttpMockResponse::try_from(resp).expect("invalid http::Response for HttpMockResponse")
+    }
+}
+
+#[derive(Default, Debug, Clone)]
+pub struct HttpMockResponseBuilder {
+    status: Option<u16>,
+    headers: Vec<(String, String)>,
+    body: Option<HttpMockBytes>,
+}
+
+impl HttpMockResponseBuilder {
+    pub fn new() -> Self {
+        Self::default()
+    }
+
+    /// Set an HTTP status (e.g., 200, 404).
+    pub fn status(mut self, status: u16) -> Self {
+        self.status = Some(status);
+        self
+    }
+
+    /// Add a single header (appends; duplicates are allowed).
+    pub fn header<K, V>(mut self, key: K, val: V) -> Self
+    where
+        K: Into<String>,
+        V: Into<String>,
+    {
+        self.headers.push((key.into(), val.into()));
+        self
+    }
+
+    /// Replace all headers at once.
+    pub fn headers<I, K, V>(mut self, headers: I) -> Self
+    where
+        I: IntoIterator<Item = (K, V)>,
+        K: Into<String>,
+        V: Into<String>,
+    {
+        self.headers = headers
+            .into_iter()
+            .map(|(k, v)| (k.into(), v.into()))
+            .collect();
+        self
+    }
+
+    /// Set a body from anything convertible into `HttpMockBytes`.
+    pub fn body<B>(mut self, body: B) -> Self
+    where
+        B: Into<HttpMockBytes>,
+    {
+        self.body = Some(body.into());
+        self
+    }
+
+    /// Explicitly clear the body.
+    pub fn no_body(mut self) -> Self {
+        self.body = None;
+        self
+    }
+
+    /// Finalize into `HttpMockResponse`.
+    pub fn build(self) -> HttpMockResponse {
+        HttpMockResponse {
+            status: self.status,
+            headers: if self.headers.is_empty() {
+                None
+            } else {
+                Some(self.headers)
+            },
+            body: self.body,
+        }
     }
 }
 
