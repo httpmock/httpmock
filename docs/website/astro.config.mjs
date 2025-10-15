@@ -52,6 +52,7 @@ export default defineConfig({
                                 // Each item here is one entry in the navigation menu.
                                 {label: 'Response Values', link: '/mocking_responses/all/'},
                                 {label: 'Network Delay', link: '/mocking_responses/delay/'},
+                                {label: 'Custom Responses', link: '/mocking_responses/custom/'},
                             ],
                         },
                     ],

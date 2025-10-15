@@ -312,7 +312,7 @@ impl HttpMockRequest {
     }
 
     pub fn to_http_request(&self) -> http::Request<Bytes> {
-        self.try_into().unwrap()
+        http::Request::<Bytes>::from(self)
     }
 }
 
@@ -329,31 +329,15 @@ fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)
         .collect()
 }
 
-impl TryInto<http::Request<Bytes>> for &HttpMockRequest {
+
+
+impl<B> TryFrom<&http::Request<B>> for HttpMockRequest
+where
+    B: Clone + IntoMockBytes,
+{
     type Error = Error;
 
-    fn try_into(self) -> Result<http::Request<Bytes>, Self::Error> {
-        let mut builder = http::Request::builder()
-            .method(self.method())
-            .uri(self.uri())
-            .version(self.version());
-
-        for (k, v) in self.headers() {
-            builder = builder.header(k.map_or(String::new(), |v| v.to_string()), v)
-        }
-
-        let req = builder
-            .body(self.body().to_bytes())
-            .map_err(|err| RequestConversionError(err.to_string()))?;
-
-        Ok(req)
-    }
-}
-
-impl TryFrom<&http::Request<Bytes>> for HttpMockRequest {
-    type Error = Error;
-
-    fn try_from(value: &http::Request<Bytes>) -> Result<Self, Self::Error> {
+    fn try_from(value: &http::Request<B>) -> Result<Self, Self::Error> {
         let metadata = value
             .extensions()
             .get::<RequestMetadata>()
@@ -361,8 +345,12 @@ impl TryFrom<&http::Request<Bytes>> for HttpMockRequest {
 
         let headers = http_headers_to_vec(&value)?;
 
-        // Since Bytes shares data, clone does not copy the body.
-        let body = HttpMockBytes::from(value.body().clone());
+        // Convert the (cloned) body into Bytes, supporting several common body types.
+        let body_bytes = value
+            .body()
+            .clone()
+            .into_httpmock_bytes()?;
+        let body = HttpMockBytes(body_bytes);
 
         Ok(HttpMockRequest::new(
             metadata.scheme.to_string(),
@@ -372,6 +360,69 @@ impl TryFrom<&http::Request<Bytes>> for HttpMockRequest {
             format!("{:?}", value.version()),
             body,
         ))
+    }
+}
+
+impl<B> From<http::Request<B>> for HttpMockRequest
+where
+    B: Clone + IntoMockBytes,
+{
+    fn from(req: http::Request<B>) -> Self {
+        // Use by-ref conversion; we still have access to extensions while owning `req`.
+        <HttpMockRequest as TryFrom<&http::Request<B>>>::try_from(&req)
+            .expect("invalid http::Request for HttpMockRequest: missing metadata or invalid headers/body")
+    }
+}
+
+impl From<&HttpMockRequest> for http::Request<bytes::Bytes> {
+    fn from(req: &HttpMockRequest) -> Self {
+        let mut builder = http::Request::builder()
+            .method(req.method())
+            .uri(req.uri())
+            .version(req.version());
+
+        for (k, v) in req.headers() {
+            builder = builder.header(k.map_or(String::new(), |v| v.to_string()), v)
+        }
+
+        builder
+            .body(req.body().to_bytes())
+            .expect("failed to convert HttpMockRequest into http::Request<Bytes>")
+    }
+}
+
+impl From<&HttpMockRequest> for http::Request<String> {
+    fn from(req: &HttpMockRequest) -> Self {
+        let mut builder = http::Request::builder()
+            .method(req.method())
+            .uri(req.uri())
+            .version(req.version());
+
+        for (k, v) in req.headers() {
+            builder = builder.header(k.map_or(String::new(), |v| v.to_string()), v)
+        }
+
+        let body = String::from_utf8(req.body_vec()).expect("request body is not valid UTF-8");
+        builder
+            .body(body)
+            .expect("failed to convert HttpMockRequest into http::Request<String>")
+    }
+}
+
+impl From<&HttpMockRequest> for http::Request<()> {
+    fn from(req: &HttpMockRequest) -> Self {
+        let mut builder = http::Request::builder()
+            .method(req.method())
+            .uri(req.uri())
+            .version(req.version());
+
+        for (k, v) in req.headers() {
+            builder = builder.header(k.map_or(String::new(), |v| v.to_string()), v)
+        }
+
+        builder
+            .body(())
+            .expect("failed to convert HttpMockRequest into http::Request<()>")
     }
 }
 
@@ -538,10 +589,13 @@ where
 
 impl<B> From<http::Response<B>> for HttpMockResponse
 where
-    B: IntoMockBytes,
+    B: Clone + IntoMockBytes,
 {
     fn from(resp: http::Response<B>) -> Self {
-        HttpMockResponse::try_from(resp).expect("invalid http::Response for HttpMockResponse")
+        // Avoid recursive TryFrom<http::Response<B>> derived from this From impl.
+        // Convert by reference using the blanket &Response<B> implementation.
+        <HttpMockResponse as TryFrom<&http::Response<B>>>::try_from(&resp)
+            .expect("invalid http::Response for HttpMockResponse")
     }
 }
 

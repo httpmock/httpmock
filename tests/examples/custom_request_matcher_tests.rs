@@ -1,9 +1,9 @@
-use httpmock::prelude::*;
-use reqwest::blocking::Client;
-use std::sync::Mutex;
+
 
 #[test]
 fn my_custom_request_matcher_test() {
+    use httpmock::prelude::*;
+
     // Arrange
     let server = MockServer::start();
 
@@ -22,6 +22,10 @@ fn my_custom_request_matcher_test() {
 
 #[test]
 fn dynamic_responder_test() {
+    use httpmock::prelude::*;
+    use reqwest::blocking::Client;
+    use std::sync::Mutex;
+
     // Arrange
     let server = MockServer::start();
 
@@ -31,8 +35,10 @@ fn dynamic_responder_test() {
     let call_count = Mutex::new(0);
 
     let mock = server.mock(|when, then| {
-        when.method("GET");
-        then.reply_with(move |_req: &HttpMockRequest | {
+        when.method("GET").is_true(|r| {
+            return r.uri().path().ends_with("/hello");
+        });
+        then.respond_with(move |_req: &HttpMockRequest | {
             let mut count = call_count.lock().unwrap();
             *count += 1;
 
@@ -43,9 +49,9 @@ fn dynamic_responder_test() {
     // Act
     let client = Client::new();
 
-    let response1 = client.get(server.base_url()).send().unwrap();
-    let response2 = client.get(server.base_url()).send().unwrap();
-    let response3 = client.get(server.base_url()).send().unwrap();
+    let response1 = client.get(server.url("/hello")).send().unwrap();
+    let response2 = client.get(server.url("/hello")).send().unwrap();
+    let response3 = client.get(server.url("/hello")).send().unwrap();
 
     // Assert
     mock.assert_calls(3);
@@ -57,6 +63,10 @@ fn dynamic_responder_test() {
 
 #[test]
 fn dynamic_responder_http_crate_test() {
+    use httpmock::prelude::*;
+    use reqwest::blocking::Client;
+    use std::sync::Mutex;
+
     // Arrange
     let server = MockServer::start();
 
@@ -67,10 +77,9 @@ fn dynamic_responder_http_crate_test() {
 
     let mock = server.mock(|when, then| {
         when.method("GET");
-        then.reply_with(move |req: &HttpMockRequest | {
+        then.respond_with(move |req: &HttpMockRequest | {
             // Convert the HttpMockRequest to a http creates Request object
-            let req : http::Request<String> = req.try_into().unwrap();
-            println!("{:?}", req.uri().path());
+            let req : http::Request<()> = req.into();
 
             let mut count = call_count.lock().unwrap();
             *count += 1;
@@ -79,7 +88,7 @@ fn dynamic_responder_http_crate_test() {
             // a HttpMockResponse internally
             http::Response::builder()
                 .status(200 + *count)
-                .body(())
+                .body(req.uri().path().to_string())
                 .unwrap()
                 .into()
         });
