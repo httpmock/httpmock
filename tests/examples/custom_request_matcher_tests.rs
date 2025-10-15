@@ -1,5 +1,3 @@
-
-
 #[test]
 fn my_custom_request_matcher_test() {
     use httpmock::prelude::*;
@@ -38,7 +36,7 @@ fn dynamic_responder_test() {
         when.method("GET").is_true(|r| {
             return r.uri().path().ends_with("/hello");
         });
-        then.respond_with(move |_req: &HttpMockRequest | {
+        then.respond_with(move |_req: &HttpMockRequest| {
             let mut count = call_count.lock().unwrap();
             *count += 1;
 
@@ -77,9 +75,9 @@ fn dynamic_responder_http_crate_test() {
 
     let mock = server.mock(|when, then| {
         when.method("GET");
-        then.respond_with(move |req: &HttpMockRequest | {
+        then.respond_with(move |req: &HttpMockRequest| {
             // Convert the HttpMockRequest to a http creates Request object
-            let req : http::Request<()> = req.into();
+            let req: http::Request<()> = req.into();
 
             let mut count = call_count.lock().unwrap();
             *count += 1;

@@ -329,8 +329,6 @@ fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)
         .collect()
 }
 
-
-
 impl<B> TryFrom<&http::Request<B>> for HttpMockRequest
 where
     B: Clone + IntoMockBytes,
@@ -346,10 +344,7 @@ where
         let headers = http_headers_to_vec(&value)?;
 
         // Convert the (cloned) body into Bytes, supporting several common body types.
-        let body_bytes = value
-            .body()
-            .clone()
-            .into_httpmock_bytes()?;
+        let body_bytes = value.body().clone().into_httpmock_bytes()?;
         let body = HttpMockBytes(body_bytes);
 
         Ok(HttpMockRequest::new(
@@ -369,8 +364,9 @@ where
 {
     fn from(req: http::Request<B>) -> Self {
         // Use by-ref conversion; we still have access to extensions while owning `req`.
-        <HttpMockRequest as TryFrom<&http::Request<B>>>::try_from(&req)
-            .expect("invalid http::Request for HttpMockRequest: missing metadata or invalid headers/body")
+        <HttpMockRequest as TryFrom<&http::Request<B>>>::try_from(&req).expect(
+            "invalid http::Request for HttpMockRequest: missing metadata or invalid headers/body",
+        )
     }
 }
 
@@ -569,8 +565,9 @@ where
         let mut headers = Vec::with_capacity(resp.headers().len());
         for (name, value) in resp.headers() {
             let name = name.as_str().to_string();
-            let val = value.to_str()
-                .map_err(|_| Error::ResponseConversionError(format!("non-utf8 header value for '{}'", name)))?;
+            let val = value.to_str().map_err(|_| {
+                Error::ResponseConversionError(format!("non-utf8 header value for '{}'", name))
+            })?;
             headers.push((name, val.to_string()));
         }
 
