@@ -4,10 +4,10 @@ use tokio::sync::oneshot;
 
 type BoxError = Box<dyn std::error::Error + Send + Sync>;
 
-pub async fn http_get(
+pub async fn get_request(
     uri: &str,
-    proxy: Option<&str>,
     headers: Option<HashMap<String, String>>,
+    proxy: Option<&str>,
 ) -> Result<(u16, String), BoxError> {
     let uri = uri.to_string();
     let proxy = proxy.map(|p| p.to_string());

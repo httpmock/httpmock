@@ -19,7 +19,7 @@ fn all_runtimes_test() {
 
 #[cfg(all(feature = "proxy", feature = "https"))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::http_get;
+    use crate::utils::http::get_request;
     use httpmock::prelude::*;
 
     // Proxy forwarder
@@ -42,10 +42,10 @@ async fn test_fn() -> u16 {
         .await;
 
     // Through proxy to server2
-    let (status_code, body) = http_get(
+    let (status_code, body) = get_request(
         &server2.url("/get"),
-        Some(server1.base_url().as_str()),
         None,
+        Some(server1.base_url().as_str()),
     )
     .await
     .expect("proxy to server2 failed");
@@ -58,7 +58,7 @@ async fn test_fn() -> u16 {
 
 #[cfg(all(feature = "proxy", not(any(feature = "https", feature = "standalone"))))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::http_get;
+    use crate::utils::http::get_request;
     use httpmock::prelude::*;
 
     // Proxy forwarder
@@ -82,15 +82,15 @@ async fn test_fn() -> u16 {
         .await;
 
     // Through proxy to server2
-    let (status_code, body) = http_get(
+    let (status_code, body) = get_request(
         &server2.url("/get"),
-        Some(server1.base_url().as_str()),
         // httpbingo requires a User-Agent header
         Some(
             [("User-Agent".into(), "MyTestClient/1.0".into())]
                 .into_iter()
                 .collect(),
         ),
+        Some(server1.base_url().as_str()),
     )
     .await
     .expect("proxy to server2 failed");
@@ -103,7 +103,7 @@ async fn test_fn() -> u16 {
 
 #[cfg(all(feature = "proxy", feature = "standalone", not(feature = "https")))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::http_get;
+    use crate::utils::http::get_request;
     use httpmock::prelude::*;
 
     // Fake GitHub target
@@ -126,10 +126,10 @@ async fn test_fn() -> u16 {
         .await;
 
     // Through proxy to server2
-    let (status_code, body) = http_get(
+    let (status_code, body) = get_request(
         &target_server.url("/get"),
-        Some(proxy_server.base_url().as_str()),
         None,
+        Some(proxy_server.base_url().as_str()),
     )
     .await
     .expect("proxy to server2 failed");
@@ -142,7 +142,7 @@ async fn test_fn() -> u16 {
 
 #[cfg(not(any(feature = "proxy")))]
 async fn test_fn() -> u16 {
-    use crate::utils::http;
+    use crate::utils::http::get_request;
     use httpmock::prelude::*;
 
     let server = MockServer::start_async().await;
@@ -153,7 +153,7 @@ async fn test_fn() -> u16 {
         })
         .await;
 
-    let (status, _body) = http::get(&server.url("/get"), None)
+    let (status, _body) = get_request(&server.url("/get"), None, None)
         .await
         .expect("request failed");
 
