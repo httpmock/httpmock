@@ -5066,7 +5066,7 @@ impl Then {
                 &resource_file_path
             )),
         };
-        let content = read_to_string(&absolute_path).expect(&format!(
+        let content = crate::common::util::read_file(&absolute_path).expect(&format!(
             "Cannot read from file {}",
             absolute_path.to_str().expect("Invalid OS path")
         ));
