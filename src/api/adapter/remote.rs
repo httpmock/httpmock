@@ -51,9 +51,9 @@ impl RemoteMockServerAdapter {
         &self,
         response: &MockServerHttpResponse,
     ) -> Result<(), ServerAdapterError> {
-        match response.reply_with {
+        match response.respond_with {
             Some(_) => Err(InvalidMockDefinitionError(
-                "Dynamic responders (then.reply_with) are not supported by remote/standalone servers".to_string(),
+                "Dynamic responders are not supported by remote/standalone servers".to_string(),
             )),
             None => Ok(()),
         }

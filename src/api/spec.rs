@@ -5516,7 +5516,7 @@ impl Then {
         F: Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync + 'static,
     {
         update_cell(&self.response_template, |r| {
-            r.reply_with = Some(std::sync::Arc::new(f));
+            r.respond_with = Some(std::sync::Arc::new(f));
         });
         self
     }

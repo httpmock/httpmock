@@ -504,10 +504,10 @@ where
         // Resolve dynamic vs. static response into HttpMockResponse
         let resp_def: HttpMockResponse =
             definition
-                .reply_with
+                .respond_with
                 .map(|f| f(req))
                 .unwrap_or_else(|| HttpMockResponse {
-                    status: definition.status,
+                    status: definition.status.or(Some(StatusCode::OK.as_u16())),
                     headers: definition.headers,
                     body: definition.body,
                 });

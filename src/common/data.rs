@@ -679,7 +679,7 @@ pub struct MockServerHttpResponse {
     pub body: Option<HttpMockBytes>,
     pub delay: Option<u64>,
     #[serde(skip)]
-    pub reply_with:
+    pub respond_with:
         Option<std::sync::Arc<dyn Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync>>,
 }
 
@@ -690,7 +690,7 @@ impl MockServerHttpResponse {
             headers: None,
             body: None,
             delay: None,
-            reply_with: None,
+            respond_with: None,
         }
     }
 }
@@ -728,7 +728,7 @@ impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
                 None
             },
             delay: None,
-            reply_with: None,
+            respond_with: None,
         })
     }
 }
@@ -1663,7 +1663,7 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
                 headers: from_name_value_string_pair_vec(self.then.header),
                 body: from_string_to_bytes_choose(self.then.body, self.then.body_base64),
                 delay: self.then.delay,
-                reply_with: None,
+                respond_with: None,
             },
         })
     }
