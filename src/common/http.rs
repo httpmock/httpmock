@@ -49,12 +49,16 @@ impl<'a> HttpMockHttpClient {
                 .expect("cannot install rustls crypto provider");
         }
 
-        let https_connector = hyper_rustls::HttpsConnectorBuilder::new()
+        let builder = hyper_rustls::HttpsConnectorBuilder::new()
             .with_native_roots()
             .expect("cannot set up using native root certificates")
             .https_or_http()
-            .enable_all_versions()
-            .build();
+            .enable_http1();
+
+        #[cfg(feature = "http2")]
+        let builder = builder.enable_http2();
+
+        let https_connector = builder.build();
 
         Self {
             runtime,
