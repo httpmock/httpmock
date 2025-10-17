@@ -192,25 +192,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         Ok(())
     }
 
-    async fn delete_all_mocks(&self) -> Result<(), ServerAdapterError> {
-        let request = Request::builder()
-            .method("DELETE")
-            .uri(format!("http://{}/__httpmock__/mocks", &self.address()))
-            .body(Bytes::new())
-            .map_err(|e| UpstreamError(e.to_string()))?;
-
-        let (status, body) = self.do_request(request).await?;
-
-        if status != StatusCode::NO_CONTENT {
-            return Err(UpstreamError(format!(
-                "Could not delete all mocks from the mock server. Expected response status 204 but was {} (response body = '{}')",
-                status, body
-            )));
-        }
-
-        Ok(())
-    }
-
     async fn verify(
         &self,
         requirements: &RequestRequirements,
@@ -241,25 +222,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             serde_json::from_str(&body).map_err(|e| JsonDeserializationError(e))?;
 
         Ok(Some(response))
-    }
-
-    async fn delete_history(&self) -> Result<(), ServerAdapterError> {
-        let request = Request::builder()
-            .method("DELETE")
-            .uri(format!("http://{}/__httpmock__/history", &self.address()))
-            .body(Bytes::new())
-            .map_err(|e| UpstreamError(e.to_string()))?;
-
-        let (status, body) = self.do_request(request).await?;
-
-        if status != StatusCode::NO_CONTENT {
-            return Err(UpstreamError(format!(
-                "Could not delete request history from the mock server. Expected response status 204 but was {} (response body = '{}')",
-                status, body
-            )));
-        }
-
-        Ok(())
     }
 
     async fn create_forwarding_rule(
@@ -311,28 +273,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         if status != StatusCode::NO_CONTENT {
             return Err(UpstreamError(format!(
                 "Could not delete forwarding rule from the mock server. Expected response status 204 but was {} (response body = '{}')",
-                status, body
-            )));
-        }
-
-        Ok(())
-    }
-
-    async fn delete_all_forwarding_rules(&self) -> Result<(), ServerAdapterError> {
-        let request = Request::builder()
-            .method("DELETE")
-            .uri(format!(
-                "http://{}/__httpmock__/forwarding_rules",
-                &self.address()
-            ))
-            .body(Bytes::new())
-            .map_err(|e| UpstreamError(e.to_string()))?;
-
-        let (status, body) = self.do_request(request).await?;
-
-        if status != StatusCode::NO_CONTENT {
-            return Err(UpstreamError(format!(
-                "Could not delete all forwarding rules from the mock server. Expected response status 204 but was {} (response body = '{}')",
                 status, body
             )));
         }
@@ -396,28 +336,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         Ok(())
     }
 
-    async fn delete_all_proxy_rules(&self) -> Result<(), ServerAdapterError> {
-        let request = Request::builder()
-            .method("DELETE")
-            .uri(format!(
-                "http://{}/__httpmock__/proxy_rules",
-                &self.address()
-            ))
-            .body(Bytes::new())
-            .map_err(|e| UpstreamError(e.to_string()))?;
-
-        let (status, body) = self.do_request(request).await?;
-
-        if status != StatusCode::NO_CONTENT {
-            return Err(UpstreamError(format!(
-                "Could not delete all proxy rules from the mock server. Expected response status 204 but was {} (response body = '{}')",
-                status, body
-            )));
-        }
-
-        Ok(())
-    }
-
     async fn create_recording(
         &self,
         config: RecordingRuleConfig,
@@ -467,28 +385,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         if status != StatusCode::NO_CONTENT {
             return Err(UpstreamError(format!(
                 "Could not delete recording from the mock server. Expected response status 204 but was {} (response body = '{}')",
-                status, body
-            )));
-        }
-
-        Ok(())
-    }
-
-    async fn delete_all_recordings(&self) -> Result<(), ServerAdapterError> {
-        let request = Request::builder()
-            .method("DELETE")
-            .uri(format!(
-                "http://{}/__httpmock__/recordings",
-                &self.address()
-            ))
-            .body(Bytes::new())
-            .map_err(|e| UpstreamError(e.to_string()))?;
-
-        let (status, body) = self.do_request(request).await?;
-
-        if status != StatusCode::NO_CONTENT {
-            return Err(UpstreamError(format!(
-                "Could not delete all recordings from the mock server. Expected response status 204 but was {} (response body = '{}')",
                 status, body
             )));
         }
