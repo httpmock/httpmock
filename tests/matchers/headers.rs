@@ -146,7 +146,7 @@ fn header_count() {
 }
 
 fn generate_data() -> MultiValueMatcherTestSet<&'static str, &'static str, usize, &'static str> {
-    MultiValueMatcherTestSet::generate("header", "Header Mismatch", false)
+    MultiValueMatcherTestSet::generate("header", "Header Mismatch")
 }
 
 fn run_test<F, S>(

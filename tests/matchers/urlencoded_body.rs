@@ -156,11 +156,7 @@ fn form_urlencoded_tuple_count() {
 }
 
 fn generate_data() -> MultiValueMatcherTestSet<&'static str, &'static str, usize, &'static str> {
-    MultiValueMatcherTestSet::generate(
-        "form_urlencoded_tuple",
-        "Form-urlencoded Body Mismatch",
-        false,
-    )
+    MultiValueMatcherTestSet::generate("form_urlencoded_tuple", "Form-urlencoded Body Mismatch")
 }
 
 fn run_test<F, S>(

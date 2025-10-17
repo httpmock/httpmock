@@ -5,7 +5,7 @@ use reqwest::redirect::Policy;
 #[cfg(feature = "proxy")]
 #[test]
 fn proxy_test() {
-    env_logger::try_init().unwrap();
+    tracing_subscriber::fmt::init();
 
     // We will create this mock server to simulate a real service (e.g., GitHub, AWS, etc.).
     let target_server = MockServer::start();

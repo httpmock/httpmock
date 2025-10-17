@@ -7,7 +7,7 @@ use futures_util::TryFutureExt;
 use crate::api::adapter::{MockServerAdapter, ServerAdapterError};
 
 use crate::{
-    api::adapter::ServerAdapterError::{MockNotFound, PingError, UpstreamError},
+    api::adapter::ServerAdapterError::{MockNotFound, UpstreamError},
     server::state::{HttpMockStateManager, StateManager},
 };
 
@@ -75,11 +75,6 @@ impl MockServerAdapter for LocalMockServerAdapter {
         Ok(())
     }
 
-    async fn delete_all_mocks(&self) -> Result<(), ServerAdapterError> {
-        self.state.delete_all_mocks();
-        Ok(())
-    }
-
     async fn verify(
         &self,
         mock_rr: &RequestRequirements,
@@ -91,11 +86,6 @@ impl MockServerAdapter for LocalMockServerAdapter {
         Ok(closest_match)
     }
 
-    async fn delete_history(&self) -> Result<(), ServerAdapterError> {
-        self.state.delete_history();
-        Ok(())
-    }
-
     async fn create_forwarding_rule(
         &self,
         config: ForwardingRuleConfig,
@@ -105,11 +95,6 @@ impl MockServerAdapter for LocalMockServerAdapter {
 
     async fn delete_forwarding_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.state.delete_forwarding_rule(id);
-        Ok(())
-    }
-
-    async fn delete_all_forwarding_rules(&self) -> Result<(), ServerAdapterError> {
-        self.state.delete_all_forwarding_rules();
         Ok(())
     }
 
@@ -125,11 +110,6 @@ impl MockServerAdapter for LocalMockServerAdapter {
         Ok(())
     }
 
-    async fn delete_all_proxy_rules(&self) -> Result<(), ServerAdapterError> {
-        self.state.delete_all_proxy_rules();
-        Ok(())
-    }
-
     async fn create_recording(
         &self,
         config: RecordingRuleConfig,
@@ -139,11 +119,6 @@ impl MockServerAdapter for LocalMockServerAdapter {
 
     async fn delete_recording(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.state.delete_recording(id);
-        Ok(())
-    }
-
-    async fn delete_all_recordings(&self) -> Result<(), ServerAdapterError> {
-        self.state.delete_all_recordings();
         Ok(())
     }
 

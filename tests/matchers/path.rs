@@ -110,7 +110,7 @@ fn path_matches() {
 }
 
 fn generate_data() -> SingleValueMatcherDataSet<&'static str, &'static str> {
-    SingleValueMatcherDataSet::generate("path", "Path Mismatch", true)
+    SingleValueMatcherDataSet::generate("path", "Path Mismatch")
 }
 
 fn run_test<F, S>(

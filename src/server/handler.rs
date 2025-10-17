@@ -568,33 +568,6 @@ where
     Ok(body)
 }
 
-fn extract_query_params(req: &Request<Bytes>) -> Result<Vec<(String, String)>, Error> {
-    // There doesn't seem to be a way to just parse Query string with the `url` crate, so we're
-    // prefixing a dummy URL for parsing.
-    let url = format!("http://dummy?{}", req.uri().query().unwrap_or(""));
-    let url = url::Url::parse(&url).map_err(|e| RequestConversionError(e.to_string()))?;
-
-    let query_params = url
-        .query_pairs()
-        .map(|(k, v)| (k.into(), v.into()))
-        .collect();
-
-    Ok(query_params)
-}
-
-fn headers_to_vec<T>(req: &Request<T>) -> Result<Vec<(String, String)>, Error> {
-    req.headers()
-        .iter()
-        .map(|(name, value)| {
-            // Attempt to convert the HeaderValue to a &str, returning an error if it fails.
-            let value_str = value
-                .to_str()
-                .map_err(|e| RequestConversionError(e.to_string()))?;
-            Ok((name.as_str().to_string(), value_str.to_string()))
-        })
-        .collect()
-}
-
 /// Convert an absolute-form request URI into origin-form prior to dispatching upstream.
 ///
 /// Rationale:

@@ -397,10 +397,6 @@ async fn buffer_request(req: Request<Incoming>) -> Result<Request<Bytes>, hyper:
     Ok(Request::from_parts(parts, body))
 }
 
-fn host_addr(uri: &http::Uri) -> Option<String> {
-    uri.authority().and_then(|auth| Some(auth.to_string()))
-}
-
 fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, hyper::Error> {
     Full::new(chunk.into())
         .map_err(|never| match never {})
@@ -411,24 +407,6 @@ fn empty() -> BoxBody<Bytes, hyper::Error> {
     Empty::<Bytes>::new()
         .map_err(|never| match never {})
         .boxed()
-}
-
-async fn tunnel(upgraded: hyper::upgrade::Upgraded, addr: String) -> std::io::Result<()> {
-    let mut server = tokio::net::TcpStream::connect(addr).await?;
-    let mut upgraded = RecordingStream::new(TokioIo::new(upgraded));
-
-    let (from_client, from_server) =
-        tokio::io::copy_bidirectional(&mut server, &mut upgraded).await?;
-
-    tracing::info!(
-        "client wrote {} bytes and received {} bytes. \n\nread:\n{}\n\n wrote: {}\n\n",
-        from_client,
-        from_server,
-        String::from_utf8_lossy(&upgraded.read_bytes),
-        String::from_utf8_lossy(&upgraded.written_bytes)
-    );
-
-    Ok(())
 }
 
 fn error_response(
@@ -464,81 +442,6 @@ use crate::server::RequestMetadata;
 #[cfg(feature = "https")]
 use tls_detect::is_encrypted;
 use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
-
-struct RecordingStream<S> {
-    stream: S,
-    read_bytes: BytesMut,    // Buffer to store bytes read from the stream
-    written_bytes: BytesMut, // Buffer to store bytes written to the stream
-}
-
-impl<S: AsyncRead + AsyncWrite + Unpin> RecordingStream<S> {
-    pub fn new(stream: S) -> Self {
-        RecordingStream {
-            stream,
-            read_bytes: BytesMut::new(),
-            written_bytes: BytesMut::new(),
-        }
-    }
-
-    // Method to access the collected read bytes
-    pub fn get_read_bytes(&self) -> &[u8] {
-        &self.read_bytes
-    }
-
-    // Method to access the collected written bytes
-    pub fn get_written_bytes(&self) -> &[u8] {
-        &self.written_bytes
-    }
-}
-
-impl<S: AsyncRead + AsyncWrite + Unpin> AsyncRead for RecordingStream<S> {
-    fn poll_read(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &mut ReadBuf<'_>,
-    ) -> Poll<io::Result<()>> {
-        let this = self.get_mut();
-        let stream = Pin::new(&mut this.stream);
-
-        let before = buf.filled().len();
-        match stream.poll_read(cx, buf) {
-            Poll::Ready(Ok(())) => {
-                let after = buf.filled().len();
-                let new_bytes = &buf.filled()[before..after];
-                this.read_bytes.extend_from_slice(new_bytes);
-                Poll::Ready(Ok(()))
-            }
-            other => other,
-        }
-    }
-}
-
-impl<S: AsyncRead + AsyncWrite + Unpin> AsyncWrite for RecordingStream<S> {
-    fn poll_write(
-        self: Pin<&mut Self>,
-        cx: &mut Context<'_>,
-        buf: &[u8],
-    ) -> Poll<Result<usize, io::Error>> {
-        let this = self.get_mut();
-        let stream = Pin::new(&mut this.stream);
-
-        match stream.poll_write(cx, buf) {
-            Poll::Ready(Ok(size)) => {
-                this.written_bytes.extend_from_slice(&buf[..size]);
-                Poll::Ready(Ok(size))
-            }
-            other => other,
-        }
-    }
-
-    fn poll_flush(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
-        Pin::new(&mut self.get_mut().stream).poll_flush(cx)
-    }
-
-    fn poll_shutdown(self: Pin<&mut Self>, cx: &mut Context<'_>) -> Poll<Result<(), io::Error>> {
-        Pin::new(&mut self.get_mut().stream).poll_shutdown(cx)
-    }
-}
 
 fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), Error> {
     let default_scheme = req
