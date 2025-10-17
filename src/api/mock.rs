@@ -525,6 +525,55 @@ impl<'a> Mock<'a> {
         self.delete_async().join();
     }
 
+    /// Configures the specified mock to be removed from the mock server after it has received `count`
+    /// calls. This operation is useful for testing scenarios where a client sends multiple requests
+    /// to an endpoint that may go offline or change behavior dynamically during testing, and you
+    /// cannot manually delete the mock between requests.
+    ///
+    /// # Example
+    /// Demonstrates creating two mocks, setting the first to delete itself after receiving a call,
+    /// then verifying the second mock is now intercepting the requests.
+    ///
+    /// ```rust
+    /// use httpmock::prelude::*;
+    /// use reqwest::blocking::get;
+    ///
+    /// // Arrange: Start a mock server and set up a mock
+    /// let server = MockServer::start();
+    /// let mut mock_1 = server.mock(|when, then| {
+    ///    when.path("/test");
+    ///    then.status(202);
+    /// });
+    ///
+    /// // Set the mock to delete itself from the server after receiving a single call
+    /// mock_1.delete_after_calls(1);
+    ///
+    /// // Create a second mock for the same path that will take over when the first mock is
+    /// // deleted
+    /// let mut mock_2 = server.mock(|when, then| {
+    ///    when.path("/test");
+    ///    then.status(302);
+    /// });
+    ///
+    /// // Act: Send a request to the mock and verify its behavior
+    /// let response1 = get(&server.url("/test")).unwrap();
+    ///
+    /// // Send another request and verify the response now that the second mock is active
+    /// let response2 = get(&server.url("/test")).unwrap();
+    /// mock_2.assert();  // Verify the second mock was called once
+    ///
+    /// // Assert: The first response should be 202 as the first mock was active, the second should be
+    /// // 302 from the second mock
+    /// assert_eq!(response1.status(), 202);
+    /// assert_eq!(response2.status(), 302);
+    /// ```
+    ///
+    /// # Panics
+    /// This method will panic if `count` is zero.
+    pub fn delete_after_calls(&mut self, count: usize) {
+        self.delete_after_calls_async(count).join();
+    }
+
     /// Asynchronously deletes this mock from the mock server. This method is the asynchronous equivalent of
     /// [Mock::delete](struct.Mock.html#method.delete) and is suited for use in asynchronous testing environments
     /// where non-blocking operations are preferred.
@@ -575,6 +624,73 @@ impl<'a> Mock<'a> {
             .delete_mock(self.id)
             .await
             .expect("could not delete mock from server");
+    }
+
+    /// Asynchronously configures the specified mock to be removed from the mock server after it has received `count` calls.
+    /// This method is the asynchronous equivalent of [Mock::delete_after_calls](struct.Mock.html#method.delete_after_calls)
+    /// and is suited for use in asynchronous testing environments where non-blocking operations are preferred.
+    ///
+    /// # Example
+    /// Demonstrates creating two asynchronous mocks, setting the first to delete itself after receiving a call,
+    /// then verifying the second mock is now intercepting the requests.
+    ///
+    /// ```rust
+    /// use httpmock::prelude::*;
+    /// use reqwest::get;
+    ///
+    /// let rt = tokio::runtime::Runtime::new().unwrap();
+    /// rt.block_on(async {
+    ///     // Arrange: Start an asynchronous mock server and create a mock
+    ///     let server = MockServer::start_async().await;
+    ///     let mut mock_1 = server
+    ///         .mock_async(|when, then| {
+    ///             when.path("/test");
+    ///             then.status(202);
+    ///         })
+    ///         .await;
+    ///
+    ///     // Set the mock to delete itself from the server after receiving a single call
+    ///     mock_1.delete_after_calls_async(1).await;
+    ///
+    ///     // Create a second mock for the same path that will take over when the first mock is
+    ///     // deleted
+    ///     let mock_2 = server
+    ///         .mock_async(|when, then| {
+    ///             when.path("/test");
+    ///             then.status(302);
+    ///         })
+    ///         .await;
+    ///
+    ///     // Act: Send a request to the mock path. The first mock will delete itself
+    ///     let response1 = get(&server.url("/test")).await.unwrap();
+    ///
+    ///     // Send another request, which now goes to the second mock
+    ///     let response2 = get(&server.url("/test")).await.unwrap();
+    ///     mock_2.assert_async().await;  // Verify the second mock was called once
+    ///
+    ///     // Assert: The first response should be 202 as the first mock was active, the second should be 302
+    ///     assert_eq!(response1.status(), 202);
+    ///     assert_eq!(response2.status(), 302);
+    /// });
+    /// ```
+    ///
+    /// This method will set the mock to delete itself after receiving N calls asynchronously,
+    /// and any subsequent requests to the same path will not be intercepted by this mock, typically
+    /// resulting in a 404 Not Found response
+    /// unless another active mock matches the request.
+    ///
+    /// # Panics
+    /// This method will panic if `count` is zero.
+    pub async fn delete_after_calls_async(&self, count: usize) {
+        assert_ne!(0, count, "delete_after_calls must be greater than zero");
+
+        self.server
+            .server_adapter
+            .as_ref()
+            .unwrap()
+            .delete_mock_after_calls(self.id, count)
+            .await
+            .expect("could not set mock delete_after_calls from server");
     }
 
     /// Returns the network address of the mock server where the associated mock object is stored.

@@ -78,6 +78,7 @@ pub(crate) trait StateManager {
     fn add_mock(&self, definition: MockDefinition, is_static: bool) -> Result<ActiveMock, Error>;
     fn read_mock(&self, id: usize) -> Result<Option<ActiveMock>, Error>;
     fn delete_mock(&self, id: usize) -> Result<bool, Error>;
+    fn delete_mock_after_calls(&self, id: usize, count: usize) -> Result<bool, Error>;
     fn delete_all_mocks(&self);
 
     fn delete_history(&self);
@@ -156,7 +157,7 @@ impl StateManager for HttpMockStateManager {
         let mut state = self.state.lock().unwrap();
 
         let id = state.next_mock_id;
-        let active_mock = ActiveMock::new(id, definition, 0, is_static);
+        let active_mock = ActiveMock::new(id, definition, 0, None, is_static);
 
         tracing::debug!("Adding new mock with ID={}", id);
 
@@ -189,6 +190,21 @@ impl StateManager for HttpMockStateManager {
         tracing::debug!("Deleting mock with id={}", id);
 
         Ok(state.mocks.remove(&id).is_some())
+    }
+
+    fn delete_mock_after_calls(&self, id: usize, count: usize) -> Result<bool, Error> {
+        let mut state = self.state.lock().unwrap();
+
+        if let Some(mock) = state.mocks.get_mut(&id) {
+            if mock.is_static {
+                return Err(StaticMockError);
+            }
+            mock.delete_after = Some(count);
+
+            return Ok(true);
+        };
+
+        Ok(false)
     }
 
     fn delete_all_mocks(&self) {
@@ -272,8 +288,15 @@ impl StateManager for HttpMockStateManager {
 
             let mock = state.mocks.get_mut(&found_id).unwrap();
             mock.call_counter += 1;
+            let resp = mock.definition.response.clone();
 
-            return Ok(Some(mock.definition.response.clone()));
+            if let Some(delete_after) = mock.delete_after {
+                if mock.call_counter >= delete_after {
+                    state.mocks.remove(&found_id);
+                }
+            }
+
+            return Ok(Some(resp));
         }
 
         tracing::debug!(

@@ -1054,6 +1054,7 @@ impl MockDefinition {
 pub struct ActiveMock {
     pub id: usize,
     pub call_counter: usize,
+    pub delete_after: Option<usize>,
     pub definition: MockDefinition,
     pub is_static: bool,
 }
@@ -1063,12 +1064,14 @@ impl ActiveMock {
         id: usize,
         definition: MockDefinition,
         call_counter: usize,
+        delete_after: Option<usize>,
         is_static: bool,
     ) -> Self {
         ActiveMock {
             id,
             definition,
             call_counter,
+            delete_after,
             is_static,
         }
     }
