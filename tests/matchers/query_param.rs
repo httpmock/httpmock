@@ -146,7 +146,7 @@ fn query_param_count() {
 }
 
 fn generate_data() -> MultiValueMatcherTestSet<&'static str, &'static str, usize, &'static str> {
-    MultiValueMatcherTestSet::generate("query_param", "Query Parameter Mismatch", false)
+    MultiValueMatcherTestSet::generate("query_param", "Query Parameter Mismatch")
 }
 
 fn run_test<F, S>(
