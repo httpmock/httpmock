@@ -1,4 +1,6 @@
-use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
+use crate::common::data::{
+    ForwardingRuleConfig, MockServerHttpResponse, ProxyRuleConfig, RecordingRuleConfig,
+};
 use std::{borrow::Borrow, net::SocketAddr, sync::Arc};
 
 use crate::api::{
@@ -40,6 +42,18 @@ impl RemoteMockServerAdapter {
         match requirements.is_true {
             Some(_) => Err(InvalidMockDefinitionError(
                 "Anonymous function request matchers are not supported when using a remote mock server".to_string(),
+            )),
+            None => Ok(()),
+        }
+    }
+
+    fn validate_response(
+        &self,
+        response: &MockServerHttpResponse,
+    ) -> Result<(), ServerAdapterError> {
+        match response.respond_with {
+            Some(_) => Err(InvalidMockDefinitionError(
+                "Dynamic responders are not supported by remote/standalone servers".to_string(),
             )),
             None => Ok(()),
         }
@@ -103,6 +117,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
 
     async fn create_mock(&self, mock: &MockDefinition) -> Result<ActiveMock, ServerAdapterError> {
         self.validate_request_requirements(&mock.request)?;
+        self.validate_response(&mock.response)?;
 
         let json = serde_json::to_string(mock).map_err(|e| JsonSerializationError(e))?;
 

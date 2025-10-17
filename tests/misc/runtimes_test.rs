@@ -1,5 +1,3 @@
-use crate::utils::http::get;
-
 #[test]
 fn all_runtimes_test() {
     use crate::with_standalone_server;
@@ -21,7 +19,7 @@ fn all_runtimes_test() {
 
 #[cfg(all(feature = "proxy", feature = "https"))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::get;
+    use crate::utils::http::get_request;
     use httpmock::prelude::*;
 
     // Proxy forwarder
@@ -44,9 +42,13 @@ async fn test_fn() -> u16 {
         .await;
 
     // Through proxy to server2
-    let (status_code, body) = get(&server2.url("/get"), Some(server1.base_url().as_str()))
-        .await
-        .expect("proxy to server2 failed");
+    let (status_code, body) = get_request(
+        &server2.url("/get"),
+        None,
+        Some(server1.base_url().as_str()),
+    )
+    .await
+    .expect("proxy to server2 failed");
 
     assert_eq!("Hi from fake GitHub!", body);
     assert_eq!(202, status_code);
@@ -56,13 +58,13 @@ async fn test_fn() -> u16 {
 
 #[cfg(all(feature = "proxy", not(any(feature = "https", feature = "standalone"))))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::get;
+    use crate::utils::http::get_request;
     use httpmock::prelude::*;
 
     // Proxy forwarder
     let server2 = MockServer::connect_async("localhost:5050").await;
     server2
-        .forward_to_async("http://postman-echo.com", |rule| {
+        .forward_to_async("http://httpbingo.org", |rule| {
             rule.filter(|when| {
                 when.any_request();
             });
@@ -80,19 +82,28 @@ async fn test_fn() -> u16 {
         .await;
 
     // Through proxy to server2
-    let (status_code, body) = get(&server2.url("/get"), Some(server1.base_url().as_str()))
-        .await
-        .expect("proxy to server2 failed");
+    let (status_code, body) = get_request(
+        &server2.url("/get"),
+        // httpbingo requires a User-Agent header
+        Some(
+            [("User-Agent".into(), "MyTestClient/1.0".into())]
+                .into_iter()
+                .collect(),
+        ),
+        Some(server1.base_url().as_str()),
+    )
+    .await
+    .expect("proxy to server2 failed");
 
-    assert!(body.contains("postman-echo.com"));
     assert_eq!(200, status_code);
+    assert!(body.contains("httpbingo.org"));
 
     202 // fake 202 since the parent test expects it
 }
 
 #[cfg(all(feature = "proxy", feature = "standalone", not(feature = "https")))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::get;
+    use crate::utils::http::get_request;
     use httpmock::prelude::*;
 
     // Fake GitHub target
@@ -115,8 +126,9 @@ async fn test_fn() -> u16 {
         .await;
 
     // Through proxy to server2
-    let (status_code, body) = get(
+    let (status_code, body) = get_request(
         &target_server.url("/get"),
+        None,
         Some(proxy_server.base_url().as_str()),
     )
     .await
@@ -130,7 +142,7 @@ async fn test_fn() -> u16 {
 
 #[cfg(not(any(feature = "proxy")))]
 async fn test_fn() -> u16 {
-    use crate::utils::http;
+    use crate::utils::http::get_request;
     use httpmock::prelude::*;
 
     let server = MockServer::start_async().await;
@@ -141,7 +153,7 @@ async fn test_fn() -> u16 {
         })
         .await;
 
-    let (status, _body) = http::get(&server.url("/get"), None)
+    let (status, _body) = get_request(&server.url("/get"), None, None)
         .await
         .expect("request failed");
 

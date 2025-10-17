@@ -1,3 +1,4 @@
+use crate::prelude::HttpMockResponse;
 use crate::{
     common::{
         data::{MockServerHttpResponse, RequestRequirements},
@@ -13,14 +14,6 @@ use std::{
     cell::Cell, convert::TryInto, fs::read_to_string, path::Path, rc::Rc, str::FromStr, sync::Arc,
     time::Duration,
 };
-
-/// A function that encapsulates one or more
-/// [`When`](When) method calls as an abstraction
-/// or convenience
-
-/// A function that encapsulates one or more
-/// [`Then`](Then) method calls as an abstraction
-/// or convenience
 
 /// Represents the conditions that an incoming HTTP request must satisfy to be handled by the mock server.
 ///
@@ -5371,4 +5364,160 @@ impl Then {
         func(self)
     }
     // @docs-group: Miscellaneous
+
+    /// Sets a **dynamic responder** that is invoked for every request matching the `when`
+    /// conditions. The provided closure receives the full `HttpMockRequest` and must
+    /// **fully determine** the `HttpMockResponse` (status, headers, and body).
+    ///
+    /// This is ideal when the reply depends on request details (path, headers, body),
+    /// or when you need stateful behavior across calls (e.g., counters, cycling codes).
+    ///
+    /// > **Important:** Dynamic responders are only supported by the local server.
+    /// > They are **not** supported by remote/standalone servers and this method **will panic**
+    /// > when used against them.
+    ///
+    /// # Parameters
+    /// - `f`: A response generator closure that is executed on the mock server’s request
+    /// handling thread for each match.
+    ///
+    /// # Behavior
+    /// - When set, this responder **overrides** any static configuration on `Then`
+    ///   (e.g., previously set status/body/headers) for matching requests other than the
+    ///   configured delay using the `delay` method.
+    /// - The closure may capture shared state. If you mutate shared data, use a
+    ///   synchronization primitive (`Mutex`, `RwLock`, or atomics). This is required
+    ///   because the responder runs on the mock server’s request-handling thread,
+    ///   which is distinct from the test thread.
+    ///
+    /// # Returns
+    /// Returns `self` for continued method chaining on `Then`.
+    ///
+    /// # Example
+    /// A minimal dynamic responder that mirrors the request body value back to the client:
+    ///
+    /// ```rust
+    /// use httpmock::{MockServer, HttpMockRequest, HttpMockResponse};
+    /// use reqwest::blocking::Client;
+    ///
+    /// let server = MockServer::start();
+    ///
+    /// let mock = server.mock(|when, then| {
+    ///     when.path("/echo");
+    ///     then.respond_with(|req: &HttpMockRequest| {
+    ///         // Echo the received request body back in the response body.
+    ///         let echoed_body = req.body().to_string();
+    ///
+    ///         HttpMockResponse::builder()
+    ///             .status(200)
+    ///             .body(echoed_body)
+    ///             .build()
+    ///     });
+    /// });
+    ///
+    /// let res = Client::new()
+    ///     .post(format!("{}/echo", server.base_url()))
+    ///     .body("Hello, world!")
+    ///     .send()
+    ///     .unwrap();
+    ///
+    /// mock.assert();
+    ///
+    /// assert_eq!(res.status(), 200);
+    /// assert_eq!(res.text().unwrap(), "Hello, world!");
+    /// ```
+    ///
+    /// # Example
+    /// Stateful dynamic responder that increments the status code on each call:
+    ///
+    /// ```rust
+    /// use httpmock::{MockServer, HttpMockRequest, HttpMockResponse};
+    /// use reqwest::blocking::Client;
+    /// use std::sync::Mutex;
+    ///
+    /// // Arrange
+    /// let server = MockServer::start();
+    ///
+    /// // Shared counter used inside the responder closure.
+    /// // Use a Mutex/RwLock/atomic because the closure runs on the server thread.
+    /// let call_count = Mutex::new(0);
+    ///
+    /// let mock = server.mock(|when, then| {
+    ///     when.path("/hello");
+    ///     then.respond_with(move |_req: &HttpMockRequest| {
+    ///         let mut count = call_count.lock().unwrap();
+    ///         *count += 1;
+    ///
+    ///         HttpMockResponse::builder()
+    ///             .status(200 + *count) // 201, 202, 203, ...
+    ///             .build()
+    ///     });
+    /// });
+    ///
+    /// // Act
+    /// let client = Client::new();
+    /// let response1 = client.get(format!("{}/hello", server.base_url())).send().unwrap();
+    /// let response2 = client.get(format!("{}/hello", server.base_url())).send().unwrap();
+    /// let response3 = client.get(format!("{}/hello", server.base_url())).send().unwrap();
+    ///
+    /// // Assert
+    /// mock.assert_calls(3);
+    /// assert_eq!(response1.status(), 201);
+    /// assert_eq!(response2.status(), 202);
+    /// assert_eq!(response3.status(), 203);
+    /// ```
+    ///
+    /// # HTTP Crate Integration
+    /// Both `HttpMockRequest` and `HttpMockResponse` implement conversion traits
+    /// to and from types of the [`http`](https://crates.io/crates/http) crate.
+    ///
+    /// This means you can seamlessly integrate with other HTTP utilities or middleware
+    /// that operate on `http::Request` and `http::Response`.
+    ///
+    /// ```rust
+    /// use httpmock::{MockServer, HttpMockRequest, HttpMockResponse};
+    /// use reqwest::blocking::Client;
+    ///
+    /// let server = MockServer::start();
+    ///
+    /// let mock = server.mock(|when, then| {
+    ///     when.method("POST").path("/echo");
+    ///     then.respond_with(|req: &HttpMockRequest| {
+    ///         // Convert the HttpMockRequest to an `http` crate Request (with body)
+    ///         let http_req: http::Request<String> = req.into();
+    ///
+    ///         // Build an `http` crate Response (auto-converted to HttpMockResponse)
+    ///         http::Response::builder()
+    ///             .status(200)
+    ///             .header("content-type", "text/plain")
+    ///             .body(format!("Echo from {}: {}", http_req.uri().path(), http_req.body()))
+    ///             .unwrap()
+    ///             .into()
+    ///     });
+    /// });
+    ///
+    /// let res = Client::new()
+    ///     .post(format!("{}/echo", server.base_url()))
+    ///     .body("Hello from client!")
+    ///     .send()
+    ///     .unwrap();
+    ///
+    /// mock.assert();
+    /// assert_eq!(res.status(), 200);
+    /// assert_eq!(res.text().unwrap(), "Echo from /echo: Hello from client!");
+    /// ```
+    ///
+    /// # Notes
+    /// - Avoid long-running or blocking work inside the responder; it runs on the request
+    ///   handling path and will delay responses.
+    /// - If you need to combine static defaults with dynamic tweaks, compute them inside
+    ///   the closure (e.g., start from `HttpMockResponse::builder()` and adjust as needed).
+    pub fn respond_with<F>(mut self, f: F) -> Self
+    where
+        F: Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync + 'static,
+    {
+        update_cell(&self.response_template, |r| {
+            r.respond_with = Some(std::sync::Arc::new(f));
+        });
+        self
+    }
 }

@@ -102,12 +102,14 @@ use std::str::FromStr;
 use serde::{Deserialize, Serialize};
 
 use api::MockServerAdapter;
+
+mod common;
 use common::util::Join;
 
 pub use api::{Method, Mock, MockExt, MockServer, Regex, Then, When};
+pub use common::data::{HttpMockRequest, HttpMockResponse};
 
 mod api;
-pub mod common;
 pub mod server;
 
 #[cfg(feature = "record")]
@@ -119,7 +121,8 @@ pub use api::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder
 pub mod prelude {
     #[doc(no_inline)]
     pub use crate::{
-        api::MockServer, common::data::HttpMockRequest, Method, Method::DELETE, Method::GET,
-        Method::OPTIONS, Method::PATCH, Method::POST, Method::PUT, Regex,
+        api::MockServer, common::data::HttpMockRequest, common::data::HttpMockResponse,
+        common::data::MockServerHttpResponse, Method, Method::DELETE, Method::GET, Method::OPTIONS,
+        Method::PATCH, Method::POST, Method::PUT, Regex,
     };
 }

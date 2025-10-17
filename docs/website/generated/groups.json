@@ -31,6 +31,10 @@
     {
       "group": "Miscellaneous",
       "method": "and"
+    },
+    {
+      "group": "No group",
+      "method": "respond_with"
     }
   ],
   "when": [
