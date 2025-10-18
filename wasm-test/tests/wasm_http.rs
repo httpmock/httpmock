@@ -4,6 +4,7 @@ use reqwest::Client;
 
 wasm_bindgen_test_configure!(run_in_browser);
 
+// Run this test with "wasm-pack test --headless --chrome"
 #[wasm_bindgen_test]
 async fn connect_to_remote_httpmock_and_post_big_body() {
     // Connect to your already running httpmock server (Docker etc.)
