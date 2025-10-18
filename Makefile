@@ -81,3 +81,7 @@ docs:
 fmt:
 	cargo fmt
 	cargo fix --allow-dirty
+
+.PHONY: test-wasm
+test-wasm:
+	cd wasm-test && wasm-pack test --headless --chrome

@@ -72,7 +72,7 @@ http2 = ["hyper/http2", "hyper-util/http2"] # enables httpmocks server support f
 record = ["proxy", "serde_yaml"]
 experimental = [] # marker feature for experimental features
 server = ["hyper/server", "hyper-util/server", "hyper-util/server-auto", "tokio/rt-multi-thread", "tokio/signal", "tokio/net"] # enables local HTTP server runtime
-connect-only = ["remote"] # enables only remote connection APIs without local server
+wasm = ["remote"] # enables only remote connection APIs without local server
 
 [[bin]]
 name = "httpmock"
