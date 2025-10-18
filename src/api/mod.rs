@@ -1,7 +1,9 @@
 // TODO: Remove this at some point
 #![allow(clippy::needless_lifetimes)]
 
-pub use adapter::{local::LocalMockServerAdapter, MockServerAdapter};
+pub use adapter::MockServerAdapter;
+#[cfg(feature = "server")]
+pub use adapter::local::LocalMockServerAdapter;
 
 use serde::{Deserialize, Serialize};
 use std::str::FromStr;

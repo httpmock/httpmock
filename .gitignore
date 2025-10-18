@@ -23,3 +23,4 @@ Cargo.lock
 cobertura.xml
 tarpaulin-report.html
 
+/wasm-test/target/

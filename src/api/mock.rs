@@ -90,6 +90,7 @@ impl<'a> Mock<'a> {
     /// # Panics
     /// This method will panic if the mock server did not receive exactly one matching request or if
     /// there are issues with the mock server's availability.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn assert(&self) {
         self.assert_async().join()
     }
@@ -170,6 +171,7 @@ impl<'a> Mock<'a> {
     /// This method will panic if the actual number of hits differs from the specified `hits`, or if
     /// there are issues with the mock server's availability.
     #[deprecated(since = "0.8.0", note = "please use `assert_calls` instead")]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn assert_hits(&self, hits: usize) {
         self.assert_calls(hits)
     }
@@ -208,6 +210,7 @@ impl<'a> Mock<'a> {
     /// # Panics
     /// This method will panic if the actual number of hits differs from the specified `hits`, or if
     /// there are issues with the mock server's availability.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn assert_calls(&self, count: usize) {
         self.assert_calls_async(count).join()
     }
@@ -359,6 +362,7 @@ impl<'a> Mock<'a> {
     /// # Panics
     /// This method will panic if there are issues accessing the mock server or retrieving the hit count.
     #[deprecated(since = "0.8.0", note = "please use `calls` instead")]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn hits(&self) -> usize {
         self.calls()
     }
@@ -392,6 +396,7 @@ impl<'a> Mock<'a> {
     ///
     /// # Panics
     /// This method will panic if there are issues accessing the mock server or retrieving the hit count.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn calls(&self) -> usize {
         self.calls_async().join()
     }
@@ -521,6 +526,7 @@ impl<'a> Mock<'a> {
     /// This method ensures that the mock is completely removed, and any subsequent requests to the
     /// same path will not be intercepted by this mock, typically resulting in a 404 Not Found response
     /// unless another active mock matches the request.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn delete(&mut self) {
         self.delete_async().join();
     }
@@ -701,6 +707,7 @@ pub struct MockSet<'a> {
 }
 
 impl<'a> MockSet<'a> {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn delete(&mut self) {
         self.delete_async().join();
     }
