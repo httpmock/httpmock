@@ -11,8 +11,11 @@ async fn connect_to_remote_httpmock_and_post_big_body() {
 
 
     // Arrange: create mock on that remote instance
+
     // TODO / FIX: It seems the test currently also runs without this, which means we clould be
-    //  too aggressive setting CORS headers in responses
+    //  too aggressive setting CORS headers in responses.
+    //  Need to decide how to handle CORS in WASM (most likely requires convenience features).
+    //  For now leave it here as an example.
     server
         .mock_async(|when, then| {
             when.method("OPTIONS");
@@ -27,15 +30,16 @@ async fn connect_to_remote_httpmock_and_post_big_body() {
 
     // Arrange: create mock on that remote instance
     let search_mock = server.mock_async(|when, then| {
-        when.method("POST");
+        when.method("POST")
+            .path("/test");
         then.status(202);
     }).await;
 
     // Act: send the HTTP request to the mock endpoint
     let client = Client::builder().build().unwrap();
     let response = client
-        .post(server.url("/search"))
-        .body("wow so large".repeat(1))
+        .post(server.url("/test"))
+        .body("hi")
         .send()
         .await
         .unwrap();
