@@ -1,13 +1,17 @@
+#[cfg(feature = "server")]
 use httpmock::server::{HttpMockServer, HttpMockServerBuilder};
 use std::{sync::Mutex, thread};
 use tokio::task::LocalSet;
+#[cfg(feature = "server")]
 mod examples;
+#[cfg(feature = "server")]
 mod matchers;
 mod misc;
 mod utils;
 
 /// The rest of this file is only required to simulate that a standalone mock server is
 /// running somewhere else.
+#[cfg(feature = "server")]
 pub fn with_standalone_server() {
     let disable_server = std::env::var("HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER")
         .unwrap_or_else(|_| "0".to_string());
@@ -35,4 +39,10 @@ pub fn with_standalone_server() {
     *started = true
 }
 
+#[cfg(not(feature = "server"))]
+pub fn with_standalone_server() {
+    // No-op in connect-only or remote-only builds; assumes an external standalone server.
+}
+
+#[cfg(feature = "server")]
 static SERVER_STARTED: Mutex<bool> = Mutex::new(false);

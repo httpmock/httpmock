@@ -9,6 +9,7 @@ use crate::common::data::{ActiveForwardingRule, ActiveMock, ActiveProxyRule};
 
 use crate::common::data::{ActiveRecording, ClosestMatch, MockDefinition, RequestRequirements};
 
+#[cfg(feature = "server")]
 pub mod local;
 
 use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
@@ -36,7 +37,8 @@ pub enum ServerAdapterError {
 #[cfg(feature = "remote")]
 pub mod remote;
 
-#[async_trait]
+#[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
 pub trait MockServerAdapter {
     fn host(&self) -> String;
     fn port(&self) -> u16;

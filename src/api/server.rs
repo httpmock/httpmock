@@ -5,13 +5,18 @@ use crate::api::RemoteMockServerAdapter;
 use crate::common::http::HttpMockHttpClient;
 
 use crate::{
-    api::{LocalMockServerAdapter, MockServerAdapter},
+    api::MockServerAdapter,
     common::{
         data::{MockDefinition, MockServerHttpResponse, RequestRequirements},
-        runtime,
         util::{read_env, with_retry, Join},
     },
 };
+
+#[cfg(feature = "server")]
+use crate::api::LocalMockServerAdapter;
+
+#[cfg(any(feature = "server", all(feature = "remote", not(target_arch = "wasm32"))))]
+use crate::common::runtime;
 
 #[cfg(feature = "proxy")]
 use crate::{
@@ -29,10 +34,16 @@ use crate::api::{
 #[cfg(feature = "record")]
 use std::path::PathBuf;
 
+#[cfg(feature = "server")]
 use crate::server::{state::HttpMockStateManager, HttpMockServerBuilder};
 
 use crate::Mock;
 use async_object_pool::Pool;
+
+#[cfg(not(target_arch = "wasm32"))]
+type AdapterObj = dyn MockServerAdapter + Send + Sync;
+#[cfg(target_arch = "wasm32")]
+type AdapterObj = dyn MockServerAdapter + Sync;
 use std::{
     cell::Cell,
     future::pending,
@@ -41,6 +52,7 @@ use std::{
     sync::{Arc, LazyLock},
     thread,
 };
+#[cfg(feature = "server")]
 use tokio::sync::oneshot::channel;
 
 /// Represents a mock server designed to simulate HTTP server behaviors for testing purposes.
@@ -54,18 +66,31 @@ use tokio::sync::oneshot::channel;
 /// - Monitor and verify that the expected requests are made by the client under test.
 /// - Simulate various network conditions and server responses, including errors and latencies.
 pub struct MockServer {
-    pub(crate) server_adapter: Option<Arc<dyn MockServerAdapter + Send + Sync>>,
-    pool: Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>,
+    pub(crate) server_adapter: Option<Arc<AdapterObj>>,
+    #[cfg(not(target_arch = "wasm32"))]
+    pool: Arc<Pool<Arc<AdapterObj>>>,
 }
 
 impl MockServer {
+    #[cfg(not(target_arch = "wasm32"))]
     async fn from(
-        server_adapter: Arc<dyn MockServerAdapter + Send + Sync>,
-        pool: Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>,
+        server_adapter: Arc<AdapterObj>,
+        pool: Arc<Pool<Arc<AdapterObj>>>,
     ) -> Self {
         let server = Self {
             server_adapter: Some(server_adapter),
             pool,
+        };
+
+        server.reset_async().await;
+
+        return server;
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    async fn from(server_adapter: Arc<AdapterObj>) -> Self {
+        let server = Self {
+            server_adapter: Some(server_adapter),
         };
 
         server.reset_async().await;
@@ -88,12 +113,19 @@ impl MockServer {
     /// This method requires the `remote` feature to be enabled.
     #[cfg(feature = "remote")]
     pub async fn connect_async(address: &str) -> Self {
+        #[cfg(not(target_arch = "wasm32"))]
         let addr = address
             .to_socket_addrs()
             .expect("Cannot parse address")
             .find(|addr| addr.is_ipv4())
             .expect("Not able to resolve the provided host name to an IPv4 address");
 
+        #[cfg(target_arch = "wasm32")]
+        let addr: SocketAddr = address
+            .parse()
+            .expect("Cannot parse address. On wasm, use an IPv4 address like 127.0.0.1:5050");
+
+        #[cfg(not(target_arch = "wasm32"))]
         let adapter = REMOTE_SERVER_POOL_REF
             .take_or_create(|| {
                 Arc::new(RemoteMockServerAdapter::new(
@@ -102,7 +134,17 @@ impl MockServer {
                 ))
             })
             .await;
-        Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await
+        #[cfg(not(target_arch = "wasm32"))]
+        { return Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await; }
+
+        #[cfg(target_arch = "wasm32")]
+        {
+            let adapter: Arc<AdapterObj> = Arc::new(RemoteMockServerAdapter::new(
+                addr,
+                REMOTE_SERVER_CLIENT.clone(),
+            ));
+            return Self::from(adapter).await;
+        }
     }
 
     /// Synchronously connects to a remote mock server running in standalone mode.
@@ -118,9 +160,14 @@ impl MockServer {
     ///
     /// # Note
     /// This method requires the `remote` feature to be enabled.
-    #[cfg(feature = "remote")]
+    #[cfg(all(feature = "remote", not(target_arch = "wasm32")))]
     pub fn connect(address: &str) -> Self {
         Self::connect_async(address).join()
+    }
+
+    #[cfg(all(feature = "remote", target_arch = "wasm32"))]
+    pub fn connect(_address: &str) -> Self {
+        panic!("Synchronous MockServer::connect() is not supported on wasm32. Use connect_async().");
     }
 
     /// Asynchronously connects to a remote mock server running in standalone mode
@@ -162,10 +209,15 @@ impl MockServer {
     ///
     /// # Note
     /// This method requires the `remote` feature to be enabled.
-    #[cfg(feature = "remote")]
+    #[cfg(all(feature = "remote", not(target_arch = "wasm32")))]
     pub fn connect_from_env() -> Self {
-        Self::connect_from_env_async().join()
-    }
+            Self::connect_from_env_async().join()
+        }
+
+        #[cfg(all(feature = "remote", target_arch = "wasm32"))]
+        pub fn connect_from_env() -> Self {
+            panic!("Synchronous MockServer::connect_from_env() is not supported on wasm32. Use connect_from_env_async().");
+        }
 
     /// Starts a new `MockServer` asynchronously.
     ///
@@ -186,7 +238,8 @@ impl MockServer {
     /// # Returns
     /// An instance of `Self` representing the started mock server.
     /// ```
-    pub async fn start_async() -> Self {
+    #[cfg(feature = "server")]
+        pub async fn start_async() -> Self {
         let adapter = LOCAL_SERVER_POOL_REF
             .take_or_create(LOCAL_SERVER_ADAPTER_GENERATOR)
             .await;
@@ -207,7 +260,8 @@ impl MockServer {
     /// A `MockServer` instance is automatically taken from the pool whenever this method is called.
     /// The instance is put back into the pool automatically when the corresponding
     /// 'MockServer' variable gets out of scope.
-    pub fn start() -> MockServer {
+    #[cfg(feature = "server")]
+        pub fn start() -> MockServer {
         Self::start_async().join()
     }
 
@@ -383,6 +437,7 @@ impl MockServer {
     /// // Ensure the mock was called as expected.
     /// mock.assert();
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn mock<F>(&self, config_fn: F) -> Mock
     where
         F: FnOnce(When, Then),
@@ -475,6 +530,7 @@ impl MockServer {
     /// let response = get(&server.url("/hello")).unwrap();
     /// assert_eq!(response.status(), 404);
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn reset(&self) {
         self.reset_async().join()
     }
@@ -505,11 +561,23 @@ impl MockServer {
     ///     assert_eq!(response.status(), 404);
     /// });
     /// ```
+    #[cfg(not(target_arch = "wasm32"))]
     pub async fn reset_async(&self) {
         if let Some(server_adapter) = &self.server_adapter {
             with_retry(3, || server_adapter.reset())
                 .await
                 .expect("Cannot reset mock server (task: delete mocks).");
+        }
+    }
+
+    #[cfg(target_arch = "wasm32")]
+    pub async fn reset_async(&self) {
+        if let Some(server_adapter) = &self.server_adapter {
+            // In browser/wasm environments, cross-origin restrictions (CORS) may prevent
+            // calling admin endpoints like reset/delete on a remote server. Treat reset as
+            // best-effort to avoid panics during tests. The remote server will be cleaned up
+            // independently or by subsequent runs.
+            let _ = with_retry(3, || server_adapter.reset()).await;
         }
     }
 
@@ -562,7 +630,7 @@ impl MockServer {
     ///
     /// # Feature
     /// This method is only available when the `proxy` feature is enabled.
-    #[cfg(feature = "proxy")]
+    #[cfg(all(feature = "proxy", not(target_arch = "wasm32")))]
     pub fn forward_to<IntoString, ForwardingRuleBuilderFn>(
         &self,
         to_base_url: IntoString,
@@ -1322,6 +1390,7 @@ impl MockServer {
 
 /// Implements the `Drop` trait for `MockServer`.
 /// When a `MockServer` instance goes out of scope, this method is called automatically to manage resources.
+#[cfg(not(target_arch = "wasm32"))]
 impl Drop for MockServer {
     /// This method will returns the mock server to the pool of mock servers. The mock server is not cleaned immediately.
     /// Instead, it will be reset and cleaned when `MockServer::start()` is called again, preparing it for reuse by another test.
@@ -1340,7 +1409,16 @@ impl Drop for MockServer {
     }
 }
 
-const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn MockServerAdapter + Send + Sync> = || {
+#[cfg(target_arch = "wasm32")]
+impl Drop for MockServer {
+    fn drop(&mut self) {
+        // In wasm builds, we don't maintain a pool; dropping the adapter is sufficient.
+        let _ = self.server_adapter.take();
+    }
+}
+
+#[cfg(feature = "server")]
+const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<AdapterObj> = || {
     let (addr_sender, addr_receiver) = channel::<SocketAddr>();
     let state_manager = Arc::new(HttpMockStateManager::default());
     let srv = HttpMockServerBuilder::new()
@@ -1358,7 +1436,8 @@ const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn MockServerAdapter + Send +
     Arc::new(LocalMockServerAdapter::new(addr, state_manager))
 };
 
-static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>> =
+#[cfg(feature = "server")]
+static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<AdapterObj>>>> =
     LazyLock::new(|| {
         let max_servers = read_env("HTTPMOCK_MAX_SERVERS", "25")
             .parse::<usize>()
@@ -1366,15 +1445,12 @@ static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send
         Arc::new(Pool::new(max_servers))
     });
 
-static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>> =
+#[cfg(not(target_arch = "wasm32"))]
+static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<AdapterObj>>>> =
     LazyLock::new(|| Arc::new(Pool::new(1)));
 
-#[cfg(feature = "remote")]
-// TODO: REFACTOR to use a runtime agnostic HTTP client for remote access.
-//  This solution does not require OpenSSL and less dependencies compared to
-//  other HTTP clients (tested: isahc, surf). Curl seems to use OpenSSL by default,
-//  so this is not an option. Optimally, the HTTP client uses rustls to avoid the
-//  dependency on OpenSSL installed on the OS.
+#[cfg(all(feature = "remote", not(target_arch = "wasm32")))]
+// Non-wasm: use hyper/tokio-based client with a dedicated runtime
 static REMOTE_SERVER_CLIENT: LazyLock<Arc<HttpMockHttpClient>> = LazyLock::new(|| {
     let max_workers = read_env("HTTPMOCK_HTTP_CLIENT_WORKER_THREADS", "1")
         .parse::<usize>()
@@ -1387,4 +1463,10 @@ static REMOTE_SERVER_CLIENT: LazyLock<Arc<HttpMockHttpClient>> = LazyLock::new(|
     Arc::new(HttpMockHttpClient::new(Some(Arc::new(
         runtime::new(max_workers, max_blocking_threads).unwrap(),
     ))))
+});
+
+#[cfg(all(feature = "remote", target_arch = "wasm32"))]
+// Wasm: use fetch-based client (reqwest) and no tokio runtime
+static REMOTE_SERVER_CLIENT: LazyLock<Arc<HttpMockHttpClient>> = LazyLock::new(|| {
+    Arc::new(HttpMockHttpClient::new())
 });

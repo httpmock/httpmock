@@ -11,9 +11,14 @@ use std::{
 
 use bytes::Bytes;
 /// Extension trait for efficiently blocking on a future.
+#[cfg(not(target_arch = "wasm32"))]
 use crossbeam_utils::sync::{Parker, Unparker};
+#[cfg(not(target_arch = "wasm32"))]
 use futures_timer::Delay;
+#[cfg(not(target_arch = "wasm32"))]
 use futures_util::{pin_mut, task::ArcWake};
+#[cfg(target_arch = "wasm32")]
+use gloo_timers::future::sleep as wasm_sleep;
 use serde::{Deserialize, Serialize, Serializer};
 use std::{cell::Cell, time::Duration};
 
@@ -40,7 +45,14 @@ where
         if result.is_ok() {
             return result;
         } else {
-            Delay::new(Duration::from_secs(1 * i as u64)).await;
+            #[cfg(not(target_arch = "wasm32"))]
+            {
+                Delay::new(Duration::from_secs(1 * i as u64)).await;
+            }
+            #[cfg(target_arch = "wasm32")]
+            {
+                wasm_sleep(Duration::from_millis(250 * i as u64)).await;
+            }
         }
         result = (f)().await;
     }
@@ -66,6 +78,7 @@ pub trait Join: Future {
     fn join(self) -> <Self as Future>::Output;
 }
 
+#[cfg(not(target_arch = "wasm32"))]
 impl<F: Future> Join for F {
     fn join(self) -> <Self as Future>::Output {
         struct ThreadWaker(Unparker);
@@ -89,6 +102,13 @@ impl<F: Future> Join for F {
                 Poll::Pending => parker.park(),
             }
         }
+    }
+}
+
+#[cfg(target_arch = "wasm32")]
+impl<F: Future> Join for F {
+    fn join(self) -> <Self as Future>::Output {
+        panic!("Blocking join() is not supported on wasm32. Use the async method variant instead.");
     }
 }
 
