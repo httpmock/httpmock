@@ -120,8 +120,8 @@ where
         let method = req.method().clone();
         let path = req.uri().path().to_string();
 
-        // Handle CORS preflight for ALL endpoints (admin and user mocks)
-        if method == Method::OPTIONS {
+        // Handle CORS preflight for ALL admin endpoints (admin and user mocks)
+        if method == Method::OPTIONS && path.starts_with("/__httpmock__/") {
             let allow_headers = req
                 .headers()
                 .get("Access-Control-Request-Headers")
