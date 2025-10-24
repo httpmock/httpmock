@@ -1,5 +1,5 @@
 [package]
-name = "wasm-httpmock-wasmtest"
+name = "httpmock-wasm-test"
 version = "0.1.0"
 edition = "2021"
 
@@ -9,8 +9,6 @@ crate-type = ["cdylib"]
 
 [dev-dependencies]
 wasm-bindgen-test = "0.3"
-# Browser fetch HTTP client
 reqwest = { version = "0.12", default-features = false, features = ["json"] }
-serde = { version = "1", features = ["derive"] }
-serde_json = "1"
 httpmock = { path = "..", default-features = false, features = ["wasm"] }
+tokio = "1.47.1"

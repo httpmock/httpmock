@@ -84,4 +84,12 @@ fmt:
 
 .PHONY: test-wasm
 test-wasm:
+	cd wasm-test && wasm-pack test --node
 	cd wasm-test && wasm-pack test --headless --chrome
+
+.PHONY: test-wasi
+test-wasi:
+ifeq ($(PLATFORM),mac)
+	$(eval CC := /opt/homebrew/opt/llvm/bin/clang)
+endif
+	cd wasi-test && CC=$(CC) cargo +nightly test --target wasm32-wasip2 --tests -v

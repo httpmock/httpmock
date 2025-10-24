@@ -2,11 +2,9 @@ use wasm_bindgen_test::*;
 use httpmock::MockServer;
 use reqwest::Client;
 
-wasm_bindgen_test_configure!(run_in_browser);
-
 // Run this test with "wasm-pack test --headless --chrome"
 #[wasm_bindgen_test]
-async fn connect_to_remote_httpmock_and_post_big_body() {
+async fn wasm_node_test() {
     // Connect to your already running httpmock server (Docker etc.)
     let server = MockServer::connect_async("127.0.0.1:5050").await;
 
