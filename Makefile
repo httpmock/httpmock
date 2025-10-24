@@ -94,4 +94,4 @@ ifeq ($(PLATFORM),mac)
 endif
 	command -v wasmtime >/dev/null 2>&1 || cargo install --locked wasmtime-cli
 	rustup +nightly-2024-10-15 target add wasm32-wasip2
-	cd wasi-test && env PATH=$(HOME)/.cargo/bin:$$PATH CC=$(CC) cargo +nightly-2024-10-15 test --target wasm32-wasip2 --tests -v
+	cd wasi-test && env PATH=$(HOME)/.cargo/bin:$$PATH CC=$(CC) cargo +nightly-2024-10-15 test --target wasm32-wasip2 --tests -v -- --nocapture

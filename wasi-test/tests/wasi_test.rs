@@ -11,7 +11,7 @@ async fn wasi_test() {
     let search_mock = server
         .mock_async(|when, then| {
             when.method("POST").path("/test");
-            then.status(202);
+            then.status(StatusCode::ACCEPTED);
         })
         .await;
 
