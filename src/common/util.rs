@@ -13,11 +13,11 @@ use bytes::Bytes;
 /// Extension trait for efficiently blocking on a future.
 #[cfg(not(target_arch = "wasm32"))]
 use crossbeam_utils::sync::{Parker, Unparker};
-#[cfg(not(target_arch = "wasm32"))]
+#[cfg(any(not(target_arch = "wasm32"), all(target_arch = "wasm32", target_os = "wasi")))]
 use futures_timer::Delay;
 #[cfg(not(target_arch = "wasm32"))]
 use futures_util::{pin_mut, task::ArcWake};
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(target_os = "wasi")))]
 use gloo_timers::future::sleep as wasm_sleep;
 use serde::{Deserialize, Serialize, Serializer};
 use std::{cell::Cell, time::Duration};
@@ -49,9 +49,14 @@ where
             {
                 Delay::new(Duration::from_secs(1 * i as u64)).await;
             }
-            #[cfg(target_arch = "wasm32")]
+            #[cfg(all(target_arch = "wasm32", not(target_os = "wasi")))]
             {
                 wasm_sleep(Duration::from_millis(250 * i as u64)).await;
+            }
+            #[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+            {
+                // Use a simple non-blocking delay for WASI
+                Delay::new(Duration::from_millis(250 * i as u64)).await;
             }
         }
         result = (f)().await;

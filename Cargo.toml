@@ -81,9 +81,12 @@ required-features = ["standalone"]
 [package.metadata.docs.rs]
 all-features = true
 
-[target.'cfg(target_arch = "wasm32")'.dependencies]
+[target.'cfg(all(target_arch = "wasm32", not(target_os = "wasi")))'.dependencies]
 reqwest = { version = "0.12", default-features = false, features = ["json"] }
 gloo-timers = { version = "0.2", features = ["futures"] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "wasi"))'.dependencies]
+wasi-http-client = "0.2.1"
 
 [target.'cfg(not(target_arch = "wasm32"))'.dependencies]
 tokio = { version = "1.43", features = ["sync", "macros"] }

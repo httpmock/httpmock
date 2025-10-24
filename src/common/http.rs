@@ -144,12 +144,12 @@ impl HttpClient for HttpMockHttpClient {
 }
 
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(target_os = "wasi")))]
 pub struct HttpMockHttpClient {
     client: reqwest::Client,
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(target_os = "wasi")))]
 impl HttpMockHttpClient {
     pub fn new() -> Self {
         Self {
@@ -158,11 +158,10 @@ impl HttpMockHttpClient {
     }
 }
 
-#[cfg(target_arch = "wasm32")]
+#[cfg(all(target_arch = "wasm32", not(target_os = "wasi")))]
 #[async_trait(?Send)]
 impl HttpClient for HttpMockHttpClient {
     async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
-        use http::header::{HeaderName, HeaderValue};
         use reqwest::Method as ReqwestMethod;
 
         let (mut parts, body) = req.into_parts();
@@ -231,6 +230,92 @@ impl HttpClient for HttpMockHttpClient {
 
         Ok(builder
             .body(Bytes::from(bytes.to_vec()))
+            .map_err(|e| Error::RequestError(e.to_string()))?)
+    }
+}
+
+// WASI-specific implementation using wasi-http-client
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+pub struct HttpMockHttpClient {
+    client: wasi_http_client::Client,
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+impl HttpMockHttpClient {
+    pub fn new() -> Self {
+        Self { client: wasi_http_client::Client::new() }
+    }
+}
+
+#[cfg(all(target_arch = "wasm32", target_os = "wasi"))]
+#[async_trait(?Send)]
+impl HttpClient for HttpMockHttpClient {
+    async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
+        let (mut parts, body) = req.into_parts();
+
+        // Ensure absolute URL (similar to non-wasi path)
+        let uri = parts.uri.clone();
+        let needs_target = uri.scheme().is_none() || uri.authority().is_none();
+        if needs_target {
+            if let Some(host) = parts
+                .headers
+                .get(http::header::HOST)
+                .and_then(|v| v.to_str().ok())
+            {
+                let scheme = uri.scheme_str().unwrap_or("http");
+                let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
+                if let Ok(new_uri) = format!("{}://{}{}", scheme, host, path_and_query).parse() {
+                    parts.uri = new_uri;
+                }
+            }
+        }
+
+        let url = parts.uri.to_string();
+
+        // Build wasi-http-client request by method
+        // Note: wasi-http-client currently provides per-method builders
+        let mut rb = match parts.method.as_str() {
+            "GET" => self.client.get(&url),
+            "POST" => self.client.post(&url),
+            "PUT" => self.client.put(&url),
+            "DELETE" => self.client.delete(&url),
+            "PATCH" => self.client.patch(&url),
+            // Some methods may not be supported by wasi-http-client; return clear error for others
+            other => {
+                return Err(Error::RequestError(format!(
+                    "Unsupported HTTP method on WASI: {}",
+                    other
+                )));
+            }
+        };
+
+        // Transfer headers (excluding Host)
+        for (name, value) in parts.headers.iter() {
+            if name == http::header::HOST { continue; }
+            if let Ok(val_str) = value.to_str() {
+                rb = rb.header(name.as_str(), val_str);
+            }
+        }
+
+        // Body
+        let body_vec = body.to_vec();
+        if !body_vec.is_empty() {
+            rb = rb.body(&body_vec);
+        }
+
+        // Send synchronously (API is blocking), within async fn is fine
+        let resp = rb
+            .send()
+            .map_err(|e| Error::RequestError(e.to_string()))?;
+
+        let status = resp.status();
+        // Extract response body; default to empty on error
+        let resp_body: Vec<u8> = resp.body().unwrap_or_default();
+
+        // Build minimal http::Response
+        let builder = http::Response::builder().status(status);
+        Ok(builder
+            .body(Bytes::from(resp_body))
             .map_err(|e| Error::RequestError(e.to_string()))?)
     }
 }
