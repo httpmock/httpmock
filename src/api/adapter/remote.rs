@@ -82,6 +82,17 @@ impl RemoteMockServerAdapter {
     }
 }
 
+// Applies `async_trait` with or without a `Send` requirement depending on the target:
+// - On `wasm32` targets, `async_trait(?Send)` is used so that async trait methods
+//   do *not* require their returned futures to be `Send`. This is necessary because
+//   most WebAssembly environments (like `wasm32-unknown-unknown`) are single-threaded
+//   and do not support `Send`.
+//
+// - On all non-WASM targets, `async_trait` is applied normally, which enforces
+//   `Send` on async futures—this is preferred for multi-threaded async runtimes
+//   such as Tokio.
+// This conditional annotation ensures async traits compile cleanly across both
+// native and WebAssembly platforms.
 #[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
 #[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl MockServerAdapter for RemoteMockServerAdapter {
@@ -121,18 +132,10 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         self.validate_response(&mock.response)?;
 
         let json = serde_json::to_string(mock).map_err(|e| JsonSerializationError(e))?;
-
-        #[cfg(not(target_arch = "wasm32"))]
         let request = Request::builder()
             .method("POST")
             .uri(format!("http://{}/__httpmock__/mocks", &self.address()))
             .header("content-type", "application/json")
-            .body(Bytes::from(json))
-            .map_err(|e| UpstreamError(e.to_string()))?;
-        #[cfg(target_arch = "wasm32")]
-        let request = Request::builder()
-            .method("POST")
-            .uri(format!("http://{}/__httpmock__/mocks", &self.address()))
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
 
@@ -225,17 +228,10 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     ) -> Result<Option<ClosestMatch>, ServerAdapterError> {
         let json = serde_json::to_string(requirements).map_err(|e| JsonSerializationError(e))?;
 
-        #[cfg(not(target_arch = "wasm32"))]
         let request = Request::builder()
             .method("POST")
             .uri(format!("http://{}/__httpmock__/verify", &self.address()))
             .header("content-type", "application/json")
-            .body(Bytes::from(json))
-            .map_err(|e| UpstreamError(e.to_string()))?;
-        #[cfg(target_arch = "wasm32")]
-        let request = Request::builder()
-            .method("POST")
-            .uri(format!("http://{}/__httpmock__/verify", &self.address()))
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
 
