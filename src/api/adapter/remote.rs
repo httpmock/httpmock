@@ -281,7 +281,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
 
         let json = serde_json::to_string(&config).map_err(|e| JsonSerializationError(e))?;
 
-        #[cfg(not(target_arch = "wasm32"))]
         let request = Request::builder()
             .method("POST")
             .uri(format!(
@@ -289,15 +288,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
                 &self.address()
             ))
             .header("content-type", "application/json")
-            .body(Bytes::from(json))
-            .map_err(|e| UpstreamError(e.to_string()))?;
-        #[cfg(target_arch = "wasm32")]
-        let request = Request::builder()
-            .method("POST")
-            .uri(format!(
-                "http://{}/__httpmock__/forwarding_rules",
-                &self.address()
-            ))
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
 
@@ -369,7 +359,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
 
         let json = serde_json::to_string(&config).map_err(|e| JsonSerializationError(e))?;
 
-        #[cfg(not(target_arch = "wasm32"))]
         let request = Request::builder()
             .method("POST")
             .uri(format!(
@@ -379,16 +368,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .header("content-type", "application/json")
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
-        #[cfg(target_arch = "wasm32")]
-        let request = Request::builder()
-            .method("POST")
-            .uri(format!(
-                "http://{}/__httpmock__/proxy_rules",
-                &self.address()
-            ))
-            .body(Bytes::from(json))
-            .map_err(|e| UpstreamError(e.to_string()))?;
-
         let (status, body) = self.do_request(request).await?;
 
         if status != StatusCode::CREATED.as_u16() {
@@ -457,7 +436,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
 
         let json = serde_json::to_string(&config).map_err(|e| JsonSerializationError(e))?;
 
-        #[cfg(not(target_arch = "wasm32"))]
         let request = Request::builder()
             .method("POST")
             .uri(format!(
@@ -467,16 +445,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .header("content-type", "application/json")
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
-        #[cfg(target_arch = "wasm32")]
-        let request = Request::builder()
-            .method("POST")
-            .uri(format!(
-                "http://{}/__httpmock__/recordings",
-                &self.address()
-            ))
-            .body(Bytes::from(json))
-            .map_err(|e| UpstreamError(e.to_string()))?;
-
         let (status, body) = self.do_request(request).await?;
 
         if status != StatusCode::CREATED.as_u16() {
