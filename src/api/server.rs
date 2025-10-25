@@ -1461,7 +1461,6 @@ static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<MockServerAdapterObject>>>>
     LazyLock::new(|| Arc::new(Pool::new(1)));
 
 #[cfg(all(feature = "remote", not(target_arch = "wasm32")))]
-// Non-wasm: use hyper/tokio-based client with a dedicated runtime
 static REMOTE_SERVER_CLIENT: LazyLock<Arc<HttpMockHttpClient>> = LazyLock::new(|| {
     let max_workers = read_env("HTTPMOCK_HTTP_CLIENT_WORKER_THREADS", "1")
         .parse::<usize>()
@@ -1477,7 +1476,6 @@ static REMOTE_SERVER_CLIENT: LazyLock<Arc<HttpMockHttpClient>> = LazyLock::new(|
 });
 
 #[cfg(all(feature = "remote", target_arch = "wasm32"))]
-// Wasm: use fetch-based client (reqwest) and no tokio runtime
 static REMOTE_SERVER_CLIENT: LazyLock<Arc<HttpMockHttpClient>> = LazyLock::new(|| {
     Arc::new(HttpMockHttpClient::new())
 });
