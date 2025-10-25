@@ -443,6 +443,12 @@ impl MockServer {
     /// // Ensure the mock was called as expected.
     /// mock.assert();
     /// ```
+    ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets**. In WASM
+    /// environments, only asynchronous APIs are supported. When targeting `wasm32`,
+    /// use the asynchronous alternative instead (e.g., [`mock_async`](Self::mock_async)
+    /// if available).
     #[cfg(not(target_arch = "wasm32"))]
     pub fn mock<F>(&self, config_fn: F) -> Mock
     where
@@ -536,6 +542,10 @@ impl MockServer {
     /// let response = get(&server.url("/hello")).unwrap();
     /// assert_eq!(response.status(), 404);
     /// ```
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets**. In WASM
+    /// environments, only asynchronous APIs are supported. When targeting `wasm32`,
+    /// use the asynchronous [`reset_async`](Self::reset_async) method instead.
     #[cfg(not(target_arch = "wasm32"))]
     pub fn reset(&self) {
         self.reset_async().join()
@@ -624,6 +634,12 @@ impl MockServer {
     ///
     /// # Feature
     /// This method is only available when the `proxy` feature is enabled.
+    ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets**. In WASM
+    /// environments, only asynchronous APIs are supported. When targeting `wasm32`,
+    /// use the asynchronous alternative instead (e.g., [`forward_to_async`](Self::forward_to_async)
+    /// if available).
     #[cfg(all(feature = "proxy", not(target_arch = "wasm32")))]
     pub fn forward_to<IntoString, ForwardingRuleBuilderFn>(
         &self,
@@ -1384,6 +1400,7 @@ impl MockServer {
 
 /// Implements the `Drop` trait for `MockServer`.
 /// When a `MockServer` instance goes out of scope, this method is called automatically to manage resources.
+/// There is no server pool support for WASM environments.
 #[cfg(not(target_arch = "wasm32"))]
 impl Drop for MockServer {
     /// This method will returns the mock server to the pool of mock servers. The mock server is not cleaned immediately.
@@ -1400,14 +1417,6 @@ impl Drop for MockServer {
     fn drop(&mut self) {
         let adapter = self.server_adapter.take().unwrap();
         self.pool.put(adapter).join();
-    }
-}
-
-#[cfg(target_arch = "wasm32")]
-impl Drop for MockServer {
-    fn drop(&mut self) {
-        // In wasm builds, we don't maintain a pool; dropping the adapter is sufficient.
-        let _ = self.server_adapter.take();
     }
 }
 
