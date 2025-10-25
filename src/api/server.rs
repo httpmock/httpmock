@@ -40,10 +40,6 @@ use crate::server::{state::HttpMockStateManager, HttpMockServerBuilder};
 use crate::Mock;
 use async_object_pool::Pool;
 
-#[cfg(not(target_arch = "wasm32"))]
-type AdapterObj = dyn MockServerAdapter + Send + Sync;
-#[cfg(target_arch = "wasm32")]
-type AdapterObj = dyn MockServerAdapter + Sync;
 use std::{
     cell::Cell,
     future::pending,
@@ -54,6 +50,12 @@ use std::{
 };
 #[cfg(feature = "server")]
 use tokio::sync::oneshot::channel;
+
+#[cfg(not(target_arch = "wasm32"))]
+type MockServerAdapterObject = dyn MockServerAdapter + Send + Sync;
+
+#[cfg(target_arch = "wasm32")]
+type MockServerAdapterObject = dyn MockServerAdapter + Sync;
 
 /// Represents a mock server designed to simulate HTTP server behaviors for testing purposes.
 /// This server intercepts HTTP requests and can be configured to return predetermined responses.
@@ -66,16 +68,16 @@ use tokio::sync::oneshot::channel;
 /// - Monitor and verify that the expected requests are made by the client under test.
 /// - Simulate various network conditions and server responses, including errors and latencies.
 pub struct MockServer {
-    pub(crate) server_adapter: Option<Arc<AdapterObj>>,
+    pub(crate) server_adapter: Option<Arc<MockServerAdapterObject>>,
     #[cfg(not(target_arch = "wasm32"))]
-    pool: Arc<Pool<Arc<AdapterObj>>>,
+    pool: Arc<Pool<Arc<MockServerAdapterObject>>>,
 }
 
 impl MockServer {
     #[cfg(not(target_arch = "wasm32"))]
     async fn from(
-        server_adapter: Arc<AdapterObj>,
-        pool: Arc<Pool<Arc<AdapterObj>>>,
+        server_adapter: Arc<MockServerAdapterObject>,
+        pool: Arc<Pool<Arc<MockServerAdapterObject>>>,
     ) -> Self {
         let server = Self {
             server_adapter: Some(server_adapter),
@@ -88,7 +90,7 @@ impl MockServer {
     }
 
     #[cfg(target_arch = "wasm32")]
-    async fn from(server_adapter: Arc<AdapterObj>) -> Self {
+    async fn from(server_adapter: Arc<MockServerAdapterObject>) -> Self {
         let server = Self {
             server_adapter: Some(server_adapter),
         };
@@ -139,7 +141,7 @@ impl MockServer {
 
         #[cfg(target_arch = "wasm32")]
         {
-            let adapter: Arc<AdapterObj> = Arc::new(RemoteMockServerAdapter::new(
+            let adapter: Arc<MockServerAdapterObject> = Arc::new(RemoteMockServerAdapter::new(
                 addr,
                 REMOTE_SERVER_CLIENT.clone(),
             ));
@@ -1406,7 +1408,7 @@ impl Drop for MockServer {
 }
 
 #[cfg(feature = "server")]
-const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<AdapterObj> = || {
+const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<MockServerAdapterObject> = || {
     let (addr_sender, addr_receiver) = channel::<SocketAddr>();
     let state_manager = Arc::new(HttpMockStateManager::default());
     let srv = HttpMockServerBuilder::new()
@@ -1425,7 +1427,7 @@ const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<AdapterObj> = || {
 };
 
 #[cfg(feature = "server")]
-static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<AdapterObj>>>> =
+static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<MockServerAdapterObject>>>> =
     LazyLock::new(|| {
         let max_servers = read_env("HTTPMOCK_MAX_SERVERS", "25")
             .parse::<usize>()
@@ -1434,7 +1436,7 @@ static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<AdapterObj>>>> =
     });
 
 #[cfg(not(target_arch = "wasm32"))]
-static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<AdapterObj>>>> =
+static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<MockServerAdapterObject>>>> =
     LazyLock::new(|| Arc::new(Pool::new(1)));
 
 #[cfg(all(feature = "remote", not(target_arch = "wasm32")))]
