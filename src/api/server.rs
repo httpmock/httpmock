@@ -1420,6 +1420,14 @@ impl Drop for MockServer {
     }
 }
 
+#[cfg(target_arch = "wasm32")]
+impl Drop for MockServer {
+    fn drop(&mut self) {
+        // In wasm builds, we don't maintain a pool; dropping the adapter is sufficient.
+        let _ = self.server_adapter.take();
+    }
+}
+
 #[cfg(feature = "server")]
 const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<MockServerAdapterObject> = || {
     let (addr_sender, addr_receiver) = channel::<SocketAddr>();
