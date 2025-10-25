@@ -561,23 +561,11 @@ impl MockServer {
     ///     assert_eq!(response.status(), 404);
     /// });
     /// ```
-    #[cfg(not(target_arch = "wasm32"))]
     pub async fn reset_async(&self) {
         if let Some(server_adapter) = &self.server_adapter {
             with_retry(3, || server_adapter.reset())
                 .await
                 .expect("Cannot reset mock server (task: delete mocks).");
-        }
-    }
-
-    #[cfg(target_arch = "wasm32")]
-    pub async fn reset_async(&self) {
-        if let Some(server_adapter) = &self.server_adapter {
-            // In browser/wasm environments, cross-origin restrictions (CORS) may prevent
-            // calling admin endpoints like reset/delete on a remote server. Treat reset as
-            // best-effort to avoid panics during tests. The remote server will be cleaned up
-            // independently or by subsequent runs.
-            let _ = with_retry(3, || server_adapter.reset()).await;
         }
     }
 
