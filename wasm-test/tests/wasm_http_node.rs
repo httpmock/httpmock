@@ -1,0 +1,49 @@
+use wasm_bindgen_test::*;
+use httpmock::MockServer;
+use reqwest::Client;
+
+// Run this test with "wasm-pack test --headless --chrome"
+#[wasm_bindgen_test]
+async fn wasm_node_test() {
+    // Connect to your already running httpmock server (Docker etc.)
+    let server = MockServer::connect_async("127.0.0.1:5050").await;
+
+
+    // Arrange: create mock on that remote instance
+
+    // TODO / FIX: It seems the test currently also runs without this, which means we clould be
+    //  too aggressive setting CORS headers in responses.
+    //  Need to decide how to handle CORS in WASM (most likely requires convenience features).
+    //  For now leave it here as an example.
+    server
+        .mock_async(|when, then| {
+            when.method("OPTIONS");
+            then.status(204) // preflights usually return 204 No Content
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "GET, POST, PUT, PATCH, DELETE, OPTIONS")
+                .header("Access-Control-Allow-Headers", "Content-Type, Authorization, X-Requested-With, Accept")
+                .header("Access-Control-Max-Age", "600");
+        })
+        .await;
+
+
+    // Arrange: create mock on that remote instance
+    let search_mock = server.mock_async(|when, then| {
+        when.method("POST")
+            .path("/test");
+        then.status(202);
+    }).await;
+
+    // Act: send the HTTP request to the mock endpoint
+    let client = Client::builder().build().unwrap();
+    let response = client
+        .post(server.url("/test"))
+        .body("hi")
+        .send()
+        .await
+        .unwrap();
+
+    // Assert: mock called and correct status code
+    search_mock.assert_async().await;
+    assert_eq!(response.status(), 202);
+}

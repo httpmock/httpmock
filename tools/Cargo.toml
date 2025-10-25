@@ -4,7 +4,7 @@ version = "0.1.0"
 edition = "2018"
 
 [dependencies]
-httpmock = { path = ".." , features = ["default", "standalone", "color", "cookies", "remote", "remote-https", "proxy", "https", "http2", "record", "experimental"]}
+httpmock = { path = ".." , features = ["default", "standalone", "color", "cookies", "remote", "remote-https", "proxy", "https", "http2", "record", "server"]}
 serde_json = "1.0"
 syn = { version = "1.0", features = ["full"] }
 proc-macro2 = {  version = "1.0", features = ["default", "span-locations"] }
