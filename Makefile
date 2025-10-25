@@ -84,8 +84,8 @@ fmt:
 
 .PHONY: test-wasm
 test-wasm:
-	cd wasm-test && wasm-pack test --node
-	cd wasm-test && wasm-pack test --headless --chrome
+	cd wasm-test && cargo clean && wasm-pack test --node
+	cd wasm-test && cargo clean && wasm-pack test --headless --chrome
 
 .PHONY: test-wasi
 test-wasi:

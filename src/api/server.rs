@@ -116,35 +116,36 @@ impl MockServer {
     #[cfg(feature = "remote")]
     pub async fn connect_async(address: &str) -> Self {
         #[cfg(not(target_arch = "wasm32"))]
-        let addr = address
-            .to_socket_addrs()
-            .expect("Cannot parse address")
-            .find(|addr| addr.is_ipv4())
-            .expect("Not able to resolve the provided host name to an IPv4 address");
+        {
+            let addr = address
+                .to_socket_addrs()
+                .expect("Cannot parse address")
+                .find(|addr| addr.is_ipv4())
+                .expect("Not able to resolve the provided host name to an IPv4 address");
 
-        #[cfg(target_arch = "wasm32")]
-        let addr: SocketAddr = address
-            .parse()
-            .expect("Cannot parse address. On wasm, use an IPv4 address like 127.0.0.1:5050");
+            let adapter = REMOTE_SERVER_POOL_REF
+                .take_or_create(|| {
+                    Arc::new(RemoteMockServerAdapter::new(
+                        addr,
+                        REMOTE_SERVER_CLIENT.clone(),
+                    ))
+                })
+                .await;
 
-        #[cfg(not(target_arch = "wasm32"))]
-        let adapter = REMOTE_SERVER_POOL_REF
-            .take_or_create(|| {
-                Arc::new(RemoteMockServerAdapter::new(
-                    addr,
-                    REMOTE_SERVER_CLIENT.clone(),
-                ))
-            })
-            .await;
-        #[cfg(not(target_arch = "wasm32"))]
-        { return Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await; }
+            return Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await;
+        }
 
         #[cfg(target_arch = "wasm32")]
         {
+            let addr: SocketAddr = address
+                .parse()
+                .expect("Cannot parse address. On wasm, use an IPv4 address like 127.0.0.1:5050");
+
             let adapter: Arc<MockServerAdapterObject> = Arc::new(RemoteMockServerAdapter::new(
                 addr,
                 REMOTE_SERVER_CLIENT.clone(),
             ));
+
             return Self::from(adapter).await;
         }
     }
@@ -160,16 +161,17 @@ impl MockServer {
     /// # Panics
     /// This method will panic if the address cannot be parsed, resolved to an IPv4 address, or if the mock server is unreachable.
     ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets**. In WASM
+    /// environments, only asynchronous remote connections are supported, and blocking
+    /// execution is not allowed. Use [`connect_async`](Self::connect_async)
+    /// instead when targeting `wasm32`.
+    ///
     /// # Note
     /// This method requires the `remote` feature to be enabled.
     #[cfg(all(feature = "remote", not(target_arch = "wasm32")))]
     pub fn connect(address: &str) -> Self {
         Self::connect_async(address).join()
-    }
-
-    #[cfg(all(feature = "remote", target_arch = "wasm32"))]
-    pub fn connect(_address: &str) -> Self {
-        panic!("Synchronous MockServer::connect() is not supported on wasm32. Use connect_async().");
     }
 
     /// Asynchronously connects to a remote mock server running in standalone mode
@@ -209,16 +211,18 @@ impl MockServer {
     /// This method will panic if the `HTTPMOCK_PORT` environment variable cannot be
     /// parsed to an integer or if the connection fails.
     ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets**. In WASM
+    /// environments, only asynchronous remote connections are supported, and blocking
+    /// execution is not allowed. Use
+    /// [`connect_from_env_async`](Self::connect_from_env_async) instead when targeting
+    /// `wasm32`.
+    ///
     /// # Note
     /// This method requires the `remote` feature to be enabled.
     #[cfg(all(feature = "remote", not(target_arch = "wasm32")))]
     pub fn connect_from_env() -> Self {
             Self::connect_from_env_async().join()
-        }
-
-        #[cfg(all(feature = "remote", target_arch = "wasm32"))]
-        pub fn connect_from_env() -> Self {
-            panic!("Synchronous MockServer::connect_from_env() is not supported on wasm32. Use connect_from_env_async().");
         }
 
     /// Starts a new `MockServer` asynchronously.
