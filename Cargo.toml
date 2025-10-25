@@ -70,8 +70,7 @@ proxy = ["remote-https", "hyper-util/client-legacy", "hyper-util/http2", "hyper-
 https = ["server", "rustls", "rcgen", "tokio-rustls", "hyper-rustls", "rustls-pemfile", "rustls/ring", "tls-detect", "if-addrs"] # enables httpmock server support for TLS/HTTPS
 http2 = ["hyper/http2", "hyper-util/http2"] # enables httpmocks server support for HTTP2
 record = ["proxy", "serde_yaml"]
-experimental = [] # marker feature for experimental features
-server = ["hyper/server", "hyper-util/server", "hyper-util/server-auto", "tokio/rt-multi-thread", "tokio/signal", "tokio/net"] # enables local HTTP server runtime
+server = ["hyper/server", "hyper-util/server", "hyper-util/server-auto", "tokio/rt-multi-thread", "tokio/signal", "tokio/net"] # enables local HTTP server runtime (useful if you want to connect to remote servers only)
 
 [[bin]]
 name = "httpmock"
