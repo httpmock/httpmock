@@ -43,7 +43,7 @@ headers = { version = "0.4", optional = true }
 
 ### TLS / HTTPS / PROXY
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12"], optional = true }
-rcgen = { version = "0.13", features = ["pem", "x509-parser"], optional = true }
+rcgen = { version = "0.14", features = ["pem", "x509-parser"], optional = true }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "tls12"], optional = true }
 rustls-pemfile = { version = "2", optional = true }
 tls-detect = { version = "0.1", optional = true }
