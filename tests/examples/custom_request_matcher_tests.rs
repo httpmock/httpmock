@@ -33,14 +33,13 @@ fn dynamic_responder_test() {
     let call_count = Mutex::new(0);
 
     let mock = server.mock(|when, then| {
-        when.method("GET").is_true(|r| {
-            return r.uri().path().ends_with("/hello");
-        });
+        when.method("GET")
+            .is_true(|r| r.uri().path().ends_with("/hello"));
         then.respond_with(move |_req: &HttpMockRequest| {
             let mut count = call_count.lock().unwrap();
             *count += 1;
 
-            return HttpMockResponse::builder().status(200 + *count).build();
+            HttpMockResponse::builder().status(200 + *count).build()
         });
     });
 

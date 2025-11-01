@@ -139,10 +139,6 @@ impl HttpsConfigBuilder {
     ///
     /// # Returns
     /// A modified `HttpsConfigBuilder` instance for method chaining.
-    pub fn enable_https(mut self, enable: Option<bool>) -> Self {
-        self.enable_https = enable;
-        self
-    }
 
     /// Builds the `MockServerHttpsConfig` with the current settings.
     ///

@@ -147,8 +147,6 @@ where
     pub key_required: bool,
     pub key_comparator: Box<dyn ValueComparator<EK, RK> + Send + Sync>,
     pub value_comparator: Box<dyn ValueComparator<EV, RV> + Send + Sync>,
-    pub with_reason: bool,
-    pub diff_with: Option<Tokenizer>,
     pub weight: usize,
 }
 
@@ -340,8 +338,6 @@ where
     pub request_value: fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>,
     pub key_comparator: Box<dyn ValueComparator<EK, RK> + Send + Sync>,
     pub value_comparator: Box<dyn ValueComparator<EV, RV> + Send + Sync>,
-    pub with_reason: bool,
-    pub diff_with: Option<Tokenizer>,
     pub weight: usize,
 }
 
@@ -583,23 +579,7 @@ impl<S, T> Matcher for FunctionValueMatcher<S, T> {
 }
 
 #[inline]
-fn times_str<'a>(v: usize) -> &'a str {
-    if v == 1 {
-        return "time";
-    }
-
-    return "times";
-}
-
 #[inline]
-fn get_plural<'a>(v: usize, singular: &'a str, plural: &'a str) -> &'a str {
-    if v == 1 {
-        return singular;
-    }
-
-    return plural;
-}
-
 #[inline]
 pub fn diff_str(base: &str, edit: &str, tokenizer: Tokenizer) -> DiffResult {
     let changes = match tokenizer {

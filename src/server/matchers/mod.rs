@@ -294,8 +294,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringEqualsComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -309,8 +307,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // Key is not negated, since we expect a query parameter to be present with the expected key.
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringEqualsComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -323,8 +319,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(AnyValueComparator::new()),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -337,8 +331,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: false,
             key_comparator: Box::new(StringEqualsComparator::new(true, true)),
             value_comparator: Box::new(AnyValueComparator::new()),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -351,8 +343,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringContainsComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -365,8 +355,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringContainsComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -379,8 +367,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringPrefixMatchComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -394,8 +380,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringPrefixMatchComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -408,8 +392,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringSuffixMatchComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -423,8 +405,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringSuffixMatchComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -438,8 +418,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
             value_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueCountMatcher {
@@ -450,8 +428,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
             value_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         //************************************************************************************
@@ -467,8 +443,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringEqualsComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -481,8 +455,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringEqualsComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -495,8 +467,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(AnyValueComparator::new()),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -509,8 +479,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: false,
             key_comparator: Box::new(StringEqualsComparator::new(false, true)),
             value_comparator: Box::new(AnyValueComparator::new()),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -523,8 +491,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringContainsComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -537,8 +503,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringContainsComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -551,8 +515,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringPrefixMatchComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -566,8 +528,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringPrefixMatchComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -580,8 +540,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringSuffixMatchComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -595,8 +553,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringSuffixMatchComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -610,8 +566,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringPatternMatchComparator::new(false, false)),
             value_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueCountMatcher {
@@ -622,8 +576,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringPatternMatchComparator::new(false, false)),
             value_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         // ***********************************************************************************
@@ -640,8 +592,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringEqualsComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -656,8 +606,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // Key is not negated, since we expect a query parameter to be present with the expected key.
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringEqualsComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -671,8 +619,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(AnyValueComparator::new()),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -686,8 +632,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: false,
             key_comparator: Box::new(StringEqualsComparator::new(true, true)),
             value_comparator: Box::new(AnyValueComparator::new()),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -701,8 +645,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringContainsComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -716,8 +658,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringContainsComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -731,8 +671,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringPrefixMatchComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -747,8 +685,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringPrefixMatchComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -762,8 +698,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringSuffixMatchComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -778,8 +712,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringSuffixMatchComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -794,8 +726,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
             value_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -807,8 +737,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
             value_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         // ************************************************************************************
@@ -966,8 +894,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringEqualsComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -980,8 +906,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringEqualsComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -994,8 +918,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(AnyValueComparator::new()),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -1008,8 +930,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: false,
             key_comparator: Box::new(StringEqualsComparator::new(true, true)),
             value_comparator: Box::new(AnyValueComparator::new()),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -1022,8 +942,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringContainsComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -1037,8 +955,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringContainsComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -1051,8 +967,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringPrefixMatchComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -1066,8 +980,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringEqualsComparator::new(false, false)),
             value_comparator: Box::new(StringPrefixMatchComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -1080,8 +992,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringSuffixMatchComparator::new(true, false)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -1095,8 +1005,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringSuffixMatchComparator::new(true, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueMatcher {
@@ -1110,8 +1018,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
             value_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
         Box::new(MultiValueCountMatcher {
@@ -1122,8 +1028,6 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
             value_comparator: Box::new(StringPatternMatchComparator::new(false, true)),
-            with_reason: true,
-            diff_with: None,
             weight: 1,
         }),
     ]

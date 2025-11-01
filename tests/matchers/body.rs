@@ -349,7 +349,7 @@ fn body_matches_fail_message() {
 }
 
 fn generate_data() -> SingleValueMatcherDataSet<&'static str, &'static str> {
-    SingleValueMatcherDataSet::generate("body", "Body Mismatch", true)
+    SingleValueMatcherDataSet::generate("body", "Body Mismatch")
 }
 
 fn run_test<F, S>(
