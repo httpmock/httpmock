@@ -271,10 +271,24 @@ where
             return error_response(StatusCode::INTERNAL_SERVER_ERROR, err);
         }
 
-        match self.handler.handle(req).await {
+        let access_log_req_data = self
+            .config
+            .print_access_log
+            .then_some((req.method().clone(), req.uri().clone()));
+
+        let resp = match self.handler.handle(req).await {
             Ok(response) => to_service_response(response),
             Err(err) => error_response(StatusCode::INTERNAL_SERVER_ERROR, RouterError(err)),
+        };
+
+        // print access log if enabled
+        if let Some((method, uri)) = access_log_req_data {
+            if let Ok(resp) = &resp {
+                tracing::info!("{} {} -> {}", method, uri, resp.status());
+            }
         }
+
+        resp
     }
 
     async fn handle_tcp_stream(
