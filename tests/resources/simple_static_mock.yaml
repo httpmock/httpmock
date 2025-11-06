@@ -3,4 +3,5 @@ when:
   path: /static-mock/examples/simple
 then:
   status: 200
-  json_body: '{ "response" : "hello" }'
+  json_body:
+    response: hello

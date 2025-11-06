@@ -1486,6 +1486,8 @@ pub struct StaticHTTPResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub body_base64: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub json_body: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub delay: Option<u64>,
 }
 
@@ -1588,7 +1590,7 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
                 cookie_count: from_key_value_pattern_count_triple_vec(self.when.cookie_count),
 
                 // Body-related fields
-                body: from_string_to_bytes_choose(self.when.body, self.when.body_base64),
+                body: from_string_to_bytes_choose(self.when.body, self.when.body_base64, None),
                 body_not: to_bytes_vec(self.when.body_not, self.when.body_not_base64),
                 body_includes: to_bytes_vec(
                     self.when.body_contains,
@@ -1658,7 +1660,11 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
             response: MockServerHttpResponse {
                 status: self.then.status,
                 headers: from_name_value_string_pair_vec(self.then.header),
-                body: from_string_to_bytes_choose(self.then.body, self.then.body_base64),
+                body: from_string_to_bytes_choose(
+                    self.then.body,
+                    self.then.body_base64,
+                    self.then.json_body,
+                ),
                 delay: self.then.delay,
                 respond_with: None,
             },
@@ -1873,10 +1879,14 @@ fn to_bytes(option_string: Option<String>, option_base64: Option<String>) -> Opt
 fn from_string_to_bytes_choose(
     option_string: Option<String>,
     option_base64: Option<String>,
+    option_value: Option<Value>,
 ) -> Option<HttpMockBytes> {
-    let request_body = match (option_string, option_base64) {
-        (Some(body), None) => Some(body.into_bytes()),
-        (None, Some(base64_body)) => base64::decode(base64_body).ok(),
+    let request_body = match (option_string, option_base64, option_value) {
+        (Some(body), None, None) => Some(body.into_bytes()),
+        (None, Some(base64_body), None) => base64::decode(base64_body).ok(),
+        (None, None, Some(json_body)) => serde_json::to_string_pretty(&json_body)
+            .ok()
+            .map(|s| s.into_bytes()),
         _ => None, // Handle unexpected combinations or both None
     };
 
@@ -2068,6 +2078,7 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 header: from_string_pair_vec(value.response.headers),
                 body: response_body,
                 body_base64: response_body_base64,
+                json_body: None,
                 // Reason for the cast to u64: The Duration::as_millis method returns the total
                 // number of milliseconds contained within the Duration as a u128. This is
                 // because Duration::as_millis needs to handle larger values that

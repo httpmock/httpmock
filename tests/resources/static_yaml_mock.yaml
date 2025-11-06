@@ -50,5 +50,6 @@ then:
     - name: content-type
       value: application/json
   body: "this is an example body string"
-  json_body: '{ "key" : "value" }'
+  json_body:
+    key: value
   delay: 2000

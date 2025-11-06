@@ -100,14 +100,16 @@ when:
   path: /static-mock/examples/simple
 then:
   status: 200
-  json_body: '{ "response" : "hello" }'
+  json_body:
+    response: hello
 ---
 when:
   method: POST
   path: /static-mock/examples/submit
 then:
   status: 201
-  json_body: '{ "status" : "created" }'
+  json_body:
+    status: created
 ```
 
 <Aside type="note" title="Note">
