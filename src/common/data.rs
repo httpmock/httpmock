@@ -1590,7 +1590,7 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
                 cookie_count: from_key_value_pattern_count_triple_vec(self.when.cookie_count),
 
                 // Body-related fields
-                body: from_string_to_bytes_choose(self.when.body, self.when.body_base64, None),
+                body: from_body_to_bytes_choose(self.when.body, self.when.body_base64, None),
                 body_not: to_bytes_vec(self.when.body_not, self.when.body_not_base64),
                 body_includes: to_bytes_vec(
                     self.when.body_contains,
@@ -1660,7 +1660,7 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
             response: MockServerHttpResponse {
                 status: self.then.status,
                 headers: from_name_value_string_pair_vec(self.then.header),
-                body: from_string_to_bytes_choose(
+                body: from_body_to_bytes_choose(
                     self.then.body,
                     self.then.body_base64,
                     self.then.json_body,
@@ -1792,19 +1792,28 @@ fn to_key_value_pattern_count_triple_vec(
     })
 }
 
-fn from_bytes_to_string(data: Option<HttpMockBytes>) -> (Option<String>, Option<String>) {
+fn from_bytes_to_body_choose(
+    data: Option<HttpMockBytes>,
+) -> (Option<String>, Option<String>, Option<Value>) {
     let mut text_representation = None;
     let mut base64_representation = None;
+    let mut json_representation = None;
 
     if let Some(bytes_container) = data {
-        if let Ok(text_str) = std::str::from_utf8(&bytes_container.to_bytes()) {
+        if let Ok(json_value) = serde_json::from_slice::<Value>(&bytes_container.to_bytes()) {
+            json_representation = Some(json_value);
+        } else if let Ok(text_str) = std::str::from_utf8(&bytes_container.to_bytes()) {
             text_representation = Some(text_str.to_string());
         } else {
             base64_representation = Some(base64::encode(&bytes_container.to_bytes()));
         }
     }
 
-    (text_representation, base64_representation)
+    (
+        text_representation,
+        base64_representation,
+        json_representation,
+    )
 }
 
 fn bytes_to_string_vec(
@@ -1876,7 +1885,7 @@ fn to_bytes(option_string: Option<String>, option_base64: Option<String>) -> Opt
     return option_base64;
 }
 
-fn from_string_to_bytes_choose(
+fn from_body_to_bytes_choose(
     option_string: Option<String>,
     option_base64: Option<String>,
     option_value: Option<Value>,
@@ -1899,9 +1908,11 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
     fn try_from(value: &MockDefinition) -> Result<Self, Self::Error> {
         let value = value.clone();
 
-        let (response_body, response_body_base64) = from_bytes_to_string(value.response.body);
+        let (response_body, response_body_base64, response_body_json) =
+            from_bytes_to_body_choose(value.response.body);
 
-        let (request_body, request_body_base64) = from_bytes_to_string(value.request.body);
+        let (request_body, request_body_base64, request_body_json) =
+            from_bytes_to_body_choose(value.request.body);
         let (request_body_not, request_body_not_base64) =
             bytes_to_string_vec(value.request.body_not);
         let (request_body_includes, request_body_includes_base64) =
@@ -2035,7 +2046,7 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 body_matches: from_pattern_vec(value.request.body_matches),
 
                 // JSON Body-related fields
-                json_body: value.request.json_body,
+                json_body: value.request.json_body.or(request_body_json),
                 json_body_not: value.request.json_body_not,
                 json_body_includes: value.request.json_body_includes,
                 json_body_excludes: value.request.json_body_excludes,
@@ -2078,7 +2089,7 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 header: from_string_pair_vec(value.response.headers),
                 body: response_body,
                 body_base64: response_body_base64,
-                json_body: None,
+                json_body: response_body_json,
                 // Reason for the cast to u64: The Duration::as_millis method returns the total
                 // number of milliseconds contained within the Duration as a u128. This is
                 // because Duration::as_millis needs to handle larger values that
