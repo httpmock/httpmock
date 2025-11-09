@@ -1,6 +1,11 @@
 # Changelog
 
-## Version 0.8.2 (unreleased / in development)
+## Version 0.8.3 (unreleased / in development)
+
+- [#186](https://github.com/httpmock/httpmock/pull/186): "Remove unused code and trait methods for cleanup" (thanks [@FalkWoldmann](https://github.com/FalkWoldmann))
+- [#191](https://github.com/httpmock/httpmock/pull/191): "upgrade Rust to 1.83" (thanks [@sebdotv](https://github.com/sebdotv))
+
+## Version 0.8.2
 
 The following pull requests have been merged:
 - [#178](https://github.com/httpmock/httpmock/pull/178): "Expose proxy method to obtain the recorded yaml without saving to a file" (thanks [@janeisklar](https://github.com/janeisklar))
