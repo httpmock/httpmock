@@ -1217,7 +1217,8 @@ impl MockServer {
     ///   header:
     ///     - name: Content-Type
     ///       value: application/json
-    ///   body: '{ "response" : "hello" }'
+    ///   json_body:
+    ///     response: hello
     /// "#;
     ///
     /// // Create the mock server.
@@ -1273,7 +1274,8 @@ impl MockServer {
     ///   path: /recorded-mock
     /// then:
     ///   status: 200
-    ///   body: '{ "response" : "hello" }'
+    ///   json_body:
+    ///     response: hello
     /// "#;
     ///
     /// let rt = Runtime::new().unwrap();
