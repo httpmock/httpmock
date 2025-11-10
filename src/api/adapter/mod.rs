@@ -47,6 +47,11 @@ pub trait MockServerAdapter {
     async fn create_mock(&self, mock: &MockDefinition) -> Result<ActiveMock, ServerAdapterError>;
     async fn fetch_mock(&self, mock_id: usize) -> Result<ActiveMock, ServerAdapterError>;
     async fn delete_mock(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
+    async fn delete_mock_after_calls(
+        &self,
+        mock_id: usize,
+        count: usize,
+    ) -> Result<(), ServerAdapterError>;
     async fn delete_all_mocks(&self) -> Result<(), ServerAdapterError>;
 
     async fn verify(
