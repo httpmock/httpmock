@@ -1,6 +1,7 @@
+#![cfg(feature = "https")]
+
 use crate::with_standalone_server;
 
-#[cfg(feature = "https")]
 #[tokio::test]
 async fn test_http_get_request() {
     use httpmock::MockServer;
@@ -23,7 +24,6 @@ async fn test_http_get_request() {
     assert_eq!(res.status(), 200, "HTTP status should be 200 OK");
 }
 
-#[cfg(feature = "https")]
 #[cfg(feature = "remote")]
 #[tokio::test]
 async fn https_test_reqwest() {

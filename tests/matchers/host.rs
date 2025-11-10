@@ -1,7 +1,8 @@
+#![cfg(feature = "proxy")]
+
 use crate::matchers::expect_fails_with2;
 use httpmock::{MockServer, When};
 
-#[cfg(feature = "proxy")]
 #[test]
 fn path_success_table_test() {
     struct TestData {
@@ -71,7 +72,6 @@ fn path_success_table_test() {
     }
 }
 
-#[cfg(feature = "proxy")]
 #[test]
 fn path_failure_table_test() {
     pub struct TestData {

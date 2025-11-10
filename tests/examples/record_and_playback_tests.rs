@@ -1,8 +1,9 @@
+#![cfg(feature = "record")]
+
 use httpmock::prelude::*;
 
 use reqwest::blocking::Client;
 
-#[cfg(feature = "record")]
 #[test]
 fn record_with_forwarding_test() {
     let target_server = MockServer::start();
@@ -48,7 +49,7 @@ fn record_with_forwarding_test() {
 }
 
 // @example-start: record-proxy-website
-#[cfg(all(feature = "proxy", feature = "https", feature = "record"))]
+#[cfg(all(feature = "proxy", feature = "https"))]
 #[test]
 fn record_with_proxy_example_test() {
     use httpmock::RecordingRuleBuilder;
@@ -123,7 +124,6 @@ fn record_with_proxy_example_test() {
 // @example-end
 
 // @example-start: record-forwarding-website
-#[cfg(all(feature = "record"))]
 #[test]
 fn record_with_forwarding_example_test() {
     // Let's create our mock server for the test
@@ -182,7 +182,6 @@ fn record_with_forwarding_example_test() {
 // @example-end
 
 // @example-start: playback-forwarding-website
-#[cfg(all(feature = "record"))]
 #[test]
 fn playback_github_api() {
     // Start a mock server for the test
@@ -240,7 +239,6 @@ fn playback_github_api() {
 }
 // @example-end
 
-#[cfg(all(feature = "record"))]
 #[test]
 fn record_with_forwarding_all_request_parts_test() {
     let server = MockServer::start();
