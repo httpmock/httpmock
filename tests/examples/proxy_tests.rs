@@ -1,3 +1,6 @@
+use httpmock::MockServer;
+use reqwest::blocking::Client;
+
 #[test]
 fn proxy_test() {
     tracing_subscriber::fmt::init();
