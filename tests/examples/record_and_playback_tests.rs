@@ -1,7 +1,6 @@
 use httpmock::prelude::*;
 
-use reqwest::blocking::{Client, ClientBuilder};
-use reqwest::redirect::Policy;
+use reqwest::blocking::Client;
 
 #[cfg(feature = "record")]
 #[test]

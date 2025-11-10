@@ -117,6 +117,7 @@ where
     V: Into<String>,
     M: Into<String>,
 {
+    #[allow(dead_code)]
     scenario_name: String,
     expect: ExpectedValue,
     actual: Vec<(K, V)>,
@@ -149,7 +150,7 @@ impl MultiValueMatcherTestSet<&'static str, &'static str, usize, &'static str> {
     pub fn generate(
         entity: &'static str,
         mismatch_header: &'static str,
-        case_sensitive: bool,
+        _case_sensitive: bool,
     ) -> Self {
         MultiValueMatcherTestSet {
             attribute: vec![
@@ -493,6 +494,7 @@ where
     V: Into<String>,
     M: Into<String>,
 {
+    #[allow(dead_code)]
     scenario_name: String,
     expect: ExpectedValue,
     actual: V,
@@ -520,7 +522,7 @@ impl SingleValueMatcherDataSet<&'static str, &'static str> {
     pub fn generate(
         entity: &'static str,
         mismatch_header: &'static str,
-        case_sensitive: bool,
+        _case_sensitive: bool,
     ) -> Self {
         SingleValueMatcherDataSet {
             attribute: vec![
