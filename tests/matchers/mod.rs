@@ -1,6 +1,7 @@
 mod body;
 mod cookies;
 mod headers;
+#[cfg(feature = "proxy")]
 mod host;
 mod method;
 mod path;
@@ -123,6 +124,7 @@ where
 }
 
 #[derive(Debug)]
+#[expect(clippy::type_complexity, reason = "Test Code")]
 pub struct MultiValueMatcherTestSet<K, V, C, M>
 where
     K: Into<String>,

@@ -2,7 +2,6 @@ use httpmock::prelude::*;
 use reqwest::blocking::Client;
 
 // @example-start: forwarding
-#[cfg(feature = "proxy")]
 #[test]
 fn forwarding_test() {
     // We will create this mock server to simulate a real service (e.g., GitHub, AWS, etc.).
@@ -35,7 +34,6 @@ fn forwarding_test() {
 }
 // @example-end
 
-#[cfg(feature = "proxy")]
 #[test]
 fn forward_to_website() {
     // Let's create our mock server for the test
