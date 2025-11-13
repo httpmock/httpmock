@@ -27,10 +27,6 @@ pub enum ServerAdapterError {
     JsonDeserializationError(serde_json::error::Error),
     #[error("adapter error: {0}")]
     UpstreamError(String),
-    #[error("cannot ping mock server: {0}")]
-    PingError(String),
-    #[error("unknown error")]
-    Unknown,
 }
 
 #[cfg(feature = "remote")]
@@ -47,34 +43,29 @@ pub trait MockServerAdapter {
     async fn create_mock(&self, mock: &MockDefinition) -> Result<ActiveMock, ServerAdapterError>;
     async fn fetch_mock(&self, mock_id: usize) -> Result<ActiveMock, ServerAdapterError>;
     async fn delete_mock(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
-    async fn delete_all_mocks(&self) -> Result<(), ServerAdapterError>;
 
     async fn verify(
         &self,
         rr: &RequestRequirements,
     ) -> Result<Option<ClosestMatch>, ServerAdapterError>;
-    async fn delete_history(&self) -> Result<(), ServerAdapterError>;
 
     async fn create_forwarding_rule(
         &self,
         config: ForwardingRuleConfig,
     ) -> Result<ActiveForwardingRule, ServerAdapterError>;
     async fn delete_forwarding_rule(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
-    async fn delete_all_forwarding_rules(&self) -> Result<(), ServerAdapterError>;
 
     async fn create_proxy_rule(
         &self,
         config: ProxyRuleConfig,
     ) -> Result<ActiveProxyRule, ServerAdapterError>;
     async fn delete_proxy_rule(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
-    async fn delete_all_proxy_rules(&self) -> Result<(), ServerAdapterError>;
 
     async fn create_recording(
         &self,
         mock: RecordingRuleConfig,
     ) -> Result<ActiveRecording, ServerAdapterError>;
     async fn delete_recording(&self, id: usize) -> Result<(), ServerAdapterError>;
-    async fn delete_all_recordings(&self) -> Result<(), ServerAdapterError>;
 
     #[cfg(feature = "record")]
     async fn export_recording(&self, id: usize) -> Result<Option<Bytes>, ServerAdapterError>;

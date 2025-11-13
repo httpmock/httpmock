@@ -42,7 +42,6 @@ pub enum Error {
 }
 
 pub struct MockServerState {
-    history_limit: usize,
     next_mock_id: usize,
     next_forwarding_rule_id: usize,
     next_proxy_rule_id: usize,
@@ -62,7 +61,6 @@ impl MockServerState {
             forwarding_rules: BTreeMap::new(),
             proxy_rules: BTreeMap::new(),
             recordings: BTreeMap::new(),
-            history_limit,
             history: Vec::new(),
             next_mock_id: 0,
             next_forwarding_rule_id: 0,

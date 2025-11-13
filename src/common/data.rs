@@ -1246,18 +1246,6 @@ pub struct NameValuePatternPair {
 }
 
 #[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct KeyPatternCountPair {
-    key: HttpMockRegex,
-    count: usize,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
-pub struct ValuePatternCountPair {
-    value: HttpMockRegex,
-    count: usize,
-}
-
-#[derive(Debug, PartialEq, Serialize, Deserialize)]
 pub struct KeyValuePatternCountTriple {
     name: HttpMockRegex,
     value: HttpMockRegex,
@@ -1674,14 +1662,6 @@ fn from_method_vec(value: Option<Vec<Method>>) -> Option<Vec<String>> {
     value.map(|vec| vec.iter().map(|m| m.to_string()).collect())
 }
 
-fn to_pattern_vec(vec: Option<Vec<String>>) -> Option<Vec<HttpMockRegex>> {
-    vec.map(|vec| {
-        vec.iter()
-            .map(|val| HttpMockRegex(regex::Regex::from_str(val).expect("cannot parse regex")))
-            .collect()
-    })
-}
-
 fn from_pattern_vec(patterns: Option<Vec<HttpMockRegex>>) -> Option<Vec<HttpMockRegex>> {
     patterns.map(|vec| vec.iter().cloned().collect())
 }
@@ -1706,22 +1686,6 @@ fn from_string_pair_vec(vec: Option<Vec<(String, String)>>) -> Option<Vec<NameVa
     vec.map(|vec| {
         vec.into_iter()
             .map(|(name, value)| NameValueStringPair { name, value })
-            .collect()
-    })
-}
-
-fn from_key_pattern_count_pair_vec(
-    input: Option<Vec<KeyPatternCountPair>>,
-) -> Option<Vec<(HttpMockRegex, usize)>> {
-    input.map(|vec| vec.into_iter().map(|pair| (pair.key, pair.count)).collect())
-}
-
-fn from_value_pattern_count_pair_vec(
-    input: Option<Vec<ValuePatternCountPair>>,
-) -> Option<Vec<(HttpMockRegex, usize)>> {
-    input.map(|vec| {
-        vec.into_iter()
-            .map(|pair| (pair.value, pair.count))
             .collect()
     })
 }
@@ -1752,26 +1716,6 @@ fn to_name_value_pattern_pair_vec(
     vec.map(|vec| {
         vec.into_iter()
             .map(|(name, value)| NameValuePatternPair { name, value })
-            .collect()
-    })
-}
-
-fn to_key_pattern_count_pair_vec(
-    vec: Option<Vec<(HttpMockRegex, usize)>>,
-) -> Option<Vec<KeyPatternCountPair>> {
-    vec.map(|vec| {
-        vec.into_iter()
-            .map(|(key, count)| KeyPatternCountPair { key, count })
-            .collect()
-    })
-}
-
-fn to_value_pattern_count_pair_vec(
-    vec: Option<Vec<(HttpMockRegex, usize)>>,
-) -> Option<Vec<ValuePatternCountPair>> {
-    vec.map(|vec| {
-        vec.into_iter()
-            .map(|(value, count)| ValuePatternCountPair { value, count })
             .collect()
     })
 }
@@ -1860,14 +1804,6 @@ fn to_bytes_vec(
     } else {
         Some(result)
     }
-}
-
-fn to_bytes(option_string: Option<String>, option_base64: Option<String>) -> Option<String> {
-    if option_string.is_some() {
-        return option_string;
-    }
-
-    return option_base64;
 }
 
 fn from_string_to_bytes_choose(

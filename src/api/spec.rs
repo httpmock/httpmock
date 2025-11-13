@@ -3778,7 +3778,7 @@ impl When {
     /// }
     ///
     /// // Initialize logging (optional, for debugging purposes)
-    /// let _ = env_logger::try_init();
+    /// tracing_subscriber::fmt::init();
     ///
     /// // Start the mock server
     /// let server = MockServer::start();
@@ -5088,7 +5088,7 @@ impl Then {
     /// use reqwest::blocking::Client;
     ///
     /// // Arrange
-    /// let _ = env_logger::try_init();
+    /// tracing_subscriber::fmt::init();
     /// let server = MockServer::start();
     ///
     /// // Configure the mock
@@ -5157,7 +5157,7 @@ impl Then {
     /// }
     ///
     /// // Arrange
-    /// let _ = env_logger::try_init();
+    /// tracing_subscriber::fmt::init();
     /// let server = MockServer::start();
     ///
     /// // Configure the mock
@@ -5217,7 +5217,7 @@ impl Then {
     /// use reqwest::blocking::Client;
     ///
     /// // Arrange
-    /// let _ = env_logger::try_init();
+    /// tracing_subscriber::fmt::init();
     /// let server = MockServer::start();
     ///
     /// // Configure the mock
@@ -5283,7 +5283,7 @@ impl Then {
     /// use reqwest::blocking::Client;
     ///
     /// // Arrange
-    /// let _ = env_logger::try_init();
+    /// tracing_subscriber::fmt::init();
     /// let start_time = SystemTime::now();
     /// let three_seconds = Duration::from_secs(3);
     /// let server = MockServer::start();

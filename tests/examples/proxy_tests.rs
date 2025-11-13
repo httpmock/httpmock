@@ -1,11 +1,9 @@
-use httpmock::prelude::*;
-use reqwest::blocking::{Client, ClientBuilder};
-use reqwest::redirect::Policy;
+use httpmock::MockServer;
+use reqwest::blocking::Client;
 
-#[cfg(feature = "proxy")]
 #[test]
 fn proxy_test() {
-    env_logger::try_init().unwrap();
+    tracing_subscriber::fmt::init();
 
     // We will create this mock server to simulate a real service (e.g., GitHub, AWS, etc.).
     let target_server = MockServer::start();
@@ -51,7 +49,7 @@ fn proxy_test() {
 // origin-form. Many HTTPS origin servers (especially those negotiating HTTP/2, like google.com) reject absolute-form
 // requests on origin connections, which previously caused a 500 with "client error (SendRequest)". With the
 // conversion in place, both yahoo.com and google.com should return a normal redirect (301) here instead of failing.
-#[cfg(all(feature = "proxy", feature = "https"))]
+#[cfg(feature = "https")]
 #[test]
 fn absolute_origin_form_test() {
     let server = httpmock::MockServer::start();

@@ -31,8 +31,6 @@ pub enum Error {
     DeserializationError(String),
     #[error("cannot convert data structures: {0}")]
     DataConversionError(#[from] data::Error),
-    #[error("unknown data store error")]
-    Unknown,
 }
 
 pub fn read_static_mock_definitions<S>(path_opt: PathBuf, state: &S) -> Result<(), Error>

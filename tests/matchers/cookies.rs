@@ -159,7 +159,7 @@ fn cookie_count() {
 }
 
 fn generate_data() -> MultiValueMatcherTestSet<&'static str, &'static str, usize, &'static str> {
-    MultiValueMatcherTestSet::generate("cookie", "Cookie Mismatch", false)
+    MultiValueMatcherTestSet::generate("cookie", "Cookie Mismatch")
 }
 
 fn run_test<F, S>(

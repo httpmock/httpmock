@@ -1,7 +1,6 @@
 use crate::matchers::expect_fails_with2;
 use httpmock::{MockServer, When};
 
-#[cfg(feature = "proxy")]
 #[test]
 fn path_success_table_test() {
     struct TestData {
@@ -79,7 +78,7 @@ fn path_failure_table_test() {
         failure_message: Vec<&'static str>,
     }
 
-    let tests = vec![
+    let tests = [
         TestData {
             expectation: |when| when.host("127.0.0.2"),
             failure_message: vec!["No request has been received by the mock server"],
