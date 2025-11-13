@@ -1,5 +1,5 @@
 # First stage: build the application
-FROM rust:1.83 as builder
+FROM rust:1.91 as builder
 
 RUN apt-get update && apt-get install -y \
     ca-certificates \
