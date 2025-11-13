@@ -10,7 +10,7 @@ use crate::common::{
 
 use tabwriter::TabWriter;
 
-use crate::server::matchers::generic::MatchingStrategy;
+use crate::common::data::MatchingStrategy;
 #[cfg(feature = "color")]
 use colored::Colorize;
 

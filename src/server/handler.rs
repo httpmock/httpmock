@@ -120,6 +120,24 @@ where
         let method = req.method().clone();
         let path = req.uri().path().to_string();
 
+        // Handle CORS preflight for ALL admin endpoints (admin and user mocks)
+        if method == Method::OPTIONS && path.starts_with("/__httpmock__/") {
+            let allow_headers = req
+                .headers()
+                .get("Access-Control-Request-Headers")
+                .and_then(|v| v.to_str().ok())
+                .unwrap_or("Content-Type,Authorization,X-Requested-With");
+
+            return Response::builder()
+                .status(StatusCode::NO_CONTENT)
+                .header("Access-Control-Allow-Origin", "*")
+                .header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS,PUT,PATCH")
+                .header("Access-Control-Allow-Headers", allow_headers)
+                .header("Access-Control-Max-Age", "600")
+                .body(Bytes::new())
+                .map_err(|e| ResponseBodyConversionError(e));
+        }
+
         if let Some((matched_path, params)) = self.path_tree.find(&path) {
             match matched_path {
                 RoutePath::Ping => match method {
@@ -451,7 +469,22 @@ where
         // upstream origin server we MUST convert to origin-form (path + query only) and provide
         // the authority via the Host header, as expected by HTTP/1.1 and HTTP/2 origin servers.
         let req = to_origin_form(req)?;
-        Ok(self.http_client.send(req).await?)
+        let mut res = self.http_client.send(req).await?;
+        // Add permissive CORS headers on proxied responses
+        {
+            let headers = res.headers_mut();
+            headers.insert("Access-Control-Allow-Origin", HeaderValue::from_static("*"));
+            headers.insert(
+                "Access-Control-Allow-Methods",
+                HeaderValue::from_static("GET,POST,DELETE,OPTIONS,PUT,PATCH"),
+            );
+            headers.insert(
+                "Access-Control-Allow-Headers",
+                HeaderValue::from_static("Content-Type,Authorization,X-Requested-With"),
+            );
+            headers.insert("Access-Control-Max-Age", HeaderValue::from_static("600"));
+        }
+        Ok(res)
     }
 
     #[cfg(feature = "proxy")]
@@ -481,7 +514,22 @@ where
         // upstream origin server we MUST convert to origin-form (path + query only) and provide
         // the authority via the Host header, as expected by HTTP/1.1 and HTTP/2 origin servers.
         let req = to_origin_form(req)?;
-        Ok(self.http_client.send(req).await?)
+        let mut res = self.http_client.send(req).await?;
+        // Add permissive CORS headers on proxied responses
+        {
+            let headers = res.headers_mut();
+            headers.insert("Access-Control-Allow-Origin", HeaderValue::from_static("*"));
+            headers.insert(
+                "Access-Control-Allow-Methods",
+                HeaderValue::from_static("GET,POST,DELETE,OPTIONS,PUT,PATCH"),
+            );
+            headers.insert(
+                "Access-Control-Allow-Headers",
+                HeaderValue::from_static("Content-Type,Authorization,X-Requested-With"),
+            );
+            headers.insert("Access-Control-Max-Age", HeaderValue::from_static("600"));
+        }
+        Ok(res)
     }
 
     async fn serve_mock(
@@ -513,9 +561,22 @@ where
                 });
 
         // Convert via your TryFrom<HttpMockResponse> impl
-        let http_resp: http::Response<bytes::Bytes> = resp_def
+        let mut http_resp: http::Response<bytes::Bytes> = resp_def
             .try_into()
             .map_err(|e| ResponseDataConversionError(e))?;
+
+        // Add permissive CORS headers so browser clients can read the response
+        let headers = http_resp.headers_mut();
+        headers.insert("Access-Control-Allow-Origin", HeaderValue::from_static("*"));
+        headers.insert(
+            "Access-Control-Allow-Methods",
+            HeaderValue::from_static("GET,POST,DELETE,OPTIONS,PUT,PATCH"),
+        );
+        headers.insert(
+            "Access-Control-Allow-Headers",
+            HeaderValue::from_static("Content-Type,Authorization,X-Requested-With"),
+        );
+        headers.insert("Access-Control-Max-Age", HeaderValue::from_static("600"));
 
         Ok(http_resp)
     }
@@ -542,6 +603,16 @@ where
     T: Serialize,
 {
     let mut builder = Response::builder().status(status);
+
+    // Add permissive CORS headers for admin endpoints
+    builder = builder
+        .header("Access-Control-Allow-Origin", "*")
+        .header("Access-Control-Allow-Methods", "GET,POST,DELETE,OPTIONS")
+        .header(
+            "Access-Control-Allow-Headers",
+            "Content-Type,Authorization,X-Requested-With",
+        )
+        .header("Access-Control-Max-Age", "600");
 
     if let Some(body_obj) = body {
         builder = builder.header("content-type", "application/json");
