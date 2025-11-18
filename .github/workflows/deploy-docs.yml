@@ -21,7 +21,7 @@ jobs:
       - name: Checkout your repository using git
         uses: actions/checkout@v5
       - name: Install, build, and upload your site
-        uses: withastro/action@v4
+        uses: withastro/action@v5
         with:
           path: ./docs/website # The root location of your Astro project inside the repository. (optional)
 
