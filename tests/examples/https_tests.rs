@@ -1,5 +1,3 @@
-use crate::with_standalone_server;
-
 #[tokio::test]
 async fn test_http_get_request() {
     use httpmock::MockServer;
@@ -30,7 +28,7 @@ async fn https_test_reqwest() {
     use std::{fs::read, path::PathBuf};
 
     // This starts up a standalone server in the background running on port 5050
-    with_standalone_server();
+    crate::with_standalone_server();
 
     // Arrange
     let server = MockServer::connect_async("localhost:5050").await;
