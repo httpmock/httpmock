@@ -59,9 +59,9 @@ fn absolute_origin_form_test() {
         });
     });
 
-    let client = ClientBuilder::new()
+    let client = reqwest::blocking::ClientBuilder::new()
         .proxy(reqwest::Proxy::all(server.base_url()).unwrap())
-        .redirect(Policy::none())
+        .redirect(reqwest::redirect::Policy::none())
         .build()
         .unwrap();
 
