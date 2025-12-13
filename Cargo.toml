@@ -45,7 +45,7 @@ headers = { version = "0.4", optional = true }
 rustls = { version = "0.23", default-features = false, features = ["std", "tls12"], optional = true }
 rcgen = { version = "0.13", features = ["pem", "x509-parser"], optional = true }
 tokio-rustls = { version = "0.26", default-features = false, features = ["logging", "tls12"], optional = true }
-rustls-pemfile = { version = "2", optional = true }
+rustls-pki-types = { version = "1", optional = true }
 tls-detect = { version = "0.1", optional = true }
 if-addrs = { version = "0.13", optional = true }
 hyper-rustls = { version = "0.27", default-features = false, features = ["http1", "logging", "tls12", "native-tokio"], optional = true }
@@ -69,7 +69,7 @@ cookies = ["headers"] # enables support for matching cookies
 remote = ["hyper-util/client-legacy", "hyper-util/http2"] # allows to connect to remote mock servers
 remote-https = ["remote", "rustls", "rustls/ring", "hyper-rustls", "hyper-rustls/ring", "hyper-rustls/http2"] # allows to connect to remote mock servers via HTTPS
 proxy = ["remote-https", "hyper-util/client-legacy", "hyper-util/http2", "hyper-rustls", "hyper-rustls/http2"] # enables proxy functionality
-https = ["rustls", "rcgen", "tokio-rustls", "hyper-rustls", "rustls-pemfile", "rustls/ring", "tls-detect", "if-addrs"] # enables httpmock server support for TLS/HTTPS
+https = ["rustls", "rcgen", "tokio-rustls", "hyper-rustls", "rustls-pki-types", "rustls/ring", "tls-detect", "if-addrs"] # enables httpmock server support for TLS/HTTPS
 http2 = ["hyper/http2", "hyper-util/http2"] # enables httpmocks server support for HTTP2
 record = ["proxy", "serde_yaml"]
 experimental = [] # marker feature for experimental features
