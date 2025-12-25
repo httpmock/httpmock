@@ -110,6 +110,7 @@ pub use api::{Method, Mock, MockExt, MockServer, Regex, Then, When};
 pub use common::data::{HttpMockRequest, HttpMockResponse};
 
 mod api;
+#[cfg(feature = "server")]
 pub mod server;
 
 #[cfg(feature = "record")]

@@ -416,6 +416,7 @@ fn error_response(
     tracing::error!("failed to process request: {}", err.to_string());
     Ok(Response::builder()
         .status(code)
+        .header("Access-Control-Allow-Origin", "*")
         .body(full(err.to_string()))?)
 }
 

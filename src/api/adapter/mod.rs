@@ -9,6 +9,7 @@ use crate::common::data::{ActiveForwardingRule, ActiveMock, ActiveProxyRule};
 
 use crate::common::data::{ActiveRecording, ClosestMatch, MockDefinition, RequestRequirements};
 
+#[cfg(feature = "server")]
 pub mod local;
 
 use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
@@ -32,7 +33,18 @@ pub enum ServerAdapterError {
 #[cfg(feature = "remote")]
 pub mod remote;
 
-#[async_trait]
+// Applies the `async_trait` macro with different `Send` requirements based on the target.
+// - On non-WASM targets, `async_trait` is applied normally, which implies that
+//   asynchronous trait methods must return `Send` futures. This is desirable for
+//   multi-threaded runtimes such as Tokio.
+// - On `wasm32` targets (e.g., `wasm32-unknown-unknown`), the `?Send` modifier is
+//   used because the WebAssembly environment is single-threaded and typically does
+//   not support the `Send` bound. Using `?Send` ensures that async trait methods
+//   compile for WASM even if their futures are not `Send`.
+// This conditional setup enables async trait methods to be portable across both
+// native and WebAssembly environments without manually handling `Send` constraints.
+#[cfg_attr(target_arch = "wasm32", async_trait::async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait::async_trait)]
 pub trait MockServerAdapter {
     fn host(&self) -> String;
     fn port(&self) -> u16;

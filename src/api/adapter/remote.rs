@@ -82,7 +82,19 @@ impl RemoteMockServerAdapter {
     }
 }
 
-#[async_trait]
+// Applies `async_trait` with or without a `Send` requirement depending on the target:
+// - On `wasm32` targets, `async_trait(?Send)` is used so that async trait methods
+//   do *not* require their returned futures to be `Send`. This is necessary because
+//   most WebAssembly environments (like `wasm32-unknown-unknown`) are single-threaded
+//   and do not support `Send`.
+//
+// - On all non-WASM targets, `async_trait` is applied normally, which enforces
+//   `Send` on async futures—this is preferred for multi-threaded async runtimes
+//   such as Tokio.
+// This conditional annotation ensures async traits compile cleanly across both
+// native and WebAssembly platforms.
+#[cfg_attr(target_arch = "wasm32", async_trait(?Send))]
+#[cfg_attr(not(target_arch = "wasm32"), async_trait)]
 impl MockServerAdapter for RemoteMockServerAdapter {
     fn host(&self) -> String {
         self.addr.ip().to_string()
@@ -120,7 +132,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         self.validate_response(&mock.response)?;
 
         let json = serde_json::to_string(mock).map_err(|e| JsonSerializationError(e))?;
-
         let request = Request::builder()
             .method("POST")
             .uri(format!("http://{}/__httpmock__/mocks", &self.address()))
@@ -297,7 +308,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .header("content-type", "application/json")
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
-
         let (status, body) = self.do_request(request).await?;
 
         if status != StatusCode::CREATED.as_u16() {
@@ -353,7 +363,6 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .header("content-type", "application/json")
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
-
         let (status, body) = self.do_request(request).await?;
 
         if status != StatusCode::CREATED.as_u16() {

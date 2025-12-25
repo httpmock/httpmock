@@ -31,10 +31,7 @@ thiserror = "2"
 path-tree = ">=0.8.0, <0.8.4"
 http = "1"
 bytes = { version = "1", features = ["serde"] }
-hyper = { version = "1", features = ["server", "http1", "client"] }
-hyper-util = { version = "0.1", features = ["tokio", "server", "http1", "server-auto"] }
 http-body-util = "0.1"
-tokio = { version = "1.43", features = ["sync", "macros", "rt-multi-thread", "signal", "net"] }
 tabwriter = "1"
 colored = { version = "3", optional = true }
 clap = { version = "4", features = ["derive", "env"], optional = true }
@@ -62,17 +59,17 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 syn = "2"
 
 [features]
-default = ["cookies"]
-standalone =  ["clap", "tracing-subscriber", "record", "http2", "cookies", "remote", "remote-https"] # enables standalone mode
+default = ["cookies", "server"]
+standalone =  ["server", "clap", "tracing-subscriber", "record", "http2", "cookies", "remote", "remote-https"] # enables standalone mode
 color = ["colored"] # enables colorful output in standalone mode
 cookies = ["headers"] # enables support for matching cookies
 remote = ["hyper-util/client-legacy", "hyper-util/http2"] # allows to connect to remote mock servers
 remote-https = ["remote", "rustls", "rustls/ring", "hyper-rustls", "hyper-rustls/ring", "hyper-rustls/http2"] # allows to connect to remote mock servers via HTTPS
 proxy = ["remote-https", "hyper-util/client-legacy", "hyper-util/http2", "hyper-rustls", "hyper-rustls/http2"] # enables proxy functionality
-https = ["rustls", "rcgen", "tokio-rustls", "hyper-rustls", "rustls-pemfile", "rustls/ring", "tls-detect", "if-addrs"] # enables httpmock server support for TLS/HTTPS
+https = ["server", "rustls", "rcgen", "tokio-rustls", "hyper-rustls", "rustls-pemfile", "rustls/ring", "tls-detect", "if-addrs"] # enables httpmock server support for TLS/HTTPS
 http2 = ["hyper/http2", "hyper-util/http2"] # enables httpmocks server support for HTTP2
 record = ["proxy", "serde_yaml"]
-experimental = [] # marker feature for experimental features
+server = ["hyper/server", "hyper-util/server", "hyper-util/server-auto", "tokio/rt-multi-thread", "tokio/signal", "tokio/net"] # enables local HTTP server runtime (useful if you want to connect to remote servers only)
 
 [[bin]]
 name = "httpmock"
@@ -80,3 +77,15 @@ required-features = ["standalone"]
 
 [package.metadata.docs.rs]
 all-features = true
+
+[target.'cfg(all(target_arch = "wasm32", not(target_os = "wasi")))'.dependencies]
+reqwest = { version = "0.12", default-features = false, features = ["json"] }
+gloo-timers = { version = "0.2", features = ["futures"] }
+
+[target.'cfg(all(target_arch = "wasm32", target_os = "wasi"))'.dependencies]
+wasi-http-client = "0.2.1"
+
+[target.'cfg(not(target_arch = "wasm32"))'.dependencies]
+tokio = { version = "1.43", features = ["sync", "macros"] }
+hyper = { version = "1", features = ["http1", "client"] }
+hyper-util = { version = "0.1", features = ["tokio", "http1"] }

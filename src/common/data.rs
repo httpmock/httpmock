@@ -7,8 +7,15 @@ use crate::{
         },
         util::HttpMockBytes,
     },
-    server::matchers::generic::MatchingStrategy,
 };
+#[cfg(feature = "server")]
+pub use crate::server::matchers::generic::MatchingStrategy;
+#[cfg(not(feature = "server"))]
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub enum MatchingStrategy {
+    Presence,
+    Absence,
+}
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -23,6 +30,7 @@ use std::{
 };
 use url::Url;
 
+#[cfg(feature = "server")]
 use crate::server::RequestMetadata;
 #[cfg(feature = "cookies")]
 use headers::{Cookie, HeaderMapExt};
@@ -329,6 +337,7 @@ fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)
         .collect()
 }
 
+#[cfg(feature = "server")]
 impl<B> TryFrom<&http::Request<B>> for HttpMockRequest
 where
     B: Clone + IntoMockBytes,
@@ -358,6 +367,7 @@ where
     }
 }
 
+#[cfg(feature = "server")]
 impl<B> From<http::Request<B>> for HttpMockRequest
 where
     B: Clone + IntoMockBytes,

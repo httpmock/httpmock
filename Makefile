@@ -81,3 +81,17 @@ docs:
 fmt:
 	cargo fmt
 	cargo fix --allow-dirty
+
+.PHONY: test-wasm
+test-wasm:
+	cd wasm-test && cargo clean && wasm-pack test --node
+	cd wasm-test && cargo clean && wasm-pack test --headless --chrome
+
+.PHONY: test-wasi
+test-wasi:
+ifeq ($(PLATFORM),mac)
+	$(eval CC := /opt/homebrew/opt/llvm/bin/clang)
+endif
+	# command -v wasmtime >/dev/null 2>&1 || cargo install --locked wasmtime-cli
+	rustup target add wasm32-wasip2
+	cd wasi-test && env PATH=$(HOME)/.cargo/bin:$$PATH CC=$(CC) cargo test --target wasm32-wasip2 --tests -v -- --nocapture

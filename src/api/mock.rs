@@ -87,9 +87,15 @@ impl<'a> Mock<'a> {
     /// mock.assert();
     /// ```
     ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets**. It relies on blocking
+    /// execution, which is not supported in typical WASM environments. On `wasm32`, use the
+    /// asynchronous [`assert_async`](Self::assert_async) method instead.
+    ///
     /// # Panics
     /// This method will panic if the mock server did not receive exactly one matching request or if
     /// there are issues with the mock server's availability.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn assert(&self) {
         self.assert_async().join()
     }
@@ -166,10 +172,16 @@ impl<'a> Mock<'a> {
     /// mock.assert_hits(2);
     /// ```
     ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets**. It relies on blocking
+    /// execution, which is not supported in typical WASM environments. On `wasm32`, use the
+    /// asynchronous [`assert_calls_async`](Self::assert_calls_async) method instead.
+    ///
     /// # Panics
     /// This method will panic if the actual number of hits differs from the specified `hits`, or if
     /// there are issues with the mock server's availability.
     #[deprecated(since = "0.8.0", note = "please use `assert_calls` instead")]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn assert_hits(&self, hits: usize) {
         self.assert_calls(hits)
     }
@@ -205,9 +217,15 @@ impl<'a> Mock<'a> {
     /// mock.assert_calls(2);
     /// ```
     ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets** because it relies on
+    /// blocking execution, which is not supported in typical WASM environments. On `wasm32`,
+    /// use the asynchronous [`assert_calls_async`](Self::assert_calls_async) method instead.
+    ///
     /// # Panics
     /// This method will panic if the actual number of hits differs from the specified `hits`, or if
     /// there are issues with the mock server's availability.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn assert_calls(&self, count: usize) {
         self.assert_calls_async(count).join()
     }
@@ -356,9 +374,15 @@ impl<'a> Mock<'a> {
     /// assert_eq!(1, mock.hits());
     /// ```
     ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets**. It relies on blocking
+    /// internals or other synchronous behavior that is not supported in WASM environments. On
+    /// `wasm32`, use the asynchronous [`calls_async`](Self::calls_async) method instead.
+    ///
     /// # Panics
     /// This method will panic if there are issues accessing the mock server or retrieving the hit count.
     #[deprecated(since = "0.8.0", note = "please use `calls` instead")]
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn hits(&self) -> usize {
         self.calls()
     }
@@ -390,8 +414,14 @@ impl<'a> Mock<'a> {
     /// assert_eq!(1, mock.calls());
     /// ```
     ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets** because it relies on
+    /// blocking execution, which is not supported in typical WASM environments. On `wasm32`,
+    /// use the asynchronous [`calls_async`](Self::calls_async) method instead.
+    ///
     /// # Panics
     /// This method will panic if there are issues accessing the mock server or retrieving the hit count.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn calls(&self) -> usize {
         self.calls_async().join()
     }
@@ -521,6 +551,12 @@ impl<'a> Mock<'a> {
     /// This method ensures that the mock is completely removed, and any subsequent requests to the
     /// same path will not be intercepted by this mock, typically resulting in a 404 Not Found response
     /// unless another active mock matches the request.
+    ///
+    /// # WASM Support
+    /// This method is **not available on WebAssembly (`wasm32`) targets** because it relies on
+    /// blocking execution, which is not supported in typical WASM environments. On `wasm32`,
+    /// use the asynchronous [`delete_async`](Self::delete_async) method instead.
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn delete(&mut self) {
         self.delete_async().join();
     }
@@ -701,6 +737,7 @@ pub struct MockSet<'a> {
 }
 
 impl<'a> MockSet<'a> {
+    #[cfg(not(target_arch = "wasm32"))]
     pub fn delete(&mut self) {
         self.delete_async().join();
     }
