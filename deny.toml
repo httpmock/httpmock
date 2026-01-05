@@ -190,7 +190,7 @@ deny = [
 #    "__tls",
 #    "hyper-rustls",
 #    "rustls",
-#    "rustls-pemfile",
+#    "rustls-pki-types",
 #    "rustls-tls-webpki-roots",
 #    "tokio-rustls",
 #    "webpki-roots",

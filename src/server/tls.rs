@@ -1,4 +1,5 @@
 use rustls::pki_types::{CertificateDer, PrivateKeyDer};
+use rustls_pki_types::pem::PemObject;
 
 use crate::server::tls::Error::{CaCertificateError, GenerateCertificateError};
 use async_trait::async_trait;
@@ -88,7 +89,7 @@ impl<'a> GeneratingCertificateResolver {
     fn load_certificates(cert_pem: String) -> Result<Vec<CertificateDer<'a>>, Error> {
         let mut cert_pem_reader = Cursor::new(cert_pem.into_bytes());
         let mut certificates = Vec::new();
-        let certs_iterator = rustls_pemfile::certs(&mut cert_pem_reader);
+        let certs_iterator = CertificateDer::pem_reader_iter(cert_pem_reader);
         for cert_result in certs_iterator {
             let cert = cert_result.map_err(|err| {
                 GenerateCertificateError(format!("cannot use generated certificate: {:?}", err))
@@ -101,13 +102,9 @@ impl<'a> GeneratingCertificateResolver {
 
     fn load_private_key(key_pem: String) -> Result<PrivateKeyDer<'a>, Error> {
         let mut cert_pem_reader = Cursor::new(key_pem.into_bytes());
-        let private_key = rustls_pemfile::private_key(&mut cert_pem_reader)
-            .map_err(|err| {
-                GenerateCertificateError(format!("cannot use generated private key: {:?}", err))
-            })?
-            .ok_or(GenerateCertificateError(String::from(
-                "invalid generated private key",
-            )))?;
+        let private_key = PrivateKeyDer::from_pem_reader(cert_pem_reader).map_err(|err| {
+            GenerateCertificateError(format!("cannot use generated private key: {:?}", err))
+        })?;
         Ok(private_key)
     }
 
