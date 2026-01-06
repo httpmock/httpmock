@@ -5191,7 +5191,7 @@ impl Then {
     /// assert_eq!(status, 200);
     /// assert_eq!(user.name, "Hans");
     /// ```
-    pub fn json_body_obj<T: Serialize>(self, body: &T) -> Self {
+    pub fn json_body_obj<T: Serialize + ?Sized>(self, body: &T) -> Self {
         let json_body =
             serde_json::to_value(body).expect("Failed to serialize object to JSON string");
         self.json_body(json_body)
