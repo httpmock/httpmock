@@ -3806,9 +3806,9 @@ impl When {
     ///
     /// This method is particularly useful when you need to test server responses to structured JSON data. It helps
     /// ensure that the JSON serialization and deserialization processes are correctly implemented in your API handling logic.
-    pub fn json_body_obj<'a, T>(self, body: &T) -> Self
+    pub fn json_body_obj<T>(self, body: &T) -> Self
     where
-        T: Serialize + Deserialize<'a>,
+        T: Serialize,
     {
         let json_value = serde_json::to_value(body).expect("Cannot serialize json body to JSON");
         self.json_body(json_value)
