@@ -2,8 +2,10 @@
 
 ## Version 0.8.3 (unreleased / in development)
 
+Minimum supported Rust version has been raised to 1.85.
+
 - [#186](https://github.com/httpmock/httpmock/pull/186): "Remove unused code and trait methods for cleanup" (thanks [@FalkWoldmann](https://github.com/FalkWoldmann))
-- [#191](https://github.com/httpmock/httpmock/pull/191): "upgrade Rust to 1.83" (thanks [@sebdotv](https://github.com/sebdotv))
+- [#191](https://github.com/httpmock/httpmock/pull/191): "upgrade Rust" (thanks [@sebdotv](https://github.com/sebdotv))
 
 ## Version 0.8.2
 
