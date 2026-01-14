@@ -138,17 +138,11 @@ impl HttpMockRequest {
 
     fn authority(&self) -> Option<Authority> {
         // 1. Try to get the host from the 'Host' header (HTTP/1.1)
-        if let Some(host_header) = self
-            .headers
-            .iter()
-            .find(|&&(ref k, _)| k.eq_ignore_ascii_case("host"))
-            .and_then(|(_, v)| v.parse::<Authority>().ok())
-        {
-            return Some(host_header);
-        }
-
-        // 2. Fallback to the URI's authority (HTTP/2 and HTTP/3)
-        self.uri().authority().cloned()
+        self.headers()
+            .get(http::header::HOST)
+            .and_then(|v| Authority::try_from(v.as_bytes()).ok())
+            // 2. Fallback to the URI's authority (HTTP/2 and HTTP/3)
+            .or_else(|| self.uri().authority().cloned())
     }
 
     /// Returns the host that the request was sent to, based on the `Host` header or `:authority` pseudo-header.
@@ -217,7 +211,7 @@ impl HttpMockRequest {
     }
 
     pub fn headers_vec(&self) -> &Vec<(String, String)> {
-        self.headers.as_ref()
+        &self.headers
     }
 
     pub fn query_params_map(&self) -> HashMap<String, String> {
