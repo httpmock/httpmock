@@ -998,6 +998,7 @@ impl MockServer {
             request_requirements: RequestRequirements::new(),
             record_headers: Vec::new(),
             record_response_delays: false,
+            record_response_headers: Vec::new(),
         }));
 
         rule(RecordingRuleBuilder {
