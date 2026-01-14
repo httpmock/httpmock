@@ -177,17 +177,15 @@ impl HttpMockRequest {
     /// An `u16` containing the port if the `Host` header or `:authority` pseudo-header is present and includes a valid port,
     /// or 443 (https) or 80 (http) based on the used scheme otherwise.
     pub fn port(&self) -> u16 {
-        if let Some(authority) = self.authority() {
-            if let Some(port) = authority.port_u16() {
-                return port;
-            }
-        }
-
-        if self.scheme().eq_ignore_ascii_case("https") {
-            return 443;
-        }
-
-        return 80;
+        self.authority()
+            .and_then(|auth| auth.port_u16())
+            .unwrap_or_else(|| {
+                if self.scheme().eq_ignore_ascii_case("https") {
+                    443
+                } else {
+                    80
+                }
+            })
     }
 
     pub fn method(&self) -> http::Method {
