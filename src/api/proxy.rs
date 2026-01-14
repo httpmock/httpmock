@@ -355,6 +355,25 @@ impl RecordingRuleBuilder {
         self
     }
 
+    pub fn record_response_header<IntoString: Into<String>>(mut self, header: IntoString) -> Self {
+        let mut config = self.config.take();
+        config.record_response_headers.push(header.into());
+        self.config.set(config);
+        self
+    }
+
+    pub fn record_response_headers<IntoString: Into<String>>(
+        mut self,
+        headers: Vec<IntoString>,
+    ) -> Self {
+        let mut config = self.config.take();
+        config
+            .record_response_headers
+            .extend(headers.into_iter().map(Into::into));
+        self.config.set(config);
+        self
+    }
+
     pub fn filter<WhenSpecFn>(mut self, when: WhenSpecFn) -> Self
     where
         WhenSpecFn: FnOnce(When),
