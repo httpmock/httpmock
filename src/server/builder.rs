@@ -468,7 +468,7 @@ impl HttpMockServerBuilder {
     /// # Returns
     /// A `MockServer` instance or an error if the build process fails.
     pub(crate) fn build_with_state<S>(
-        mut self,
+        self,
         state: Arc<S>,
     ) -> Result<MockServer<HttpMockHandler<S>>, Box<dyn Error>>
     where
