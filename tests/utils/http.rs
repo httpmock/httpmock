@@ -1,5 +1,6 @@
-use reqwest::blocking::Client;
 use std::collections::HashMap;
+
+use reqwest::blocking::Client;
 use tokio::sync::oneshot;
 
 type BoxError = Box<dyn std::error::Error + Send + Sync>;

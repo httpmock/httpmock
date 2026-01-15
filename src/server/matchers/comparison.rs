@@ -1,7 +1,9 @@
-use crate::common::{data::HttpMockRegex, util::HttpMockBytes};
-use regex::Regex;
 use std::{convert::TryInto, ops::Deref};
+
+use regex::Regex;
 use stringmetrics::LevWeights;
+
+use crate::common::{data::HttpMockRegex, util::HttpMockBytes};
 
 pub fn string_has_prefix(
     case_sensitive: bool,
@@ -1725,8 +1727,9 @@ pub fn regex_string_distance(
 
 #[cfg(test)]
 mod regex_string_distance_tests {
-    use super::*;
     use regex::Regex;
+
+    use super::*;
 
     #[test]
     fn test_non_negated_full_match() {

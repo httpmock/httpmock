@@ -1,7 +1,6 @@
 use std::{env, path::PathBuf};
 
 use clap::Parser;
-
 use httpmock::server::HttpMockServerBuilder;
 use tracing_subscriber::EnvFilter;
 

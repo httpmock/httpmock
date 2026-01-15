@@ -1,5 +1,6 @@
-use crate::matchers::expect_fails_with2;
 use httpmock::{MockServer, When};
+
+use crate::matchers::expect_fails_with2;
 
 #[test]
 fn path_success_table_test() {

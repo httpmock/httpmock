@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cell::Cell,
     env,
     fs::{create_dir_all, File},
     future::Future,
@@ -7,6 +8,7 @@ use std::{
     path::{Path, PathBuf},
     sync::Arc,
     task::{Context, Poll},
+    time::Duration,
 };
 
 use bytes::Bytes;
@@ -14,8 +16,7 @@ use bytes::Bytes;
 use crossbeam_utils::sync::{Parker, Unparker};
 use futures_timer::Delay;
 use futures_util::{pin_mut, task::ArcWake};
-use serde::{Deserialize, Serialize, Serializer};
-use std::{cell::Cell, time::Duration};
+use serde::{Deserialize, Serialize};
 
 // ===============================================================================================
 // Misc

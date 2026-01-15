@@ -95,28 +95,17 @@
 //! This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied
 //! warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the MIT Public License for more details.
 
-use std::{borrow::BorrowMut, net::ToSocketAddrs};
-
-use std::str::FromStr;
-
-use serde::{Deserialize, Serialize};
-
-use api::MockServerAdapter;
-
 mod common;
-use common::util::Join;
 
 pub use api::{Method, Mock, MockExt, MockServer, Regex, Then, When};
 pub use common::data::{HttpMockRequest, HttpMockResponse};
-
 mod api;
 pub mod server;
 
-#[cfg(feature = "record")]
-pub use api::{Recording, RecordingRuleBuilder};
-
 #[cfg(feature = "proxy")]
 pub use api::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder};
+#[cfg(feature = "record")]
+pub use api::{Recording, RecordingRuleBuilder};
 
 pub mod prelude {
     #[doc(no_inline)]

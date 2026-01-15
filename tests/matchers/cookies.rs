@@ -1,6 +1,7 @@
-use crate::matchers::{expect_fails_with2, MultiValueMatcherTestSet};
 use http::{HeaderMap, HeaderValue};
 use httpmock::{MockServer, When};
+
+use crate::matchers::{expect_fails_with2, MultiValueMatcherTestSet};
 
 #[test]
 #[cfg(feature = "cookies")]
