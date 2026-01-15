@@ -420,7 +420,7 @@ pub fn is_none_or_empty<T>(option: &Option<Vec<T>>) -> bool {
 
 pub fn read_file<P: AsRef<Path>>(absolute_resource_path: P) -> Result<Vec<u8>, String> {
     let mut f = match File::open(&absolute_resource_path) {
-        Ok(mut opened_file) => opened_file,
+        Ok(opened_file) => opened_file,
         Err(e) => return Err(e.to_string()),
     };
     let mut buffer = Vec::new();

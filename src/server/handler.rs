@@ -380,7 +380,7 @@ where
             .try_into()
             .map_err(|err: DataError| RequestConversionError(err.to_string()))?;
 
-        let mut is_proxied = false;
+        let is_proxied = false;
         let start = Instant::now();
 
         #[cfg(feature = "proxy")]
