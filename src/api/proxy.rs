@@ -1,17 +1,19 @@
+#[cfg(feature = "record")]
+use std::path::{Path, PathBuf};
+use std::{cell::Cell, rc::Rc};
+
+#[cfg(feature = "record")]
+use bytes::Bytes;
+
+#[cfg(feature = "record")]
+use crate::common::util::write_file;
 use crate::{
     api::server::MockServer,
     common::{
-        data::RecordingRuleConfig,
-        data::RequestRequirements,
-        util::{write_file, Join},
+        data::{RecordingRuleConfig, RequestRequirements},
+        util::Join,
     },
     When,
-};
-use bytes::Bytes;
-use std::{
-    cell::Cell,
-    path::{Path, PathBuf},
-    rc::Rc,
 };
 
 /// Represents a forwarding rule on a [MockServer](struct.MockServer.html), allowing HTTP requests

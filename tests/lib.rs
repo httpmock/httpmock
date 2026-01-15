@@ -1,5 +1,6 @@
-use httpmock::server::{HttpMockServer, HttpMockServerBuilder};
 use std::{sync::Mutex, thread};
+
+use httpmock::server::{HttpMockServer, HttpMockServerBuilder};
 use tokio::task::LocalSet;
 mod examples;
 mod matchers;

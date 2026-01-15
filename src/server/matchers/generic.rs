@@ -1,6 +1,7 @@
+use std::{collections::HashSet, fmt::Display};
+
 use serde::{Deserialize, Serialize};
 use similar::{ChangeTag, TextDiff};
-use std::{collections::HashSet, fmt::Display};
 
 use crate::{
     common::{

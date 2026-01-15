@@ -1,21 +1,23 @@
+use std::{borrow::Cow, sync::Arc};
+
 use assert_json_diff::{assert_json_matches_no_panic, CompareMode, Config};
 use bytes::Bytes;
 use serde_json::Value;
-use std::{borrow::Cow, convert::TryInto, ops::Deref, sync::Arc};
 
 use crate::{
     common::{
         data::{HttpMockRegex, HttpMockRequest},
         util::HttpMockBytes,
     },
-    server::matchers::comparison::{
-        distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix,
-        equal_weight_distance_for, hostname_equals, regex_unmatched_length, string_contains,
-        string_distance, string_equals, string_has_prefix, string_has_suffix,
+    server::matchers::{
+        comparison,
+        comparison::{
+            distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix,
+            equal_weight_distance_for, hostname_equals, regex_unmatched_length, string_contains,
+            string_distance, string_equals, string_has_prefix, string_has_suffix,
+        },
     },
 };
-
-use crate::server::matchers::comparison;
 
 pub trait ValueComparator<S: ?Sized, T: ?Sized> {
     fn matches(&self, mock_value: &Option<&S>, req_value: &Option<&T>) -> bool;
@@ -811,6 +813,9 @@ impl ValueComparator<Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Sen
 
 #[cfg(test)]
 mod test {
+    use regex::Regex;
+    use serde_json::json;
+
     use crate::{
         common::data::HttpMockRegex,
         server::matchers::comparators::{
@@ -819,8 +824,6 @@ mod test {
             ValueComparator,
         },
     };
-    use regex::Regex;
-    use serde_json::json;
 
     fn run_test<S, T>(
         comparator: &dyn ValueComparator<S, T>,

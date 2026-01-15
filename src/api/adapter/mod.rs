@@ -1,19 +1,19 @@
-use std::{net::SocketAddr, str::FromStr};
+use std::net::SocketAddr;
 
 use async_trait::async_trait;
-use bytes::Bytes;
 
-use serde::{Deserialize, Serialize};
-
-use crate::common::data::{ActiveForwardingRule, ActiveMock, ActiveProxyRule};
-
-use crate::common::data::{ActiveRecording, ClosestMatch, MockDefinition, RequestRequirements};
+use crate::common::data::{
+    ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch,
+    MockDefinition, RequestRequirements,
+};
 
 pub mod local;
 
-use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
-
+#[cfg(feature = "record")]
+use bytes::Bytes;
 use thiserror::Error;
+
+use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
 
 #[derive(Error, Debug)]
 pub enum ServerAdapterError {
