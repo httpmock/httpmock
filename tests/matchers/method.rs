@@ -1,9 +1,10 @@
-use crate::matchers::expect_fails_with;
 use httpmock::{
     Method::{GET, POST},
     MockServer,
 };
 use reqwest::blocking::get;
+
+use crate::matchers::expect_fails_with;
 
 #[test]
 fn success_method() {

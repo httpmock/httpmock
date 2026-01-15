@@ -1,18 +1,5 @@
 extern crate serde_regex;
 
-use crate::{
-    common::{
-        data::Error::{
-            HeaderDeserializationError, RequestConversionError, StaticMockConversionError,
-        },
-        util::HttpMockBytes,
-    },
-    server::matchers::generic::MatchingStrategy,
-};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
-use bytes::Bytes;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
 use std::{
     cmp::Ordering,
     collections::HashMap,
@@ -22,11 +9,24 @@ use std::{
     str::FromStr,
     sync::Arc,
 };
-use url::Url;
 
-use crate::server::RequestMetadata;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use bytes::Bytes;
 #[cfg(feature = "cookies")]
 use headers::{Cookie, HeaderMapExt};
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+use url::Url;
+
+use crate::{
+    common::{
+        data::Error::{
+            HeaderDeserializationError, RequestConversionError, StaticMockConversionError,
+        },
+        util::HttpMockBytes,
+    },
+    server::{matchers::generic::MatchingStrategy, RequestMetadata},
+};
 
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
@@ -733,10 +733,11 @@ impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
 
 /// Serializes and deserializes the response body to/from a Base64 string.
 mod opt_vector_serde_base64 {
-    use crate::common::util::HttpMockBytes;
     use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
     use bytes::Bytes;
     use serde::{Deserialize, Deserializer, Serializer};
+
+    use crate::common::util::HttpMockBytes;
 
     // See the following references:
     // https://github.com/serde-rs/serde/blob/master/serde/src/ser/impls.rs#L99
