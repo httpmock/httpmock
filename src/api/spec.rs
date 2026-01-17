@@ -116,7 +116,7 @@ impl When {
     /// # Returns
     /// The modified `When` instance to allow for method chaining.
     ///
-    pub fn scheme<TryIntoString: TryInto<String>>(mut self, scheme: TryIntoString) -> Self
+    pub fn scheme<TryIntoString: TryInto<String>>(self, scheme: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -169,7 +169,7 @@ impl When {
     /// # Returns
     /// The modified `When` instance to allow for method chaining.
     ///
-    pub fn scheme_not<TryIntoString: TryInto<String>>(mut self, scheme: TryIntoString) -> Self
+    pub fn scheme_not<TryIntoString: TryInto<String>>(self, scheme: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -221,7 +221,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow for method chaining.
     ///
-    pub fn method<TryIntoMethod: TryInto<Method>>(mut self, method: TryIntoMethod) -> Self
+    pub fn method<TryIntoMethod: TryInto<Method>>(self, method: TryIntoMethod) -> Self
     where
         <TryIntoMethod as TryInto<Method>>::Error: std::fmt::Debug,
     {
@@ -272,7 +272,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow for method chaining.
     ///
-    pub fn method_not<IntoMethod: Into<Method>>(mut self, method: IntoMethod) -> Self {
+    pub fn method_not<IntoMethod: Into<Method>>(self, method: IntoMethod) -> Self {
         update_cell(&self.expectations, |e| {
             if e.method_not.is_none() {
                 e.method_not = Some(Vec::new());
@@ -326,7 +326,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn host<IntoString: Into<String>>(mut self, host: IntoString) -> Self {
+    pub fn host<IntoString: Into<String>>(self, host: IntoString) -> Self {
         update_cell(&self.expectations, |e| e.host = Some(host.into()));
         self
     }
@@ -370,7 +370,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn host_not<IntoString: Into<String>>(mut self, host: IntoString) -> Self {
+    pub fn host_not<IntoString: Into<String>>(self, host: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.host_not.is_none() {
                 e.host_not = Some(Vec::new());
@@ -429,7 +429,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn host_includes<IntoString: Into<String>>(mut self, host: IntoString) -> Self {
+    pub fn host_includes<IntoString: Into<String>>(self, host: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.host_contains.is_none() {
                 e.host_contains = Some(Vec::new());
@@ -485,7 +485,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn host_excludes<IntoString: Into<String>>(mut self, host: IntoString) -> Self {
+    pub fn host_excludes<IntoString: Into<String>>(self, host: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.host_excludes.is_none() {
                 e.host_excludes = Some(Vec::new());
@@ -539,7 +539,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn host_prefix<IntoString: Into<String>>(mut self, host: IntoString) -> Self {
+    pub fn host_prefix<IntoString: Into<String>>(self, host: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.host_prefix.is_none() {
                 e.host_prefix = Some(Vec::new());
@@ -593,7 +593,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn host_suffix<IntoString: Into<String>>(mut self, host: IntoString) -> Self {
+    pub fn host_suffix<IntoString: Into<String>>(self, host: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.host_suffix.is_none() {
                 e.host_suffix = Some(Vec::new());
@@ -647,7 +647,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn host_prefix_not<IntoString: Into<String>>(mut self, prefix: IntoString) -> Self {
+    pub fn host_prefix_not<IntoString: Into<String>>(self, prefix: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.host_prefix_not.is_none() {
                 e.host_prefix_not = Some(Vec::new());
@@ -700,7 +700,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn host_suffix_not<IntoString: Into<String>>(mut self, host: IntoString) -> Self {
+    pub fn host_suffix_not<IntoString: Into<String>>(self, host: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.host_suffix_not.is_none() {
                 e.host_suffix_not = Some(Vec::new());
@@ -753,7 +753,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn host_matches<IntoRegex: Into<Regex>>(mut self, regex: IntoRegex) -> Self {
+    pub fn host_matches<IntoRegex: Into<Regex>>(self, regex: IntoRegex) -> Self {
         update_cell(&self.expectations, |e| {
             if e.host_matches.is_none() {
                 e.host_matches = Some(Vec::new());
@@ -808,7 +808,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining.
     ///
-    pub fn port<U16: TryInto<u16>>(mut self, port: U16) -> Self
+    pub fn port<U16: TryInto<u16>>(self, port: U16) -> Self
     where
         <U16 as TryInto<u16>>::Error: std::fmt::Debug,
     {
@@ -863,7 +863,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining.
     ///
-    pub fn port_not<U16: TryInto<u16>>(mut self, port: U16) -> Self
+    pub fn port_not<U16: TryInto<u16>>(self, port: U16) -> Self
     where
         <U16 as TryInto<u16>>::Error: std::fmt::Debug,
     {
@@ -911,7 +911,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance, allowing method chaining for additional configuration.
     ///
-    pub fn path<TryIntoString: TryInto<String>>(mut self, path: TryIntoString) -> Self
+    pub fn path<TryIntoString: TryInto<String>>(self, path: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -957,7 +957,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance, allowing method chaining for further configuration.
     ///
-    pub fn path_not<TryIntoString: TryInto<String>>(mut self, path: TryIntoString) -> Self
+    pub fn path_not<TryIntoString: TryInto<String>>(self, path: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -1004,7 +1004,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for further configuration.
     ///
-    pub fn path_includes<TryIntoString: TryInto<String>>(mut self, substring: TryIntoString) -> Self
+    pub fn path_includes<TryIntoString: TryInto<String>>(self, substring: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -1053,7 +1053,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to enable method chaining for additional configuration.
     ///
-    pub fn path_excludes<TryIntoString: TryInto<String>>(mut self, substring: TryIntoString) -> Self
+    pub fn path_excludes<TryIntoString: TryInto<String>>(self, substring: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -1102,7 +1102,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for further configuration.
     ///
-    pub fn path_prefix<TryIntoString: TryInto<String>>(mut self, prefix: TryIntoString) -> Self
+    pub fn path_prefix<TryIntoString: TryInto<String>>(self, prefix: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -1151,7 +1151,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for further configuration.
     ///
-    pub fn path_suffix<TryIntoString: TryInto<String>>(mut self, suffix: TryIntoString) -> Self
+    pub fn path_suffix<TryIntoString: TryInto<String>>(self, suffix: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -1200,7 +1200,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
-    pub fn path_prefix_not<TryIntoString: TryInto<String>>(mut self, prefix: TryIntoString) -> Self
+    pub fn path_prefix_not<TryIntoString: TryInto<String>>(self, prefix: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -1249,7 +1249,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for further configuration.
     ///
-    pub fn path_suffix_not<TryIntoString: TryInto<String>>(mut self, suffix: TryIntoString) -> Self
+    pub fn path_suffix_not<TryIntoString: TryInto<String>>(self, suffix: TryIntoString) -> Self
     where
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
@@ -1301,7 +1301,7 @@ impl When {
     /// # Errors
     /// This function will panic if the provided regex pattern is invalid.
     ///
-    pub fn path_matches<TryIntoRegex: TryInto<Regex>>(mut self, regex: TryIntoRegex) -> Self
+    pub fn path_matches<TryIntoRegex: TryInto<Regex>>(self, regex: TryIntoRegex) -> Self
     where
         <TryIntoRegex as TryInto<Regex>>::Error: std::fmt::Debug,
     {
@@ -1354,7 +1354,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn query_param<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value: ValueString,
     ) -> Self {
@@ -1407,7 +1407,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn query_param_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value: ValueString,
     ) -> Self {
@@ -1458,7 +1458,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
-    pub fn query_param_exists<IntoString: Into<String>>(mut self, name: IntoString) -> Self {
+    pub fn query_param_exists<IntoString: Into<String>>(self, name: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.query_param_exists.is_none() {
                 e.query_param_exists = Some(Vec::new());
@@ -1503,7 +1503,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
-    pub fn query_param_missing<IntoString: Into<String>>(mut self, name: IntoString) -> Self {
+    pub fn query_param_missing<IntoString: Into<String>>(self, name: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.query_param_missing.is_none() {
                 e.query_param_missing = Some(Vec::new());
@@ -1552,7 +1552,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_includes<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         substring: ValueString,
     ) -> Self {
@@ -1607,7 +1607,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_excludes<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         substring: ValueString,
     ) -> Self {
@@ -1662,7 +1662,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_prefix<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         prefix: ValueString,
     ) -> Self {
@@ -1716,7 +1716,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_suffix<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         suffix: ValueString,
     ) -> Self {
@@ -1770,7 +1770,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_prefix_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         prefix: ValueString,
     ) -> Self {
@@ -1824,7 +1824,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_suffix_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         suffix: ValueString,
     ) -> Self {
@@ -1875,7 +1875,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_matches<KeyRegex: Into<Regex>, ValueRegex: Into<Regex>>(
-        mut self,
+        self,
         key_regex: KeyRegex,
         value_regex: ValueRegex,
     ) -> Self {
@@ -1932,7 +1932,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_count<KeyRegex: Into<Regex>, ValueRegex: Into<Regex>>(
-        mut self,
+        self,
         key_regex: KeyRegex,
         value_regex: ValueRegex,
         expected_count: usize,
@@ -1990,7 +1990,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value: ValueString,
     ) -> Self {
@@ -2043,7 +2043,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value: ValueString,
     ) -> Self {
@@ -2095,7 +2095,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
-    pub fn header_exists<IntoString: Into<String>>(mut self, name: IntoString) -> Self {
+    pub fn header_exists<IntoString: Into<String>>(self, name: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.header_exists.is_none() {
                 e.header_exists = Some(Vec::new());
@@ -2142,7 +2142,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
-    pub fn header_missing<IntoString: Into<String>>(mut self, name: IntoString) -> Self {
+    pub fn header_missing<IntoString: Into<String>>(self, name: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.header_missing.is_none() {
                 e.header_missing = Some(Vec::new());
@@ -2192,7 +2192,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_includes<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         substring: ValueString,
     ) -> Self {
@@ -2248,7 +2248,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_excludes<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         substring: ValueString,
     ) -> Self {
@@ -2304,7 +2304,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_prefix<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         prefix: ValueString,
     ) -> Self {
@@ -2360,7 +2360,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_suffix<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         suffix: ValueString,
     ) -> Self {
@@ -2416,7 +2416,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_prefix_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         prefix: ValueString,
     ) -> Self {
@@ -2472,7 +2472,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_suffix_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         suffix: ValueString,
     ) -> Self {
@@ -2529,7 +2529,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_matches<KeyString: Into<Regex>, ValueString: Into<Regex>>(
-        mut self,
+        self,
         key_regex: KeyString,
         value_regex: ValueString,
     ) -> Self {
@@ -2592,7 +2592,7 @@ impl When {
         ValueRegex: TryInto<Regex>,
         IntoUsize: TryInto<usize>,
     >(
-        mut self,
+        self,
         key_pattern: KeyRegex,
         value_pattern: ValueRegex,
         count: IntoUsize,
@@ -2664,7 +2664,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value: ValueString,
     ) -> Self {
@@ -2716,7 +2716,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value: ValueString,
     ) -> Self {
@@ -2769,7 +2769,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
-    pub fn cookie_exists<IntoString: Into<String>>(mut self, name: IntoString) -> Self {
+    pub fn cookie_exists<IntoString: Into<String>>(self, name: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.cookie_exists.is_none() {
                 e.cookie_exists = Some(Vec::new());
@@ -2816,7 +2816,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
-    pub fn cookie_missing<IntoString: Into<String>>(mut self, name: IntoString) -> Self {
+    pub fn cookie_missing<IntoString: Into<String>>(self, name: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.cookie_missing.is_none() {
                 e.cookie_missing = Some(Vec::new());
@@ -2865,7 +2865,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_includes<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value_substring: ValueString,
     ) -> Self {
@@ -2920,7 +2920,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_excludes<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value_substring: ValueString,
     ) -> Self {
@@ -2975,7 +2975,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_prefix<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value_prefix: ValueString,
     ) -> Self {
@@ -3030,7 +3030,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_suffix<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value_suffix: ValueString,
     ) -> Self {
@@ -3085,7 +3085,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_prefix_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value_prefix: ValueString,
     ) -> Self {
@@ -3140,7 +3140,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_suffix_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value_suffix: ValueString,
     ) -> Self {
@@ -3196,7 +3196,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_matches<KeyRegex: Into<Regex>, ValueRegex: Into<Regex>>(
-        mut self,
+        self,
         key_regex: KeyRegex,
         value_regex: ValueRegex,
     ) -> Self {
@@ -3253,7 +3253,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_count<KeyRegex: Into<Regex>, ValueRegex: Into<Regex>>(
-        mut self,
+        self,
         key_regex: KeyRegex,
         value_regex: ValueRegex,
         count: usize,
@@ -3306,7 +3306,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
-    pub fn body<IntoString: Into<String>>(mut self, body: IntoString) -> Self {
+    pub fn body<IntoString: Into<String>>(self, body: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             e.body = Some(HttpMockBytes::from(Bytes::from(body.into())));
         });
@@ -3349,7 +3349,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
-    pub fn body_not<IntoString: Into<String>>(mut self, body: IntoString) -> Self {
+    pub fn body_not<IntoString: Into<String>>(self, body: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.body_not.is_none() {
                 e.body_not = Some(Vec::new());
@@ -3398,7 +3398,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
-    pub fn body_includes<IntoString: Into<String>>(mut self, substring: IntoString) -> Self {
+    pub fn body_includes<IntoString: Into<String>>(self, substring: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.body_includes.is_none() {
                 e.body_includes = Some(Vec::new());
@@ -3447,7 +3447,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
-    pub fn body_excludes<IntoString: Into<String>>(mut self, substring: IntoString) -> Self {
+    pub fn body_excludes<IntoString: Into<String>>(self, substring: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.body_excludes.is_none() {
                 e.body_excludes = Some(Vec::new());
@@ -3496,7 +3496,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
-    pub fn body_prefix<IntoString: Into<String>>(mut self, prefix: IntoString) -> Self {
+    pub fn body_prefix<IntoString: Into<String>>(self, prefix: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.body_prefix.is_none() {
                 e.body_prefix = Some(Vec::new());
@@ -3545,7 +3545,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
-    pub fn body_suffix<IntoString: Into<String>>(mut self, suffix: IntoString) -> Self {
+    pub fn body_suffix<IntoString: Into<String>>(self, suffix: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.body_suffix.is_none() {
                 e.body_suffix = Some(Vec::new());
@@ -3594,7 +3594,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
-    pub fn body_prefix_not<IntoString: Into<String>>(mut self, prefix: IntoString) -> Self {
+    pub fn body_prefix_not<IntoString: Into<String>>(self, prefix: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.body_prefix_not.is_none() {
                 e.body_prefix_not = Some(Vec::new());
@@ -3643,7 +3643,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
-    pub fn body_suffix_not<IntoString: Into<String>>(mut self, suffix: IntoString) -> Self {
+    pub fn body_suffix_not<IntoString: Into<String>>(self, suffix: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.body_suffix_not.is_none() {
                 e.body_suffix_not = Some(Vec::new());
@@ -3692,7 +3692,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
-    pub fn body_matches<IntoRegex: Into<Regex>>(mut self, pattern: IntoRegex) -> Self {
+    pub fn body_matches<IntoRegex: Into<Regex>>(self, pattern: IntoRegex) -> Self {
         update_cell(&self.expectations, |e| {
             if e.body_matches.is_none() {
                 e.body_matches = Some(Vec::new());
@@ -3747,7 +3747,7 @@ impl When {
     ///
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
-    pub fn json_body<JsonValue: Into<Value>>(mut self, json_value: JsonValue) -> Self {
+    pub fn json_body<JsonValue: Into<Value>>(self, json_value: JsonValue) -> Self {
         update_cell(&self.expectations, |e| {
             e.json_body = Some(json_value.into());
         });
@@ -3877,7 +3877,7 @@ impl When {
     /// ```
     /// It's important that the partial JSON contains the full object hierarchy necessary to reach the target attribute.
     /// Irrelevant attributes such as `parent_attribute` and `child.other_attribute` can be omitted.
-    pub fn json_body_includes<IntoString: Into<String>>(mut self, partial: IntoString) -> Self {
+    pub fn json_body_includes<IntoString: Into<String>>(self, partial: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.json_body_includes.is_none() {
                 e.json_body_includes = Some(Vec::new());
@@ -3951,7 +3951,7 @@ impl When {
     /// ```
     /// It's important that the partial JSON contains the full object hierarchy necessary to reach the target attribute.
     /// Irrelevant attributes such as `parent_attribute` and `child.other_attribute` in the example can be omitted.
-    pub fn json_body_excludes<IntoString: Into<String>>(mut self, partial: IntoString) -> Self {
+    pub fn json_body_excludes<IntoString: Into<String>>(self, partial: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.json_body_excludes.is_none() {
                 e.json_body_excludes = Some(Vec::new());
@@ -4009,7 +4009,7 @@ impl When {
     /// # Returns
     /// `When`: Returns the modified `When` object with the new key-value pair added to the `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         key: KeyString,
         value: ValueString,
     ) -> Self {
@@ -4070,7 +4070,7 @@ impl When {
     /// # Returns
     /// `When`: Returns the modified `When` object with the new key-value pair added to the negative `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         key: KeyString,
         value: ValueString,
     ) -> Self {
@@ -4131,10 +4131,7 @@ impl When {
     /// # Returns
     /// `When`: Returns the modified `When` object with the new key existence requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
-    pub fn form_urlencoded_tuple_exists<IntoString: Into<String>>(
-        mut self,
-        key: IntoString,
-    ) -> Self {
+    pub fn form_urlencoded_tuple_exists<IntoString: Into<String>>(self, key: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.form_urlencoded_tuple_exists.is_none() {
                 e.form_urlencoded_tuple_exists = Some(Vec::new());
@@ -4192,10 +4189,7 @@ impl When {
     /// # Returns
     /// `When`: Returns the modified `When` object with the new key absence requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
-    pub fn form_urlencoded_tuple_missing<IntoString: Into<String>>(
-        mut self,
-        key: IntoString,
-    ) -> Self {
+    pub fn form_urlencoded_tuple_missing<IntoString: Into<String>>(self, key: IntoString) -> Self {
         update_cell(&self.expectations, |e| {
             if e.form_urlencoded_tuple_missing.is_none() {
                 e.form_urlencoded_tuple_missing = Some(Vec::new());
@@ -4255,7 +4249,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key-value substring requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_includes<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         key: KeyString,
         substring: ValueString,
     ) -> Self {
@@ -4317,7 +4311,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key-value substring exclusion requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_excludes<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         key: KeyString,
         substring: ValueString,
     ) -> Self {
@@ -4380,7 +4374,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key-value prefix requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_prefix<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         key: KeyString,
         prefix: ValueString,
     ) -> Self {
@@ -4443,7 +4437,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key-value prefix exclusion requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_prefix_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         key: KeyString,
         prefix: ValueString,
     ) -> Self {
@@ -4506,7 +4500,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key-value suffix requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_suffix<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         key: KeyString,
         suffix: ValueString,
     ) -> Self {
@@ -4569,7 +4563,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key-value suffix exclusion requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_suffix_not<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         key: KeyString,
         suffix: ValueString,
     ) -> Self {
@@ -4635,7 +4629,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key-value regex matching requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_matches<KeyRegex: Into<Regex>, ValueRegex: Into<Regex>>(
-        mut self,
+        self,
         key_regex: KeyRegex,
         value_regex: ValueRegex,
     ) -> Self {
@@ -4704,7 +4698,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key-value count requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_count<KeyRegex: Into<Regex>, ValueRegex: Into<Regex>>(
-        mut self,
+        self,
         key_regex: KeyRegex,
         value_regex: ValueRegex,
         count: usize,
@@ -4762,7 +4756,7 @@ impl When {
         note = "Please use the `is_true` and `is_false` function instead"
     )]
     pub fn matches(
-        mut self,
+        self,
         matcher: impl Fn(&HttpMockRequest) -> bool + Sync + Send + 'static,
     ) -> Self {
         return self.is_true(matcher);
@@ -4804,7 +4798,7 @@ impl When {
     /// # Returns
     /// `When`: Returns the modified `When` object with the new custom matcher added to the expectations.
     pub fn is_true(
-        mut self,
+        self,
         matcher: impl Fn(&HttpMockRequest) -> bool + Sync + Send + 'static,
     ) -> Self {
         update_cell(&self.expectations, |e| {
@@ -4852,7 +4846,7 @@ impl When {
     /// # Returns
     /// `When`: Returns the modified `When` object with the new custom matcher added to the expectations.
     pub fn is_false(
-        mut self,
+        self,
         matcher: impl Fn(&HttpMockRequest) -> bool + Sync + Send + 'static,
     ) -> Self {
         update_cell(&self.expectations, |e| {
@@ -4900,7 +4894,7 @@ impl When {
     ///
     /// # Returns
     /// `When`: The modified `When` instance with additional conditions applied, suitable for further chaining.
-    pub fn and(mut self, func: impl FnOnce(When) -> When) -> Self {
+    pub fn and(self, func: impl FnOnce(When) -> When) -> Self {
         func(self)
     }
     // @docs-group: Miscellaneous
@@ -4948,7 +4942,7 @@ impl Then {
     /// m.assert();
     /// assert_eq!(response.status(), 200);
     /// ```
-    pub fn status<U16: TryInto<u16>>(mut self, status: U16) -> Self
+    pub fn status<U16: TryInto<u16>>(self, status: U16) -> Self
     where
         <U16 as TryInto<u16>>::Error: std::fmt::Debug,
     {
@@ -4999,7 +4993,7 @@ impl Then {
     /// assert_eq!(response.status(), 200);
     /// assert_eq!(response.text().unwrap(), "ohi!");
     /// ```
-    pub fn body<SliceRef: AsRef<[u8]>>(mut self, body: SliceRef) -> Self {
+    pub fn body<SliceRef: AsRef<[u8]>>(self, body: SliceRef) -> Self {
         update_cell(&self.response_template, |r| {
             r.body = Some(HttpMockBytes::from(Bytes::copy_from_slice(body.as_ref())));
         });
@@ -5046,10 +5040,7 @@ impl Then {
     /// assert_eq!(response.status(), 200);
     /// assert_eq!(response.text().unwrap(), "ohi!");
     /// ```
-    pub fn body_from_file<IntoString: Into<String>>(
-        mut self,
-        resource_file_path: IntoString,
-    ) -> Self {
+    pub fn body_from_file<IntoString: Into<String>>(self, resource_file_path: IntoString) -> Self {
         let resource_file_path = resource_file_path.into();
         let path = Path::new(&resource_file_path);
         let absolute_path = match path.is_absolute() {
@@ -5120,7 +5111,7 @@ impl Then {
     /// assert_eq!(status, 200);
     /// assert_eq!(user["name"], "Hans");
     /// ```
-    pub fn json_body<V: Into<Value>>(mut self, body: V) -> Self {
+    pub fn json_body<V: Into<Value>>(self, body: V) -> Self {
         update_cell(&self.response_template, |r| {
             r.body = Some(HttpMockBytes::from(Bytes::from(body.into().to_string())));
         });
@@ -5245,7 +5236,7 @@ impl Then {
     /// );
     /// ```
     pub fn header<KeyString: Into<String>, ValueString: Into<String>>(
-        mut self,
+        self,
         name: KeyString,
         value: ValueString,
     ) -> Self {
@@ -5308,7 +5299,7 @@ impl Then {
     /// mock.assert();
     /// assert!(start_time.elapsed().unwrap() >= three_seconds);
     /// ```
-    pub fn delay<D: Into<Duration>>(mut self, duration: D) -> Self {
+    pub fn delay<D: Into<Duration>>(self, duration: D) -> Self {
         let duration = duration.into();
 
         // Ensure the delay duration does not exceed the maximum u64 milliseconds limit
@@ -5363,7 +5354,7 @@ impl Then {
     ///
     /// // The `and` method keeps the setup intuitively readable as a continuous chain
     /// ```
-    pub fn and(mut self, func: impl FnOnce(Then) -> Then) -> Self {
+    pub fn and(self, func: impl FnOnce(Then) -> Then) -> Self {
         func(self)
     }
     // @docs-group: Miscellaneous
@@ -5514,7 +5505,7 @@ impl Then {
     ///   handling path and will delay responses.
     /// - If you need to combine static defaults with dynamic tweaks, compute them inside
     ///   the closure (e.g., start from `HttpMockResponse::builder()` and adjust as needed).
-    pub fn respond_with<F>(mut self, f: F) -> Self
+    pub fn respond_with<F>(self, f: F) -> Self
     where
         F: Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync + 'static,
     {

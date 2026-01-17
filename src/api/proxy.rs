@@ -280,7 +280,7 @@ pub struct ForwardingRuleBuilder {
 
 impl ForwardingRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(
-        mut self,
+        self,
         key: Key,
         value: Value,
     ) -> Self {
@@ -290,7 +290,7 @@ impl ForwardingRuleBuilder {
         self
     }
 
-    pub fn filter<WhenSpecFn>(mut self, when: WhenSpecFn) -> Self
+    pub fn filter<WhenSpecFn>(self, when: WhenSpecFn) -> Self
     where
         WhenSpecFn: FnOnce(When),
     {
@@ -309,7 +309,7 @@ pub struct ProxyRuleBuilder {
 
 impl ProxyRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(
-        mut self,
+        self,
         key: Key,
         value: Value,
     ) -> Self {
@@ -319,7 +319,7 @@ impl ProxyRuleBuilder {
         self
     }
 
-    pub fn filter<WhenSpecFn>(mut self, when: WhenSpecFn) -> Self
+    pub fn filter<WhenSpecFn>(self, when: WhenSpecFn) -> Self
     where
         WhenSpecFn: FnOnce(When),
     {
@@ -336,7 +336,7 @@ pub struct RecordingRuleBuilder {
 }
 
 impl RecordingRuleBuilder {
-    pub fn record_request_header<IntoString: Into<String>>(mut self, header: IntoString) -> Self {
+    pub fn record_request_header<IntoString: Into<String>>(self, header: IntoString) -> Self {
         let mut config = self.config.take();
         config.record_headers.push(header.into());
         self.config.set(config);
@@ -344,7 +344,7 @@ impl RecordingRuleBuilder {
     }
 
     pub fn record_request_headers<IntoString: Into<String>>(
-        mut self,
+        self,
         headers: Vec<IntoString>,
     ) -> Self {
         let mut config = self.config.take();
@@ -355,13 +355,13 @@ impl RecordingRuleBuilder {
         self
     }
 
-    pub fn filter<WhenSpecFn>(mut self, when: WhenSpecFn) -> Self
+    pub fn filter<WhenSpecFn>(self, when: WhenSpecFn) -> Self
     where
         WhenSpecFn: FnOnce(When),
     {
         let mut config = self.config.take();
 
-        let mut request_requirements = Rc::new(Cell::new(config.request_requirements));
+        let request_requirements = Rc::new(Cell::new(config.request_requirements));
 
         when(When {
             expectations: request_requirements.clone(),
@@ -374,7 +374,7 @@ impl RecordingRuleBuilder {
         self
     }
 
-    pub fn record_response_delays(mut self, record: bool) -> Self {
+    pub fn record_response_delays(self, record: bool) -> Self {
         let mut config = self.config.take();
         config.record_response_delays = record;
         self.config.set(config);
