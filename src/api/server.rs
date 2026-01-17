@@ -1,47 +1,45 @@
-use crate::api::spec::{Then, When};
+#[cfg(feature = "record")]
+use std::path::PathBuf;
+use std::{
+    cell::Cell,
+    future::pending,
+    net::SocketAddr,
+    rc::Rc,
+    sync::{Arc, LazyLock},
+    thread,
+};
+
+use async_object_pool::Pool;
+use tokio::sync::oneshot::channel;
+
 #[cfg(feature = "remote")]
 use crate::api::RemoteMockServerAdapter;
-#[cfg(feature = "remote")]
-use crate::common::http::HttpMockHttpClient;
-
-use crate::{
-    api::{LocalMockServerAdapter, MockServerAdapter},
-    common::{
-        data::{MockDefinition, MockServerHttpResponse, RequestRequirements},
-        runtime,
-        util::{read_env, with_retry, Join},
-    },
-};
-
-#[cfg(feature = "proxy")]
-use crate::{
-    api::proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder},
-    common::data::{ForwardingRuleConfig, ProxyRuleConfig},
-};
-
 #[cfg(feature = "record")]
 use crate::api::{
     common::data::RecordingRuleConfig,
     mock::MockSet,
     proxy::{Recording, RecordingRuleBuilder},
 };
-
-#[cfg(feature = "record")]
-use std::path::PathBuf;
-
-use crate::server::{state::HttpMockStateManager, HttpMockServerBuilder};
-
-use crate::Mock;
-use async_object_pool::Pool;
-use std::{
-    cell::Cell,
-    future::pending,
-    net::{SocketAddr, ToSocketAddrs},
-    rc::Rc,
-    sync::{Arc, LazyLock},
-    thread,
+#[cfg(feature = "remote")]
+use crate::common::http::HttpMockHttpClient;
+#[cfg(feature = "proxy")]
+use crate::{
+    api::proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder},
+    common::data::{ForwardingRuleConfig, ProxyRuleConfig},
 };
-use tokio::sync::oneshot::channel;
+use crate::{
+    api::{
+        spec::{Then, When},
+        LocalMockServerAdapter, MockServerAdapter,
+    },
+    common::{
+        data::{MockDefinition, MockServerHttpResponse, RequestRequirements},
+        runtime,
+        util::{read_env, with_retry, Join},
+    },
+    server::{state::HttpMockStateManager, HttpMockServerBuilder},
+    Mock,
+};
 
 /// Represents a mock server designed to simulate HTTP server behaviors for testing purposes.
 /// This server intercepts HTTP requests and can be configured to return predetermined responses.
@@ -88,6 +86,7 @@ impl MockServer {
     /// This method requires the `remote` feature to be enabled.
     #[cfg(feature = "remote")]
     pub async fn connect_async(address: &str) -> Self {
+        use std::net::ToSocketAddrs;
         let addr = address
             .to_socket_addrs()
             .expect("Cannot parse address")

@@ -1,21 +1,19 @@
-use std::{convert::TryInto, fmt::Display, ops::Deref};
-
-use serde::{Deserialize, Serialize};
-
-use crate::common::data::{HttpMockRequest, Mismatch, RequestRequirements, Tokenizer};
-
-use crate::server::matchers::comparators::{
-    AnyValueComparator, BytesExactMatchComparator, BytesIncludesComparator, BytesPrefixComparator,
-    BytesSuffixComparator, FunctionMatchesRequestComparator, HostEqualsComparator,
-    HttpMockBytesPatternComparator, JSONContainsMatchComparator, JSONExactMatchComparator,
-    StringContainsComparator, StringEqualsComparator, StringPatternMatchComparator,
-    StringPrefixMatchComparator, StringRegexMatchComparator, StringSuffixMatchComparator,
-    U16ExactMatchComparator,
-};
-
-use crate::server::matchers::generic::{
-    FunctionValueMatcher, KeyValueOperator, MatchingStrategy, MultiValueCountMatcher,
-    MultiValueMatcher, SingleValueMatcher,
+use crate::{
+    common::data::{HttpMockRequest, Mismatch, RequestRequirements, Tokenizer},
+    server::matchers::{
+        comparators::{
+            AnyValueComparator, BytesExactMatchComparator, BytesIncludesComparator,
+            BytesPrefixComparator, BytesSuffixComparator, FunctionMatchesRequestComparator,
+            HostEqualsComparator, HttpMockBytesPatternComparator, JSONContainsMatchComparator,
+            JSONExactMatchComparator, StringContainsComparator, StringEqualsComparator,
+            StringPatternMatchComparator, StringPrefixMatchComparator, StringRegexMatchComparator,
+            StringSuffixMatchComparator, U16ExactMatchComparator,
+        },
+        generic::{
+            FunctionValueMatcher, KeyValueOperator, MatchingStrategy, MultiValueCountMatcher,
+            MultiValueMatcher, SingleValueMatcher,
+        },
+    },
 };
 
 pub mod comparators;

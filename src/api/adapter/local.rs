@@ -1,21 +1,20 @@
+use std::{net::SocketAddr, sync::Arc};
+
 use async_trait::async_trait;
+#[cfg(feature = "record")]
 use bytes::Bytes;
-use std::{borrow::Borrow, fmt::Debug, net::SocketAddr, sync::Arc};
-
-use futures_util::TryFutureExt;
-
-use crate::api::adapter::{MockServerAdapter, ServerAdapterError};
 
 use crate::{
-    api::adapter::ServerAdapterError::{MockNotFound, UpstreamError},
+    api::adapter::{
+        MockServerAdapter, ServerAdapterError,
+        ServerAdapterError::{MockNotFound, UpstreamError},
+    },
+    common::data::{
+        ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch,
+        ForwardingRuleConfig, MockDefinition, ProxyRuleConfig, RecordingRuleConfig,
+        RequestRequirements,
+    },
     server::state::{HttpMockStateManager, StateManager},
-};
-
-use crate::common::data::{ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording};
-
-use crate::common::data::{
-    ClosestMatch, ForwardingRuleConfig, MockDefinition, ProxyRuleConfig, RecordingRuleConfig,
-    RequestRequirements,
 };
 
 pub struct LocalMockServerAdapter {

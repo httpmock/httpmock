@@ -1,18 +1,19 @@
 use std::io::Write;
 
-use crate::common::{
-    data::{
-        ClosestMatch, Diff, DiffResult, FunctionComparison, KeyValueComparison,
-        KeyValueComparisonKeyValuePair, Mismatch, SingleValueComparison,
-    },
-    util::title_case,
-};
-
-use tabwriter::TabWriter;
-
-use crate::server::matchers::generic::MatchingStrategy;
 #[cfg(feature = "color")]
 use colored::Colorize;
+use tabwriter::TabWriter;
+
+use crate::{
+    common::{
+        data::{
+            ClosestMatch, Diff, DiffResult, FunctionComparison, KeyValueComparison,
+            KeyValueComparisonKeyValuePair, Mismatch, SingleValueComparison,
+        },
+        util::title_case,
+    },
+    server::matchers::generic::MatchingStrategy,
+};
 
 const QUOTED_TEXT: &'static str = "quoted for better readability";
 

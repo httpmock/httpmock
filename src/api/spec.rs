@@ -1,18 +1,18 @@
-use crate::prelude::HttpMockResponse;
+use std::{
+    cell::Cell, convert::TryInto, path::Path, rc::Rc, str::FromStr, sync::Arc, time::Duration,
+};
+
+use bytes::Bytes;
+use serde::{Deserialize, Serialize};
+use serde_json::Value;
+
 use crate::{
     common::{
         data::{MockServerHttpResponse, RequestRequirements},
         util::{get_test_resource_file_path, update_cell, HttpMockBytes},
     },
-    prelude::HttpMockRequest,
+    prelude::{HttpMockRequest, HttpMockResponse},
     Method, Regex,
-};
-use bytes::Bytes;
-use serde::{Deserialize, Serialize};
-use serde_json::Value;
-use std::{
-    cell::Cell, convert::TryInto, fs::read_to_string, path::Path, rc::Rc, str::FromStr, sync::Arc,
-    time::Duration,
 };
 
 /// Represents the conditions that an incoming HTTP request must satisfy to be handled by the mock server.
