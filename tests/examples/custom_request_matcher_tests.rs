@@ -19,6 +19,62 @@ fn my_custom_request_matcher_test() {
 }
 
 #[test]
+fn is_true_matcher_called_once_per_request() {
+    use httpmock::prelude::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    // Arrange
+    let server = MockServer::start();
+    let call_count = Arc::new(AtomicUsize::new(0));
+    let call_count_clone = call_count.clone();
+
+    let mock = server.mock(|when, then| {
+        when.is_true(move |_req| {
+            call_count_clone.fetch_add(1, Ordering::Relaxed);
+            true
+        });
+        then.status(200);
+    });
+
+    // Act
+    let response = reqwest::blocking::get(server.url("/test")).unwrap();
+
+    // Assert: The custom matcher should only be called once during request matching
+    assert_eq!(response.status(), 200);
+    assert_eq!(call_count.load(Ordering::Relaxed), 1);
+    mock.assert();
+}
+
+#[test]
+fn is_false_matcher_called_once_per_request() {
+    use httpmock::prelude::*;
+    use std::sync::atomic::{AtomicUsize, Ordering};
+    use std::sync::Arc;
+
+    // Arrange
+    let server = MockServer::start();
+    let call_count = Arc::new(AtomicUsize::new(0));
+    let call_count_clone = call_count.clone();
+
+    let mock = server.mock(|when, then| {
+        when.is_false(move |_req| {
+            call_count_clone.fetch_add(1, Ordering::Relaxed);
+            true
+        });
+        then.status(200);
+    });
+
+    // Act
+    let response = reqwest::blocking::get(server.url("/test")).unwrap();
+
+    // Assert: The custom matcher should only be called once during request matching
+    assert_eq!(response.status(), 200);
+    assert_eq!(call_count.load(Ordering::Relaxed), 1);
+    mock.assert();
+}
+
+#[test]
 fn dynamic_responder_test() {
     use httpmock::prelude::*;
     use reqwest::blocking::Client;
