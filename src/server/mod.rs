@@ -19,6 +19,46 @@ pub mod state;
 #[cfg(feature = "record")]
 mod persistence;
 
+#[cfg(feature = "record")]
+pub fn validate_mock_yaml(yaml: &str) -> Result<(), String> {
+    persistence::deserialize_mock_defs_from_yaml(yaml)
+        .map(|_| ())
+        .map_err(|e| e.to_string())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    #[cfg(feature = "record")]
+    fn test_validate_mock_yaml() {
+        let valid_yaml = r#"
+when:
+  method: GET
+  path: /hello
+then:
+  status: 200
+  body: world
+---
+when:
+  method: POST
+  path: /data
+then:
+  status: 201
+"#;
+        if let Err(e) = validate_mock_yaml(valid_yaml) {
+            panic!("Valid YAML failed: {}", e);
+        }
+
+        let invalid_yaml = r#"
+when:
+  method: INVALID
+"#;
+        assert!(validate_mock_yaml(invalid_yaml).is_err());
+    }
+}
+
 #[cfg(feature = "https")]
 mod tls;
 

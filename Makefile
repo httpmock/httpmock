@@ -62,6 +62,10 @@ certs:
 	cd certs && openssl genrsa -out ca.key 2048
 	cd certs && openssl req -x509 -new -nodes -key ca.key -sha256 -days 36525 -out ca.pem -subj "/CN=httpmock"
 
+.PHONY: interactive
+interactive:
+	cargo run --features standalone -- -i
+
 .PHONY: docker
 docker:
 	docker-compose build --no-cache
