@@ -60,7 +60,7 @@ fn is_false_matcher_called_once_per_request() {
     let mock = server.mock(|when, then| {
         when.is_false(move |_req| {
             call_count_clone.fetch_add(1, Ordering::Relaxed);
-            true
+            false
         });
         then.status(200);
     });

@@ -4836,9 +4836,9 @@ impl When {
     ///
     /// let m = server.mock(|when, then| {
     ///    when.is_false(|req: &HttpMockRequest| {
-    ///         req.uri().path().contains("es")
+    ///         req.uri().path().contains("hello")
     ///    });
-    ///    then.status(404);
+    ///    then.status(200);
     /// });
     ///
     /// // Act: Send the HTTP request
@@ -4846,7 +4846,7 @@ impl When {
     ///
     /// // Assert
     /// m.assert();
-    /// assert_eq!(response.status(), 404);
+    /// assert_eq!(response.status(), 200);
     /// ```
     ///
     /// # Returns

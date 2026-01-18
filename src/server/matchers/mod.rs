@@ -876,7 +876,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(FunctionValueMatcher {
             entity_name: "custom matcher function",
             matcher_function: "is_false",
-            comparator: Box::new(FunctionMatchesRequestComparator::new(false)),
+            comparator: Box::new(FunctionMatchesRequestComparator::new(true)),
             expectation: readers::expectations::is_false,
             request_value: readers::request_value::full_request,
             weight: 1,
