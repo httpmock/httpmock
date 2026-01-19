@@ -213,7 +213,7 @@ where
                 // body) to let Hyper proceed with the upgrade.
 
                 let authority = req.uri().authority().map(|a| a.to_string());
-                let on_upgrade = upgrade_on(req);
+                let on_upgrade = hyper::upgrade::on(req);
                 let server = self.clone();
 
                 spawn(async move {
