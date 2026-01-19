@@ -1218,6 +1218,9 @@ pub struct RecordingRuleConfig {
     pub request_requirements: RequestRequirements,
     pub record_headers: Vec<String>,
     pub record_response_delays: bool,
+    // NOTE! If empty (default), all headers are kept for backwards compatibility.
+    #[serde(default, skip_serializing_if = "Vec::is_empty")]
+    pub record_response_headers: Vec<String>,
 }
 
 #[derive(Serialize, Deserialize, Clone, Default)]

@@ -20,7 +20,7 @@ use crate::server::persistence::{deserialize_mock_defs_from_yaml, serialize_mock
 use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
 use bytes::Bytes;
 use std::{
-    collections::BTreeMap,
+    collections::{BTreeMap, HashSet},
     convert::{TryFrom, TryInto},
     sync::{Arc, Mutex},
     time::Duration,
@@ -669,6 +669,18 @@ fn build_mock_definition(
 
     if config.record_response_delays {
         response.delay = Some(time_taken.as_millis() as u64)
+    }
+
+    if !config.record_response_headers.is_empty() {
+        if let Some(headers) = &mut response.headers {
+            let headers_to_keep: HashSet<_> = config
+                .record_response_headers
+                .iter()
+                .map(|name| name.to_lowercase())
+                .collect();
+
+            headers.retain(|(name, _)| headers_to_keep.contains(&name.to_lowercase()));
+        }
     }
 
     Ok(MockDefinition { request, response })
