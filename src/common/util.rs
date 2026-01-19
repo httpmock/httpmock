@@ -419,23 +419,21 @@ pub fn is_none_or_empty<T>(option: &Option<Vec<T>>) -> bool {
 }
 
 pub fn read_file<P: AsRef<Path>>(absolute_resource_path: P) -> Result<Vec<u8>, String> {
-    let mut f = match File::open(&absolute_resource_path) {
-        Ok(opened_file) => opened_file,
-        Err(e) => return Err(e.to_string()),
-    };
     let mut buffer = Vec::new();
-    match f.read_to_end(&mut buffer) {
-        Ok(len) => tracing::trace!(
-            "Read {} bytes from file {:?}",
-            &len,
-            &absolute_resource_path
-                .as_ref()
-                .as_os_str()
-                .to_str()
-                .expect("Invalid file path")
-        ),
-        Err(e) => return Err(e.to_string()),
-    }
+
+    let len = File::open(&absolute_resource_path)
+        .and_then(|mut f| f.read_to_end(&mut buffer))
+        .map_err(|e| e.to_string())?;
+
+    tracing::trace!(
+        "Read {} bytes from file {:?}",
+        &len,
+        &absolute_resource_path
+            .as_ref()
+            .as_os_str()
+            .to_str()
+            .expect("Invalid file path")
+    );
 
     Ok(buffer)
 }
