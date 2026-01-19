@@ -380,21 +380,20 @@ where
             .try_into()
             .map_err(|err: DataError| RequestConversionError(err.to_string()))?;
 
-        let is_proxied = false;
         let start = Instant::now();
 
         #[cfg(feature = "proxy")]
-        let res = if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
-            self.forward(rule, req).await?
-        } else if let Some(rule) = self.state.find_proxy_rule(&internal_request)? {
-            is_proxied = true;
-            self.proxy(rule, req).await?
-        } else {
-            self.serve_mock(&internal_request).await?
-        };
+        let (res, is_proxied) =
+            if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
+                (self.forward(rule, req).await?, false)
+            } else if let Some(rule) = self.state.find_proxy_rule(&internal_request)? {
+                (self.proxy(rule, req).await?, true)
+            } else {
+                (self.serve_mock(&internal_request).await?, false)
+            };
 
         #[cfg(not(feature = "proxy"))]
-        let res = self.serve_mock(&internal_request).await?;
+        let (res, is_proxied) = (self.serve_mock(&internal_request).await?, false);
 
         #[cfg(feature = "record")]
         self.state
