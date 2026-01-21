@@ -345,7 +345,7 @@ impl PartialEq<Vec<u8>> for HttpMockBytes {
 
 impl PartialEq<Bytes> for HttpMockBytes {
     fn eq(&self, other: &Bytes) -> bool {
-        &self.0 == other
+        self.0 == other
     }
 }
 

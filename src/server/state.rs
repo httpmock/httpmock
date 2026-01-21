@@ -231,10 +231,10 @@ impl StateManager for HttpMockStateManager {
         };
 
         let req = non_matching_requests.get(closes_match_request_idx).unwrap();
-        let mismatches = get_request_mismatches(req, &requirements, &state.matchers);
+        let mismatches = get_request_mismatches(req, requirements, &state.matchers);
 
         Ok(Some(ClosestMatch {
-            request: HttpMockRequest::clone(&req),
+            request: HttpMockRequest::clone(req),
             request_index: closes_match_request_idx,
             mismatches,
         }))

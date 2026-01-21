@@ -154,7 +154,7 @@ impl HttpMockRequest {
         if let Some((_, host)) = self
             .headers
             .iter()
-            .find(|&&(ref k, _)| k.eq_ignore_ascii_case("host"))
+            .find(|(k, _)| k.eq_ignore_ascii_case("host"))
         {
             return Some(host.split(':').next().unwrap().to_string());
         }
@@ -186,7 +186,7 @@ impl HttpMockRequest {
         if let Some((_, host)) = self
             .headers
             .iter()
-            .find(|&&(ref k, _)| k.eq_ignore_ascii_case("host"))
+            .find(|(k, _)| k.eq_ignore_ascii_case("host"))
         {
             if let Some(port_str) = host.split(':').nth(1) {
                 if let Ok(port) = port_str.parse::<u16>() {
@@ -224,7 +224,7 @@ impl HttpMockRequest {
         let mut header_map: http::HeaderMap<http::HeaderValue> = http::HeaderMap::new();
         for (key, value) in &self.headers {
             let header_name = http::HeaderName::from_bytes(key.as_bytes()).unwrap();
-            let header_value = http::HeaderValue::from_str(&value).unwrap();
+            let header_value = http::HeaderValue::from_str(value).unwrap();
 
             header_map.append(header_name, header_value);
         }
@@ -341,7 +341,7 @@ where
             .get::<RequestMetadata>()
             .unwrap_or_else(|| panic!("request metadata was not added to the request"));
 
-        let headers = http_headers_to_vec(&value)?;
+        let headers = http_headers_to_vec(value)?;
 
         // Convert the (cloned) body into Bytes, supporting several common body types.
         let body_bytes = value.body().clone().into_httpmock_bytes()?;
@@ -1738,7 +1738,7 @@ fn from_bytes_to_string(data: Option<HttpMockBytes>) -> (Option<String>, Option<
         if let Ok(text_str) = std::str::from_utf8(&bytes_container.to_bytes()) {
             text_representation = Some(text_str.to_string());
         } else {
-            base64_representation = Some(base64::encode(&bytes_container.to_bytes()));
+            base64_representation = Some(base64::encode(bytes_container.to_bytes()));
         }
     }
 

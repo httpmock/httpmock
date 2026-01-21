@@ -31,7 +31,7 @@ pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option
     let mut fail_text = None;
 
     for (idx, mm) in closest_match.mismatches.iter().enumerate() {
-        let (mm_output, fail_text_pair) = create_mismatch_output(idx, &mm);
+        let (mm_output, fail_text_pair) = create_mismatch_output(idx, mm);
 
         if fail_text.is_none() {
             if let Some(text) = fail_text_pair {

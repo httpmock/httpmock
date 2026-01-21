@@ -9,12 +9,12 @@ pub(crate) fn block_on_current_thread<F, O>(f: F) -> O
 where
     F: Future<Output = O>,
 {
-    let mut runtime = tokio::runtime::Builder::new_current_thread()
+    let runtime = tokio::runtime::Builder::new_current_thread()
         .enable_all()
         .build()
         .expect("Cannot build local tokio runtime");
 
-    LocalSet::new().block_on(&mut runtime, f)
+    LocalSet::new().block_on(&runtime, f)
 }
 
 pub(crate) fn new(worker_threads: usize, blocking_threads: usize) -> std::io::Result<Runtime> {

@@ -1715,7 +1715,7 @@ pub fn regex_string_distance(
     }
 
     let rv = req_value.map_or("", |s| s.as_str());
-    let unmatched_len = regex_unmatched_length(rv, &mock_value.unwrap());
+    let unmatched_len = regex_unmatched_length(rv, mock_value.unwrap());
 
     match negated {
         true => rv.len() - unmatched_len,
