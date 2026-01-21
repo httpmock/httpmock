@@ -304,8 +304,8 @@ where
                         }),
                         expected_count: None,
                         actual_count: None,
-                        all: (&req_values)
-                            .into_iter()
+                        all: (req_values)
+                            .iter()
                             .map(|(key, value)| KeyValueComparisonKeyValuePair {
                                 key: key.to_string(),
                                 value: value.as_ref().map(|v| v.to_string()),
@@ -475,8 +475,8 @@ where
                         }),
                         expected_count: Some(*expected_count),
                         actual_count: Some(actual_count),
-                        all: (&req_values)
-                            .into_iter()
+                        all: (req_values)
+                            .iter()
                             .map(|(key, value)| KeyValueComparisonKeyValuePair {
                                 key: key.to_string(),
                                 value: value.as_ref().map(|v| v.to_string()),

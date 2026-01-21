@@ -734,7 +734,7 @@ fn get_min_distance_requests(request_distances: &BTreeMap<usize, usize>) -> Vec<
     };
 
     request_distances
-        .into_iter()
+        .iter()
         .filter(|(idx, distance)| **distance == max)
         .map(|(idx, _)| *idx)
         .collect()
@@ -747,8 +747,6 @@ fn get_request_mismatches(
 ) -> Vec<Mismatch> {
     matchers
         .iter()
-        .map(|mat| mat.mismatches(req, mock_rr))
-        .flatten()
-        .into_iter()
+        .flat_map(|mat| mat.mismatches(req, mock_rr))
         .collect()
 }
