@@ -27,9 +27,9 @@ pub(crate) fn new(worker_threads: usize, blocking_threads: usize) -> std::io::Re
         "Parameter blocking_threads must be larger than 0"
     );
 
-    return tokio::runtime::Builder::new_multi_thread()
+    tokio::runtime::Builder::new_multi_thread()
         .worker_threads(worker_threads)
         .max_blocking_threads(blocking_threads) // This is a maximum
         .enable_all()
-        .build();
+        .build()
 }

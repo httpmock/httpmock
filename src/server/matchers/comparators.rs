@@ -89,10 +89,10 @@ impl ValueComparator<Value, Value> for JSONContainsMatchComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "excludes";
+            "excludes"
+        } else {
+            "includes"
         }
-
-        return "includes";
     }
 
     fn distance(&self, mock_value: &Option<&Value>, req_value: &Option<&Value>) -> usize {
@@ -128,10 +128,10 @@ impl ValueComparator<String, String> for HostEqualsComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "not equal to";
+            "not equal to"
+        } else {
+            "equals"
         }
-
-        return "equals";
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -168,10 +168,10 @@ impl ValueComparator<String, String> for StringEqualsComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "not equal to";
+            "not equal to"
+        } else {
+            "equals"
         }
-
-        return "equals";
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -203,10 +203,10 @@ impl ValueComparator<String, String> for StringContainsComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "excludes";
+            "excludes"
+        } else {
+            "includes"
         }
-
-        return "includes";
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -288,10 +288,10 @@ impl ValueComparator<String, String> for StringPrefixMatchComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "prefix not";
+            "prefix not"
+        } else {
+            "has prefix"
         }
-
-        return "has prefix";
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -323,10 +323,10 @@ impl ValueComparator<String, String> for StringSuffixMatchComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "suffix not";
+            "suffix not"
+        } else {
+            "has suffix"
         }
-
-        return "has suffix";
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -358,10 +358,10 @@ impl ValueComparator<HttpMockRegex, String> for StringPatternMatchComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "does not match regex";
+            "does not match regex"
+        } else {
+            "matches regex"
         }
-
-        return "matches regex";
     }
 
     fn distance(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&String>) -> usize {
@@ -429,12 +429,12 @@ impl StringRegexMatchComparator {
 
 impl ValueComparator<HttpMockRegex, String> for StringRegexMatchComparator {
     fn matches(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&String>) -> bool {
-        return match (mock_value, req_value) {
+        match (mock_value, req_value) {
             (None, Some(_)) => true,
             (Some(_), None) => false,
             (Some(mv), Some(rv)) => mv.0.is_match(&rv),
             (None, None) => true,
-        };
+        }
     }
 
     fn name(&self) -> &str {
@@ -471,10 +471,10 @@ impl ValueComparator<u16, u16> for U16ExactMatchComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "not equal to";
+            "not equal to"
+        } else {
+            "equals"
         }
-
-        return "equals";
     }
 
     fn distance(&self, mock_value: &Option<&u16>, req_value: &Option<&u16>) -> usize {
@@ -501,15 +501,15 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesExactMatchComparator
         mock_value: &Option<&HttpMockBytes>,
         req_value: &Option<&HttpMockBytes>,
     ) -> bool {
-        return comparison::bytes_equal(self.negated, &mock_value, &req_value);
+        comparison::bytes_equal(self.negated, &mock_value, &req_value)
     }
 
     fn name(&self) -> &str {
         if self.negated {
-            return "not equal to";
+            "not equal to"
+        } else {
+            "equals"
         }
-
-        return "equals";
     }
 
     fn distance(
@@ -555,10 +555,10 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesIncludesComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "excludes";
+            "excludes"
+        } else {
+            "includes"
         }
-
-        return "includes";
     }
 
     fn distance(
@@ -646,10 +646,10 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
         if self.negated {
             // This is why we need the equal_weight_distance_for function:
             // to calculate the distance as the number of differing characters.
-            return compared_window - distance;
+            compared_window - distance
+        } else {
+            distance
         }
-
-        return distance;
     }
 }
 
@@ -677,10 +677,10 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
 
     fn name(&self) -> &str {
         if self.negated {
-            return "suffix not";
+            "suffix not"
+        } else {
+            "has suffix"
         }
-
-        return "has suffix";
     }
 
     fn distance(
@@ -719,10 +719,10 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
         if self.negated {
             // This is why we need the equal_weight_distance_for function:
             // to calculate the distance as the number of differing characters.
-            return compared_window - distance;
+            compared_window - distance
+        } else {
+            distance
         }
-
-        return distance;
     }
 }
 
@@ -805,7 +805,7 @@ impl ValueComparator<Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Sen
             };
         }
 
-        return result;
+        result
     }
 }
 

@@ -238,18 +238,18 @@ where
     }
 
     fn handle_ping(&self) -> Result<Response<Bytes>, Error> {
-        return response::<()>(StatusCode::OK, None);
+        response::<()>(StatusCode::OK, None)
     }
 
     fn handle_reset(&self) -> Result<Response<Bytes>, Error> {
         self.state.reset();
-        return response::<()>(StatusCode::NO_CONTENT, None);
+        response::<()>(StatusCode::NO_CONTENT, None)
     }
 
     fn handle_add_mock(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let definition: MockDefinition = parse_json_body(req)?;
         let active_mock = self.state.add_mock(definition, false)?;
-        return response(StatusCode::CREATED, Some(active_mock));
+        response(StatusCode::CREATED, Some(active_mock))
     }
 
     fn handle_read_mock(&self, params: Path) -> Result<Response<Bytes>, Error> {
@@ -257,7 +257,7 @@ where
         let status_code = active_mock
             .as_ref()
             .map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
-        return response(status_code, active_mock);
+        response(status_code, active_mock)
     }
 
     fn handle_delete_mock(&self, params: Path) -> Result<Response<Bytes>, Error> {
@@ -267,17 +267,17 @@ where
         } else {
             StatusCode::NOT_FOUND
         };
-        return response::<()>(status_code, None);
+        response::<()>(status_code, None)
     }
 
     fn handle_delete_all_mocks(&self) -> Result<Response<Bytes>, Error> {
         self.state.delete_all_mocks();
-        return response::<()>(StatusCode::NO_CONTENT, None);
+        response::<()>(StatusCode::NO_CONTENT, None)
     }
 
     fn handle_delete_history(&self) -> Result<Response<Bytes>, Error> {
         self.state.delete_history();
-        return response::<()>(StatusCode::NO_CONTENT, None);
+        response::<()>(StatusCode::NO_CONTENT, None)
     }
 
     fn handle_verify(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
@@ -286,13 +286,13 @@ where
         let status_code = closest_match
             .as_ref()
             .map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
-        return response(status_code, closest_match);
+        response(status_code, closest_match)
     }
 
     fn handle_add_forwarding_rule(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let config: ForwardingRuleConfig = parse_json_body(req)?;
         let active_forwarding_rule = self.state.create_forwarding_rule(config);
-        return response(StatusCode::CREATED, Some(active_forwarding_rule));
+        response(StatusCode::CREATED, Some(active_forwarding_rule))
     }
 
     fn handle_delete_forwarding_rule(&self, params: Path) -> Result<Response<Bytes>, Error> {
@@ -302,18 +302,18 @@ where
         } else {
             StatusCode::NOT_FOUND
         };
-        return response::<()>(status_code, None);
+        response::<()>(status_code, None)
     }
 
     fn handle_delete_all_forwarding_rules(&self) -> Result<Response<Bytes>, Error> {
         self.state.delete_all_forwarding_rules();
-        return response::<()>(StatusCode::NO_CONTENT, None);
+        response::<()>(StatusCode::NO_CONTENT, None)
     }
 
     fn handle_add_proxy_rule(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let config: ProxyRuleConfig = parse_json_body(req)?;
         let active_proxy_rule = self.state.create_proxy_rule(config);
-        return response(StatusCode::CREATED, Some(active_proxy_rule));
+        response(StatusCode::CREATED, Some(active_proxy_rule))
     }
 
     fn handle_delete_proxy_rule(&self, params: Path) -> Result<Response<Bytes>, Error> {
@@ -323,12 +323,12 @@ where
         } else {
             StatusCode::NOT_FOUND
         };
-        return response::<()>(status_code, None);
+        response::<()>(status_code, None)
     }
 
     fn handle_delete_all_proxy_rules(&self) -> Result<Response<Bytes>, Error> {
         self.state.delete_all_proxy_rules();
-        return response::<()>(StatusCode::NO_CONTENT, None);
+        response::<()>(StatusCode::NO_CONTENT, None)
     }
 
     #[cfg(feature = "record")]
@@ -553,9 +553,9 @@ where
             .map_err(|e| ResponseBodyConversionError(e))?);
     }
 
-    return Ok(builder
+    Ok(builder
         .body(Bytes::new())
-        .map_err(|e| ResponseBodyConversionError(e))?);
+        .map_err(|e| ResponseBodyConversionError(e))?)
 }
 
 fn parse_json_body<T>(req: Request<Bytes>) -> Result<T, Error>

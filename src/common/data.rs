@@ -209,7 +209,7 @@ impl HttpMockRequest {
             return 443;
         }
 
-        return 80;
+        80
     }
 
     pub fn method(&self) -> http::Method {
@@ -1816,7 +1816,7 @@ fn from_string_to_bytes_choose(
         _ => None, // Handle unexpected combinations or both None
     };
 
-    return request_body.map(|s| HttpMockBytes::from(Bytes::from(s)));
+    request_body.map(|s| HttpMockBytes::from(Bytes::from(s)))
 }
 
 impl TryFrom<&MockDefinition> for StaticMockDefinition {

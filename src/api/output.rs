@@ -348,10 +348,10 @@ fn create_diff_result_output(dd: &DiffResult) -> String {
 #[inline]
 fn times_str<'a>(v: usize) -> &'a str {
     if v == 1 {
-        return "time";
+        "time"
+    } else {
+        "times"
     }
-
-    return "times";
 }
 
 fn quote_if_whitespace(s: &str) -> (String, bool) {

@@ -162,7 +162,7 @@ where
         req_values: &[(RK, Option<RV>)],
         mock_values: &'a Vec<(&'a EK, Option<&'a EV>)>,
     ) -> Vec<&'a (&'a EK, Option<&'a EV>)> {
-        return mock_values
+        mock_values
             .iter()
             .filter(|(ek, ev)| {
                 if self.key_required {
@@ -184,13 +184,13 @@ where
                         _ => true,
                     };
 
-                    return match self.operator {
+                    match self.operator {
                         KeyValueOperator::NAND => !(key_matches && value_matches),
                         KeyValueOperator::AND => key_matches && value_matches,
                         KeyValueOperator::NOR => !(key_matches || value_matches),
                         KeyValueOperator::OR => key_matches || value_matches,
                         KeyValueOperator::IMPLICATION => !key_matches || value_matches,
-                    };
+                    }
                 };
 
                 let is_match = match self.matching_strategy {
@@ -199,9 +199,9 @@ where
                 };
 
                 // We negate here, since we are filtering for "unmatched" expectations -> true = unmatched
-                return !is_match;
+                !is_match
             })
-            .collect();
+            .collect()
     }
 
     fn find_best_match<'a>(

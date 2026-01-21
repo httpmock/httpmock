@@ -4759,7 +4759,7 @@ impl When {
         self,
         matcher: impl Fn(&HttpMockRequest) -> bool + Sync + Send + 'static,
     ) -> Self {
-        return self.is_true(matcher);
+        self.is_true(matcher)
     }
     // @docs-group: Custom
 

@@ -176,12 +176,12 @@ pub fn distance_for_prefix(
         .as_deref()
         .map(|s| &s[..mock_slice_len.min(s.len())]);
 
-    return distance_for_substring(
+    distance_for_substring(
         case_sensitive,
         negated,
         &mock_slice.map(|v| v.as_str()),
         &req_slice,
-    );
+    )
 }
 
 #[cfg(test)]
@@ -503,12 +503,12 @@ pub fn distance_for_suffix(
         .as_deref()
         .map(|s| &s[..mock_slice_len.min(s.len())]);
 
-    return distance_for_substring(
+    distance_for_substring(
         case_sensitive,
         negated,
         &mock_slice.map(|v| v.as_str()),
         &req_slice,
-    );
+    )
 }
 
 pub fn string_contains(
@@ -963,7 +963,7 @@ pub fn hostname_equals(
         }
     }
 
-    return string_equals(false, negated, mock_value, req_value);
+    string_equals(false, negated, mock_value, req_value)
 }
 
 #[cfg(test)]
@@ -1717,10 +1717,10 @@ pub fn regex_string_distance(
     let rv = req_value.map_or("", |s| s.as_str());
     let unmatched_len = regex_unmatched_length(rv, &mock_value.unwrap());
 
-    return match negated {
+    match negated {
         true => rv.len() - unmatched_len,
         false => unmatched_len,
-    };
+    }
 }
 
 #[cfg(test)]
