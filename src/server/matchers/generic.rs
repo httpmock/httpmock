@@ -159,10 +159,10 @@ where
 {
     fn find_unmatched<'a>(
         &self,
-        req_values: &Vec<(RK, Option<RV>)>,
+        req_values: &[(RK, Option<RV>)],
         mock_values: &'a Vec<(&'a EK, Option<&'a EV>)>,
     ) -> Vec<&'a (&'a EK, Option<&'a EV>)> {
-        return mock_values
+        mock_values
             .iter()
             .filter(|(ek, ev)| {
                 if self.key_required {
@@ -184,13 +184,13 @@ where
                         _ => true,
                     };
 
-                    return match self.operator {
+                    match self.operator {
                         KeyValueOperator::NAND => !(key_matches && value_matches),
                         KeyValueOperator::AND => key_matches && value_matches,
                         KeyValueOperator::NOR => !(key_matches || value_matches),
                         KeyValueOperator::OR => key_matches || value_matches,
                         KeyValueOperator::IMPLICATION => !key_matches || value_matches,
-                    };
+                    }
                 };
 
                 let is_match = match self.matching_strategy {
@@ -199,9 +199,9 @@ where
                 };
 
                 // We negate here, since we are filtering for "unmatched" expectations -> true = unmatched
-                return !is_match;
+                !is_match
             })
-            .collect();
+            .collect()
     }
 
     fn find_best_match<'a>(
@@ -241,12 +241,12 @@ where
     RV: Display,
 {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
-        let mock_values = (self.expectation)(mock).unwrap_or(Vec::new());
+        let mock_values = (self.expectation)(mock).unwrap_or_default();
         if mock_values.is_empty() {
             return true;
         }
 
-        let req_values = (self.request_value)(req).unwrap_or(Vec::new());
+        let req_values = (self.request_value)(req).unwrap_or_default();
         self.find_unmatched(&req_values, &mock_values).is_empty()
     }
 
@@ -304,8 +304,8 @@ where
                         }),
                         expected_count: None,
                         actual_count: None,
-                        all: (&req_values)
-                            .into_iter()
+                        all: (req_values)
+                            .iter()
                             .map(|(key, value)| KeyValueComparisonKeyValuePair {
                                 key: key.to_string(),
                                 value: value.as_ref().map(|v| v.to_string()),
@@ -426,7 +426,7 @@ where
             return true;
         }
 
-        let req_values = (self.request_value)(req).unwrap_or(Vec::new());
+        let req_values = (self.request_value)(req).unwrap_or_default();
         self.find_unmatched(&req_values, &mock_values).is_empty()
     }
 
@@ -475,8 +475,8 @@ where
                         }),
                         expected_count: Some(*expected_count),
                         actual_count: Some(actual_count),
-                        all: (&req_values)
-                            .into_iter()
+                        all: (req_values)
+                            .iter()
                             .map(|(key, value)| KeyValueComparisonKeyValuePair {
                                 key: key.to_string(),
                                 value: value.as_ref().map(|v| v.to_string()),
@@ -506,11 +506,7 @@ pub(crate) struct FunctionValueMatcher<S, T> {
 }
 
 impl<S, T> FunctionValueMatcher<S, T> {
-    fn get_unmatched<'a>(
-        &self,
-        req_value: &Option<&T>,
-        mock_values: &Option<Vec<&'a S>>,
-    ) -> Vec<usize> {
+    fn get_unmatched(&self, req_value: &Option<&T>, mock_values: &Option<Vec<&S>>) -> Vec<usize> {
         let mock_values = match mock_values {
             None => return Vec::new(),
             Some(mv) => mv.to_vec(),
@@ -528,8 +524,8 @@ impl<S, T> FunctionValueMatcher<S, T> {
         mock_values
             .into_iter()
             .enumerate()
-            .filter(|(idx, e)| !self.comparator.matches(&Some(e), &Some(req_value)))
-            .map(|(idx, e)| (idx))
+            .filter(|(_idx, e)| !self.comparator.matches(&Some(e), &Some(req_value)))
+            .map(|(idx, _e)| (idx))
             .collect()
     }
 }
@@ -578,8 +574,6 @@ impl<S, T> Matcher for FunctionValueMatcher<S, T> {
     }
 }
 
-#[inline]
-#[inline]
 #[inline]
 pub fn diff_str(base: &str, edit: &str, tokenizer: Tokenizer) -> DiffResult {
     let changes = match tokenizer {

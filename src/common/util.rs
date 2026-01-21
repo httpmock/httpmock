@@ -40,7 +40,7 @@ where
         if result.is_ok() {
             return result;
         } else {
-            Delay::new(Duration::from_secs(1 * i as u64)).await;
+            Delay::new(Duration::from_secs(i as u64)).await;
         }
         result = (f)().await;
     }
@@ -135,10 +135,7 @@ mod test {
 
     #[test]
     fn with_retry_error_test() {
-        let result: Result<(), &str> = with_retry(1, || async {
-            return Err("test error");
-        })
-        .join();
+        let result: Result<(), &str> = with_retry(1, || async { Err("test error") }).join();
 
         assert_eq!(result.is_err(), true);
         assert_eq!(result.err().unwrap(), "test error")
@@ -197,7 +194,7 @@ impl HttpMockBytes {
 
         self.0
             .as_ref()
-            .windows(substring.as_bytes().len())
+            .windows(substring.len())
             .any(|window| window == substring.as_bytes())
     }
 
@@ -237,10 +234,10 @@ impl HttpMockBytes {
     /// # Returns
     /// A `Cow<str>` which is either borrowed if the bytes are valid UTF-8 or owned if conversion was required.
     pub fn to_maybe_lossy_str(&self) -> Cow<str> {
-        return match std::str::from_utf8(&self.0) {
+        match std::str::from_utf8(&self.0) {
             Ok(valid_str) => Cow::Borrowed(valid_str),
             Err(_) => Cow::Owned(String::from_utf8_lossy(&self.0).to_string()),
-        };
+        }
     }
 }
 
@@ -348,7 +345,7 @@ impl PartialEq<Vec<u8>> for HttpMockBytes {
 
 impl PartialEq<Bytes> for HttpMockBytes {
     fn eq(&self, other: &Bytes) -> bool {
-        &self.0 == other
+        self.0 == other
     }
 }
 

@@ -154,7 +154,7 @@ impl HttpMockRequest {
         if let Some((_, host)) = self
             .headers
             .iter()
-            .find(|&&(ref k, _)| k.eq_ignore_ascii_case("host"))
+            .find(|(k, _)| k.eq_ignore_ascii_case("host"))
         {
             return Some(host.split(':').next().unwrap().to_string());
         }
@@ -186,7 +186,7 @@ impl HttpMockRequest {
         if let Some((_, host)) = self
             .headers
             .iter()
-            .find(|&&(ref k, _)| k.eq_ignore_ascii_case("host"))
+            .find(|(k, _)| k.eq_ignore_ascii_case("host"))
         {
             if let Some(port_str) = host.split(':').nth(1) {
                 if let Ok(port) = port_str.parse::<u16>() {
@@ -209,7 +209,7 @@ impl HttpMockRequest {
             return 443;
         }
 
-        return 80;
+        80
     }
 
     pub fn method(&self) -> http::Method {
@@ -224,7 +224,7 @@ impl HttpMockRequest {
         let mut header_map: http::HeaderMap<http::HeaderValue> = http::HeaderMap::new();
         for (key, value) in &self.headers {
             let header_name = http::HeaderName::from_bytes(key.as_bytes()).unwrap();
-            let header_value = http::HeaderValue::from_str(&value).unwrap();
+            let header_value = http::HeaderValue::from_str(value).unwrap();
 
             header_map.append(header_name, header_value);
         }
@@ -268,7 +268,7 @@ impl HttpMockRequest {
         self.body.to_string()
     }
 
-    pub fn body_ref<'a>(&'a self) -> &'a [u8] {
+    pub fn body_ref(&self) -> &[u8] {
         self.body.as_ref()
     }
 
@@ -341,7 +341,7 @@ where
             .get::<RequestMetadata>()
             .unwrap_or_else(|| panic!("request metadata was not added to the request"));
 
-        let headers = http_headers_to_vec(&value)?;
+        let headers = http_headers_to_vec(value)?;
 
         // Convert the (cloned) body into Bytes, supporting several common body types.
         let body_bytes = value.body().clone().into_httpmock_bytes()?;
@@ -529,7 +529,7 @@ impl IntoMockBytes for Box<[u8]> {
     }
 }
 
-impl<'a> IntoMockBytes for std::borrow::Cow<'a, [u8]> {
+impl IntoMockBytes for std::borrow::Cow<'_, [u8]> {
     fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
         Ok(match self {
             std::borrow::Cow::Borrowed(b) => bytes::Bytes::copy_from_slice(b),
@@ -538,7 +538,7 @@ impl<'a> IntoMockBytes for std::borrow::Cow<'a, [u8]> {
     }
 }
 
-impl<'a> IntoMockBytes for std::borrow::Cow<'a, str> {
+impl IntoMockBytes for std::borrow::Cow<'_, str> {
     fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
         Ok(match self {
             std::borrow::Cow::Borrowed(s) => bytes::Bytes::copy_from_slice(s.as_bytes()),
@@ -1663,7 +1663,7 @@ fn from_method_vec(value: Option<Vec<Method>>) -> Option<Vec<String>> {
 }
 
 fn from_pattern_vec(patterns: Option<Vec<HttpMockRegex>>) -> Option<Vec<HttpMockRegex>> {
-    patterns.map(|vec| vec.iter().cloned().collect())
+    patterns.map(|vec| vec.to_vec())
 }
 
 fn from_name_value_string_pair_vec(
@@ -1738,7 +1738,7 @@ fn from_bytes_to_string(data: Option<HttpMockBytes>) -> (Option<String>, Option<
         if let Ok(text_str) = std::str::from_utf8(&bytes_container.to_bytes()) {
             text_representation = Some(text_str.to_string());
         } else {
-            base64_representation = Some(base64::encode(&bytes_container.to_bytes()));
+            base64_representation = Some(base64::encode(bytes_container.to_bytes()));
         }
     }
 
@@ -1816,7 +1816,7 @@ fn from_string_to_bytes_choose(
         _ => None, // Handle unexpected combinations or both None
     };
 
-    return request_body.map(|s| HttpMockBytes::from(Bytes::from(s)));
+    request_body.map(|s| HttpMockBytes::from(Bytes::from(s)))
 }
 
 impl TryFrom<&MockDefinition> for StaticMockDefinition {
