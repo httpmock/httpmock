@@ -132,7 +132,7 @@ fn handle_key_value_comparison(
     if let Some(key) = &comparison.key {
         let expected = match quote_if_whitespace(&key.expected) {
             (actual, true) => format!("{} ({})", actual, &QUOTED_TEXT),
-            (actual, false) => format!("{}", actual),
+            (actual, false) => actual.to_string(),
         };
         writeln!(tw, "\tkey\t[{}]\t{}", key.operator, expected).unwrap();
     }
@@ -140,7 +140,7 @@ fn handle_key_value_comparison(
     if let Some(value) = &comparison.value {
         let expected = match quote_if_whitespace(&value.expected) {
             (expected, true) => format!("{} ({})", expected, &QUOTED_TEXT),
-            (expected, false) => format!("{}", expected),
+            (expected, false) => expected.to_string(),
         };
         writeln!(tw, "\tvalue\t[{}]\t{}", value.operator, expected).unwrap();
     }
@@ -187,7 +187,7 @@ fn handle_key_value_comparison(
                     most_similar, mismatch.entity, value
                 )
                 .unwrap();
-                (format!("{}", value), format!("{}", value))
+                (value.to_string(), value.to_string())
             }
             (Some(key), None) => {
                 writeln!(
@@ -196,7 +196,7 @@ fn handle_key_value_comparison(
                     most_similar, mismatch.entity, key
                 )
                 .unwrap();
-                (format!("{}", key), format!("{}", key))
+                (key.to_string(), key.to_string())
             }
             (None, None) => {
                 let msg = match &mismatch.matching_strategy {
