@@ -122,14 +122,16 @@ where
 
         if let Some((matched_path, params)) = self.path_tree.find(&path) {
             match matched_path {
-                RoutePath::Ping => match method {
-                    Method::GET => return self.handle_ping(),
-                    _ => {}
-                },
-                RoutePath::Reset => match method {
-                    Method::DELETE => return self.handle_reset(),
-                    _ => {}
-                },
+                RoutePath::Ping => {
+                    if method == Method::GET {
+                        return self.handle_ping();
+                    }
+                }
+                RoutePath::Reset => {
+                    if method == Method::DELETE {
+                        return self.handle_reset();
+                    }
+                }
                 RoutePath::SingleMock => match method {
                     Method::GET => return self.handle_read_mock(params),
                     Method::DELETE => return self.handle_delete_mock(params),
@@ -140,14 +142,16 @@ where
                     Method::DELETE => return self.handle_delete_all_mocks(),
                     _ => {}
                 },
-                RoutePath::History => match method {
-                    Method::DELETE => return self.handle_delete_history(),
-                    _ => {}
-                },
-                RoutePath::Verify => match method {
-                    Method::POST => return self.handle_verify(req),
-                    _ => {}
-                },
+                RoutePath::History => {
+                    if method == Method::DELETE {
+                        return self.handle_delete_history();
+                    }
+                }
+                RoutePath::Verify => {
+                    if method == Method::POST {
+                        return self.handle_verify(req);
+                    }
+                }
                 #[cfg(feature = "proxy")]
                 RoutePath::ForwardingRuleCollection => match method {
                     Method::POST => return self.handle_add_forwarding_rule(req),
@@ -512,9 +516,8 @@ where
                 });
 
         // Convert via your TryFrom<HttpMockResponse> impl
-        let http_resp: http::Response<bytes::Bytes> = resp_def
-            .try_into()
-            .map_err(|e| ResponseDataConversionError(e))?;
+        let http_resp: http::Response<bytes::Bytes> =
+            resp_def.try_into().map_err(ResponseDataConversionError)?;
 
         Ok(http_resp)
     }
@@ -545,17 +548,16 @@ where
     if let Some(body_obj) = body {
         builder = builder.header("content-type", "application/json");
 
-        let body_bytes =
-            serde_json::to_vec(&body_obj).map_err(|e| ResponseBodySerializeError(e))?;
+        let body_bytes = serde_json::to_vec(&body_obj).map_err(ResponseBodySerializeError)?;
 
-        return Ok(builder
+        return builder
             .body(Bytes::from(body_bytes))
-            .map_err(|e| ResponseBodyConversionError(e))?);
+            .map_err(ResponseBodyConversionError);
     }
 
-    Ok(builder
+    builder
         .body(Bytes::new())
-        .map_err(|e| ResponseBodyConversionError(e))?)
+        .map_err(ResponseBodyConversionError)
 }
 
 fn parse_json_body<T>(req: Request<Bytes>) -> Result<T, Error>
@@ -563,7 +565,7 @@ where
     T: DeserializeOwned,
 {
     let body: T =
-        serde_json::from_slice(req.body().as_ref()).map_err(|e| RequestBodyDeserializeError(e))?;
+        serde_json::from_slice(req.body().as_ref()).map_err(RequestBodyDeserializeError)?;
     Ok(body)
 }
 
@@ -584,9 +586,8 @@ pub fn to_origin_form(mut req: Request<Bytes>) -> Result<Request<Bytes>, Error> 
     if uri.scheme().is_some() && uri.authority().is_some() {
         // Ensure Host header matches the authority
         if let Some(auth) = uri.authority() {
-            let host_val = HeaderValue::from_str(auth.as_str()).map_err(|err| {
-                InvalidHeader(format!("invalid header value: {}", err.to_string()))
-            })?;
+            let host_val = HeaderValue::from_str(auth.as_str())
+                .map_err(|err| InvalidHeader(format!("invalid header value: {err}")))?;
             req.headers_mut().insert(http::header::HOST, host_val);
         }
 

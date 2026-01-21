@@ -2616,11 +2616,10 @@ impl When {
             if e.header_count.is_none() {
                 e.header_count = Some(Vec::new());
             }
-            e.header_count.as_mut().unwrap().push((
-                key_pattern.into(),
-                value_pattern.into(),
-                count,
-            ));
+            e.header_count
+                .as_mut()
+                .unwrap()
+                .push((key_pattern, value_pattern, count));
         });
         self
     }
@@ -5372,7 +5371,7 @@ impl Then {
     ///
     /// # Parameters
     /// - `f`: A response generator closure that is executed on the mock server’s request
-    /// handling thread for each match.
+    ///   handling thread for each match.
     ///
     /// # Behavior
     /// - When set, this responder **overrides** any static configuration on `Then`

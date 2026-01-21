@@ -1467,15 +1467,14 @@ where
     let req_size = actual.map_or(0, |&v| v.try_into().unwrap_or(0));
 
     match (expected, actual) {
-        (Some(&mv), Some(&rv)) => {
-            let diff = if mock_size > req_size {
+        (Some(_), Some(_)) => {
+            if mock_size > req_size {
                 mock_size - req_size
             } else {
                 req_size - mock_size
-            };
-            diff
+            }
         }
-        (Some(&mv), None) | (None, Some(&mv)) => {
+        (Some(_), None) | (None, Some(_)) => {
             if mock_size == 0 {
                 1
             } else {

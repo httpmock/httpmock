@@ -40,7 +40,7 @@ where
         if result.is_ok() {
             return result;
         } else {
-            Delay::new(Duration::from_secs(1 * i as u64)).await;
+            Delay::new(Duration::from_secs(i as u64)).await;
         }
         result = (f)().await;
     }
@@ -194,7 +194,7 @@ impl HttpMockBytes {
 
         self.0
             .as_ref()
-            .windows(substring.as_bytes().len())
+            .windows(substring.len())
             .any(|window| window == substring.as_bytes())
     }
 

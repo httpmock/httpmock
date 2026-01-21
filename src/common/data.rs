@@ -268,7 +268,7 @@ impl HttpMockRequest {
         self.body.to_string()
     }
 
-    pub fn body_ref<'a>(&'a self) -> &'a [u8] {
+    pub fn body_ref(&self) -> &[u8] {
         self.body.as_ref()
     }
 
@@ -529,7 +529,7 @@ impl IntoMockBytes for Box<[u8]> {
     }
 }
 
-impl<'a> IntoMockBytes for std::borrow::Cow<'a, [u8]> {
+impl IntoMockBytes for std::borrow::Cow<'_, [u8]> {
     fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
         Ok(match self {
             std::borrow::Cow::Borrowed(b) => bytes::Bytes::copy_from_slice(b),
@@ -538,7 +538,7 @@ impl<'a> IntoMockBytes for std::borrow::Cow<'a, [u8]> {
     }
 }
 
-impl<'a> IntoMockBytes for std::borrow::Cow<'a, str> {
+impl IntoMockBytes for std::borrow::Cow<'_, str> {
     fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
         Ok(match self {
             std::borrow::Cow::Borrowed(s) => bytes::Bytes::copy_from_slice(s.as_bytes()),
@@ -1663,7 +1663,7 @@ fn from_method_vec(value: Option<Vec<Method>>) -> Option<Vec<String>> {
 }
 
 fn from_pattern_vec(patterns: Option<Vec<HttpMockRegex>>) -> Option<Vec<HttpMockRegex>> {
-    patterns.map(|vec| vec.iter().cloned().collect())
+    patterns.map(|vec| vec.to_vec())
 }
 
 fn from_name_value_string_pair_vec(

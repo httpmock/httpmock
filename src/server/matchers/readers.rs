@@ -481,16 +481,14 @@ pub mod expectations {
     pub fn is_true(
         mock: &RequestRequirements,
     ) -> Option<Vec<&Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>>> {
-        mock.is_true.as_ref().map(|b| b.iter().map(|f| f).collect())
+        mock.is_true.as_ref().map(|b| b.iter().collect())
     }
 
     #[inline]
     pub fn is_false(
         mock: &RequestRequirements,
     ) -> Option<Vec<&Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>>> {
-        mock.is_false
-            .as_ref()
-            .map(|b| b.iter().map(|f| f).collect())
+        mock.is_false.as_ref().map(|b| b.iter().collect())
     }
 
     pub fn form_urlencoded_tuple(
@@ -667,10 +665,6 @@ pub mod request_value {
     #[inline]
     pub fn json_body(req: &HttpMockRequest) -> Option<serde_json::Value> {
         let body = req.body_ref();
-        if body.len() == 0 {
-            ()
-        }
-
         match serde_json::from_slice(body) {
             Err(e) => {
                 tracing::trace!("Cannot parse json value: {}", e);

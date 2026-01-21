@@ -79,7 +79,7 @@ pub fn create_mismatch_output(
 
     let output = String::from_utf8(tw.into_inner().unwrap()).unwrap();
 
-    if ide_diff_left.len() > 0 && ide_diff_right.len() > 0 {
+    if !ide_diff_left.is_empty() && !ide_diff_right.is_empty() {
         return (output, Some((ide_diff_left, ide_diff_right)));
     }
 
@@ -311,11 +311,11 @@ fn create_diff_result_output(dd: &DiffResult) -> String {
     if dd.differences.is_empty() {
         output.push_str("<empty>");
     }
-    output.push_str("\n");
+    output.push('\n');
 
     dd.differences.iter().enumerate().for_each(|(idx, d)| {
         if idx > 0 {
-            output.push_str("\n")
+            output.push('\n')
         }
 
         match d {

@@ -520,12 +520,12 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesExactMatchComparator
         let mock_slice = mock_value
             .as_ref()
             .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_else(|| Bytes::new());
+            .unwrap_or_default();
 
         let req_slice = req_value
             .as_ref()
             .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_else(|| Bytes::new());
+            .unwrap_or_default();
 
         distance_for(mock_slice.as_ref(), req_slice.as_ref())
     }
@@ -569,12 +569,12 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesIncludesComparator {
         let mock_slice = mock_value
             .as_ref()
             .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_else(|| Bytes::new());
+            .unwrap_or_default();
 
         let req_slice = req_value
             .as_ref()
             .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_else(|| Bytes::new());
+            .unwrap_or_default();
 
         distance_for(mock_slice.as_ref(), req_slice.as_ref())
     }
@@ -618,12 +618,12 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
         let mock_slice = mock_value
             .as_ref()
             .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_else(|| Bytes::new());
+            .unwrap_or_default();
 
         let req_slice = req_value
             .as_ref()
             .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_else(|| Bytes::new());
+            .unwrap_or_default();
 
         // If mock has no requirement, distance is always 0
         if mock_value.is_none() || mock_slice.is_empty() {
@@ -691,12 +691,12 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
         let mock_slice = mock_value
             .as_ref()
             .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_else(|| Bytes::new());
+            .unwrap_or_default();
 
         let req_slice = req_value
             .as_ref()
             .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_else(|| Bytes::new());
+            .unwrap_or_default();
 
         // If mock has no requirement, distance is always 0
         if mock_value.is_none() || mock_slice.is_empty() {

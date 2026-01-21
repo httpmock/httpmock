@@ -225,7 +225,7 @@ impl StateManager for HttpMockStateManager {
             get_distances(&non_matching_requests, &state.matchers, requirements);
         let best_matches = get_min_distance_requests(&request_distances);
 
-        let closes_match_request_idx = match best_matches.get(0) {
+        let closes_match_request_idx = match best_matches.first() {
             None => return Ok(None),
             Some(idx) => *idx,
         };
@@ -256,10 +256,7 @@ impl StateManager for HttpMockStateManager {
             .values()
             .find(|&mock| request_matches(&state.matchers, &req, &mock.definition.request));
 
-        let found_mock_id = match result {
-            Some(mock) => Some(mock.id),
-            None => None,
-        };
+        let found_mock_id = result.map(|mock| mock.id);
 
         if let Some(found_id) = found_mock_id {
             tracing::debug!(
@@ -442,7 +439,7 @@ impl StateManager for HttpMockStateManager {
     fn find_forward_rule<'a>(
         &'a self,
         req: &'a HttpMockRequest,
-    ) -> Result<(Option<ActiveForwardingRule>), Error> {
+    ) -> Result<Option<ActiveForwardingRule>, Error> {
         let state = self.state.lock().unwrap();
 
         let result = state
