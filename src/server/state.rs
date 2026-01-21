@@ -1,31 +1,36 @@
+#[cfg(feature = "record")]
+use std::net::ToSocketAddrs;
+use std::{
+    collections::BTreeMap,
+    sync::{Arc, Mutex},
+    time::Duration,
+};
+
+#[cfg(feature = "record")]
+use bytes::Bytes;
+use thiserror::Error;
+
+#[cfg(feature = "record")]
 use crate::{
-    common::{
-        data,
-        data::{
-            ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch,
-            Mismatch, MockDefinition, MockServerHttpResponse, RequestRequirements,
-        },
+    common::data,
+    server::{
+        persistence::{deserialize_mock_defs_from_yaml, serialize_mock_defs_to_yaml},
+        state::Error::ValidationError,
+    },
+};
+use crate::{
+    common::data::{
+        ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch,
+        ForwardingRuleConfig, Mismatch, MockDefinition, MockServerHttpResponse, ProxyRuleConfig,
+        RecordingRuleConfig, RequestRequirements,
     },
     prelude::HttpMockRequest,
     server::{
         matchers,
-        matchers::{all, Matcher},
-        state::Error::{BodyMethodInvalid, DataConversionError, StaticMockError, ValidationError},
+        matchers::Matcher,
+        state::Error::{BodyMethodInvalid, DataConversionError, StaticMockError},
     },
 };
-
-#[cfg(feature = "record")]
-use crate::server::persistence::{deserialize_mock_defs_from_yaml, serialize_mock_defs_to_yaml};
-
-use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
-use bytes::Bytes;
-use std::{
-    collections::BTreeMap,
-    convert::{TryFrom, TryInto},
-    sync::{Arc, Mutex},
-    time::Duration,
-};
-use thiserror::Error;
 
 #[derive(Error, Debug)]
 pub enum Error {

@@ -1,3 +1,5 @@
+use std::{convert::TryInto, sync::Arc};
+
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Request, Response};
@@ -8,7 +10,6 @@ use hyper_util::{
     client::legacy::{connect::HttpConnector, Client},
     rt::TokioExecutor,
 };
-use std::{convert::TryInto, sync::Arc};
 use thiserror::Error;
 use tokio::runtime::Runtime;
 
