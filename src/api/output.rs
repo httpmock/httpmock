@@ -14,7 +14,7 @@ use crate::server::matchers::generic::MatchingStrategy;
 #[cfg(feature = "color")]
 use colored::Colorize;
 
-const QUOTED_TEXT: &'static str = "quoted for better readability";
+const QUOTED_TEXT: &str = "quoted for better readability";
 
 pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option<ClosestMatch>) {
     match closest_match {
