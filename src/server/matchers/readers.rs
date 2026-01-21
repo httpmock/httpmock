@@ -512,7 +512,9 @@ pub mod expectations {
     pub fn is_false(
         mock: &RequestRequirements,
     ) -> Option<Vec<&Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>>> {
-        mock.is_false.as_ref().map(|b| b.iter().map(|f| f).collect())
+        mock.is_false
+            .as_ref()
+            .map(|b| b.iter().map(|f| f).collect())
     }
 
     pub fn form_urlencoded_tuple(

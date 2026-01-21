@@ -166,7 +166,7 @@ impl StateManager for HttpMockStateManager {
     }
 
     fn read_mock(&self, id: usize) -> Result<Option<ActiveMock>, Error> {
-        let mut state = self.state.lock().unwrap();
+        let state = self.state.lock().unwrap();
 
         let result = state.mocks.get(&id);
         match result {
@@ -213,7 +213,7 @@ impl StateManager for HttpMockStateManager {
     }
 
     fn verify(&self, requirements: &RequestRequirements) -> Result<Option<ClosestMatch>, Error> {
-        let mut state = self.state.lock().unwrap();
+        let state = self.state.lock().unwrap();
 
         let non_matching_requests: Vec<&Arc<HttpMockRequest>> = state
             .history
@@ -443,7 +443,7 @@ impl StateManager for HttpMockStateManager {
         &'a self,
         req: &'a HttpMockRequest,
     ) -> Result<(Option<ActiveForwardingRule>), Error> {
-        let mut state = self.state.lock().unwrap();
+        let state = self.state.lock().unwrap();
 
         let result = state
             .forwarding_rules
@@ -458,7 +458,7 @@ impl StateManager for HttpMockStateManager {
         &'a self,
         req: &'a HttpMockRequest,
     ) -> Result<Option<ActiveProxyRule>, Error> {
-        let mut state = self.state.lock().unwrap();
+        let state = self.state.lock().unwrap();
 
         let result = state
             .proxy_rules

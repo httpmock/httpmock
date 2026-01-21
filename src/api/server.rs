@@ -423,8 +423,8 @@ impl MockServer {
     where
         SpecFn: FnOnce(When, Then),
     {
-        let mut req = Rc::new(Cell::new(RequestRequirements::new()));
-        let mut res = Rc::new(Cell::new(MockServerHttpResponse::new()));
+        let req = Rc::new(Cell::new(RequestRequirements::new()));
+        let res = Rc::new(Cell::new(MockServerHttpResponse::new()));
 
         spec_fn(
             When {
