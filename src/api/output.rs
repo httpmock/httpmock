@@ -231,7 +231,7 @@ fn handle_key_value_comparison(
 fn print_all_request_values(
     tw: &mut TabWriter<Vec<u8>>,
     entity: &str,
-    all: &Vec<KeyValueComparisonKeyValuePair>,
+    all: &[KeyValueComparisonKeyValuePair],
 ) {
     if all.is_empty() {
         return;

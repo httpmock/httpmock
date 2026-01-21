@@ -159,7 +159,7 @@ where
 {
     fn find_unmatched<'a>(
         &self,
-        req_values: &Vec<(RK, Option<RV>)>,
+        req_values: &[(RK, Option<RV>)],
         mock_values: &'a Vec<(&'a EK, Option<&'a EV>)>,
     ) -> Vec<&'a (&'a EK, Option<&'a EV>)> {
         return mock_values
