@@ -17,40 +17,36 @@ use colored::Colorize;
 const QUOTED_TEXT: &str = "quoted for better readability";
 
 pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option<ClosestMatch>) {
-    match closest_match {
-        None => assert!(false, "No request has been received by the mock server."),
-        Some(closest_match) => {
-            let mut output = String::new();
-            output.push_str(&format!(
-                "{} of {} expected requests matched the mock specification.\n",
-                actual_hits, expected_hits
-            ));
-            output.push_str(&format!(
-                "Here is a comparison with the most similar unmatched request (request number {}): \n\n",
-                closest_match.request_index + 1
-            ));
+    let closest_match = closest_match.expect("No request has been received by the mock server.");
+    let mut output = String::new();
+    output.push_str(&format!(
+        "{} of {} expected requests matched the mock specification.\n",
+        actual_hits, expected_hits
+    ));
+    output.push_str(&format!(
+        "Here is a comparison with the most similar unmatched request (request number {}): \n\n",
+        closest_match.request_index + 1
+    ));
 
-            let mut fail_text = None;
+    let mut fail_text = None;
 
-            for (idx, mm) in closest_match.mismatches.iter().enumerate() {
-                let (mm_output, fail_text_pair) = create_mismatch_output(idx, &mm);
+    for (idx, mm) in closest_match.mismatches.iter().enumerate() {
+        let (mm_output, fail_text_pair) = create_mismatch_output(idx, &mm);
 
-                if fail_text == None {
-                    if let Some(text) = fail_text_pair {
-                        fail_text = Some(text)
-                    }
-                }
-
-                output.push_str(&mm_output);
+        if fail_text.is_none() {
+            if let Some(text) = fail_text_pair {
+                fail_text = Some(text)
             }
-
-            if let Some((left, right)) = fail_text {
-                assert_eq!(left, right, "{}", output)
-            }
-
-            assert!(false, "{}", output)
         }
+
+        output.push_str(&mm_output);
     }
+
+    if let Some((left, right)) = fail_text {
+        assert_eq!(left, right, "{}", output)
+    }
+
+    panic!("{}", output)
 }
 
 pub fn create_mismatch_output(
