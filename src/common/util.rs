@@ -9,6 +9,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use bytes::Bytes;
 /// Extension trait for efficiently blocking on a future.
 use crossbeam_utils::sync::{Parker, Unparker};
@@ -370,7 +371,7 @@ impl std::fmt::Display for HttpMockBytes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match std::str::from_utf8(&self.0) {
             Ok(s) => write!(f, "{s}"),
-            Err(_) => write!(f, "{}", base64::encode(&self.0)),
+            Err(_) => write!(f, "{}", BASE64.encode(&self.0)),
         }
     }
 }
@@ -385,7 +386,7 @@ impl std::fmt::Debug for HttpMockBytes {
                 .field(&format!(
                     "<{} bytes, b64:{}>",
                     self.0.len(),
-                    base64::encode(&self.0)
+                    BASE64.encode(&self.0)
                 ))
                 .finish(),
         }
