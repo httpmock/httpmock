@@ -9,6 +9,7 @@ use std::{
     task::{Context, Poll},
 };
 
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use bytes::Bytes;
 /// Extension trait for efficiently blocking on a future.
 use crossbeam_utils::sync::{Parker, Unparker};
@@ -16,7 +17,6 @@ use futures_timer::Delay;
 use futures_util::{pin_mut, task::ArcWake};
 use serde::{Deserialize, Serialize, Serializer};
 use std::{cell::Cell, time::Duration};
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 
 // ===============================================================================================
 // Misc
