@@ -9,6 +9,7 @@ use crate::{
     },
     server::matchers::generic::MatchingStrategy,
 };
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use bytes::Bytes;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
@@ -22,7 +23,6 @@ use std::{
     sync::Arc,
 };
 use url::Url;
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 
 use crate::server::RequestMetadata;
 #[cfg(feature = "cookies")]
@@ -734,9 +734,9 @@ impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
 /// Serializes and deserializes the response body to/from a Base64 string.
 mod opt_vector_serde_base64 {
     use crate::common::util::HttpMockBytes;
+    use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
     use bytes::Bytes;
     use serde::{Deserialize, Deserializer, Serializer};
-    use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 
     // See the following references:
     // https://github.com/serde-rs/serde/blob/master/serde/src/ser/impls.rs#L99
@@ -1795,7 +1795,8 @@ fn to_bytes_vec(
 
     if let Some(base64_strings) = option_base64 {
         result.extend(base64_strings.into_iter().filter_map(|s| {
-            BASE64.decode(&s)
+            BASE64
+                .decode(&s)
                 .ok()
                 .map(|decoded_bytes| HttpMockBytes::from(Bytes::from(decoded_bytes)))
         }));
