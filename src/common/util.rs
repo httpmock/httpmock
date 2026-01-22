@@ -16,6 +16,7 @@ use futures_timer::Delay;
 use futures_util::{pin_mut, task::ArcWake};
 use serde::{Deserialize, Serialize, Serializer};
 use std::{cell::Cell, time::Duration};
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 
 // ===============================================================================================
 // Misc
@@ -370,7 +371,7 @@ impl std::fmt::Display for HttpMockBytes {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match std::str::from_utf8(&self.0) {
             Ok(s) => write!(f, "{s}"),
-            Err(_) => write!(f, "{}", base64::encode(&self.0)),
+            Err(_) => write!(f, "{}", BASE64.encode(&self.0)),
         }
     }
 }
@@ -385,7 +386,7 @@ impl std::fmt::Debug for HttpMockBytes {
                 .field(&format!(
                     "<{} bytes, b64:{}>",
                     self.0.len(),
-                    base64::encode(&self.0)
+                    BASE64.encode(&self.0)
                 ))
                 .finish(),
         }

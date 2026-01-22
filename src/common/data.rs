@@ -22,6 +22,7 @@ use std::{
     sync::Arc,
 };
 use url::Url;
+use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 
 use crate::server::RequestMetadata;
 #[cfg(feature = "cookies")]
@@ -735,6 +736,7 @@ mod opt_vector_serde_base64 {
     use crate::common::util::HttpMockBytes;
     use bytes::Bytes;
     use serde::{Deserialize, Deserializer, Serializer};
+    use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 
     // See the following references:
     // https://github.com/serde-rs/serde/blob/master/serde/src/ser/impls.rs#L99
@@ -745,7 +747,7 @@ mod opt_vector_serde_base64 {
         S: Serializer,
     {
         match bytes {
-            Some(ref value) => serializer.serialize_bytes(base64::encode(value).as_bytes()),
+            Some(ref value) => serializer.serialize_bytes(BASE64.encode(value).as_bytes()),
             None => serializer.serialize_none(),
         }
     }
@@ -768,7 +770,7 @@ mod opt_vector_serde_base64 {
         D: Deserializer<'de>,
     {
         let value = Vec::deserialize(deserializer)?;
-        let decoded = base64::decode(value).map_err(serde::de::Error::custom)?;
+        let decoded = BASE64.decode(value).map_err(serde::de::Error::custom)?;
         Ok(HttpMockBytes::from(Bytes::from(decoded)))
     }
 }
@@ -1738,7 +1740,7 @@ fn from_bytes_to_string(data: Option<HttpMockBytes>) -> (Option<String>, Option<
         if let Ok(text_str) = std::str::from_utf8(&bytes_container.to_bytes()) {
             text_representation = Some(text_str.to_string());
         } else {
-            base64_representation = Some(base64::encode(&bytes_container.to_bytes()));
+            base64_representation = Some(BASE64.encode(&bytes_container.to_bytes()));
         }
     }
 
@@ -1757,7 +1759,7 @@ fn bytes_to_string_vec(
             if let Ok(text) = std::str::from_utf8(&bytes) {
                 text_representations.push(text.to_owned());
             } else {
-                base64_representations.push(base64::encode(&bytes));
+                base64_representations.push(BASE64.encode(&bytes));
             }
         }
     }
@@ -1793,7 +1795,7 @@ fn to_bytes_vec(
 
     if let Some(base64_strings) = option_base64 {
         result.extend(base64_strings.into_iter().filter_map(|s| {
-            base64::decode(&s)
+            BASE64.decode(&s)
                 .ok()
                 .map(|decoded_bytes| HttpMockBytes::from(Bytes::from(decoded_bytes)))
         }));
@@ -1812,7 +1814,7 @@ fn from_string_to_bytes_choose(
 ) -> Option<HttpMockBytes> {
     let request_body = match (option_string, option_base64) {
         (Some(body), None) => Some(body.into_bytes()),
-        (None, Some(base64_body)) => base64::decode(base64_body).ok(),
+        (None, Some(base64_body)) => BASE64.decode(base64_body).ok(),
         _ => None, // Handle unexpected combinations or both None
     };
 
