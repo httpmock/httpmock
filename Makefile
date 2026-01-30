@@ -41,6 +41,16 @@ advanced-features-test: clean-coverage
 advanced-features-integration-test: clean-coverage
 	./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote" "tests"
 
+.PHONY: advanced-features-test-docker
+advanced-features-test-docker: clean-coverage
+	docker compose up -d
+	HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER=1 ./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote"
+
+.PHONY: advanced-features-integration-test-docker
+advanced-features-integration-test-docker: clean-coverage
+	docker compose up -d
+	HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER=1 ./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote" "tests"
+
 .PHONY: coverage-debug
 coverage-debug:
 	 RUST_BACKTRACE=1 RUST_LOG=trace cargo tarpaulin --out -- --nocapture
