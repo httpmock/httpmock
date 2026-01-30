@@ -1,44 +1,44 @@
-use crate::common::data::{
-    ActiveForwardingRule, ActiveProxyRule, Error as DataError, ErrorResponse, MockDefinition,
-    RequestRequirements,
+use std::{
+    convert::TryInto,
+    fmt::{Debug, Display},
+    str::FromStr,
+    sync::Arc,
 };
 
+use async_trait::async_trait;
+use http::{HeaderValue, StatusCode, Uri};
+use hyper::{body::Bytes, Method, Request, Response};
+use path_tree::{Path, PathTree};
+use serde::{de::DeserializeOwned, Serialize};
+use thiserror::Error;
+use tokio::time::Instant;
+
+#[cfg(feature = "record")]
+use crate::common::data::RecordingRuleConfig;
+#[cfg(feature = "proxy")]
+use crate::common::data::{ActiveForwardingRule, ActiveProxyRule};
+#[cfg(any(feature = "remote", feature = "proxy"))]
+use crate::common::http::{Error as HttpClientError, HttpClient};
 use crate::{
-    common::runtime,
+    common::{
+        data,
+        data::{
+            Error as DataError, ErrorResponse, ForwardingRuleConfig, MockDefinition,
+            ProxyRuleConfig, RequestRequirements,
+        },
+        runtime,
+    },
+    prelude::{HttpMockRequest, HttpMockResponse},
     server::{
         handler::Error::{
             InvalidHeader, ParamError, ParamFormatError, RequestBodyDeserializeError,
             RequestConversionError, ResponseBodyConversionError, ResponseBodySerializeError,
+            ResponseDataConversionError,
         },
         state,
         state::StateManager,
     },
 };
-use std::convert::TryInto;
-
-#[cfg(any(feature = "remote", feature = "proxy"))]
-use crate::common::http::{Error as HttpClientError, HttpClient};
-
-use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
-
-use crate::common::data;
-use crate::prelude::{HttpMockRequest, HttpMockResponse};
-use crate::server::handler::Error::ResponseDataConversionError;
-use async_trait::async_trait;
-use http::{HeaderMap, HeaderName, HeaderValue, StatusCode, Uri};
-use http_body_util::BodyExt;
-use hyper::{body::Bytes, Method, Request, Response};
-use path_tree::{Path, PathTree};
-use serde::{de::DeserializeOwned, Serialize};
-use std::{
-    fmt::{Debug, Display},
-    str::FromStr,
-    sync::Arc,
-    thread,
-    time::Duration,
-};
-use thiserror::Error;
-use tokio::time::Instant;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -432,7 +432,7 @@ where
 
         if !rule.config.request_header.is_empty() {
             for (key, value) in &rule.config.request_header {
-                let key = HeaderName::from_str(key).map_err(|err| {
+                let key = http::HeaderName::from_str(key).map_err(|err| {
                     InvalidHeader(format!("invalid header key: {}", err.to_string()))
                 })?;
 
@@ -463,7 +463,7 @@ where
             let headers = req.headers_mut();
 
             for (key, value) in &rule.config.request_header {
-                let key = HeaderName::from_str(key).map_err(|err| {
+                let key = http::HeaderName::from_str(key).map_err(|err| {
                     InvalidHeader(format!("invalid header key: {}", err.to_string()))
                 })?;
 

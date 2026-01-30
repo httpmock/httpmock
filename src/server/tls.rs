@@ -1,14 +1,3 @@
-use rustls::pki_types::{CertificateDer, PrivateKeyDer};
-use rustls_pki_types::pem::PemObject;
-
-use crate::server::tls::Error::{CaCertificateError, GenerateCertificateError};
-use async_trait::async_trait;
-use rcgen::{Certificate, CertificateParams, KeyPair, SanType};
-use rustls::{
-    crypto::ring::sign::any_supported_type,
-    server::{ClientHello, ResolvesServerCert},
-    sign::CertifiedKey,
-};
 use std::{
     collections::HashMap,
     fmt::Debug,
@@ -17,7 +6,18 @@ use std::{
     sync::{Arc, Mutex, RwLock},
 };
 
+use async_trait::async_trait;
+use rcgen::{Certificate, CertificateParams, KeyPair, SanType};
+use rustls::{
+    crypto::ring::sign::any_supported_type,
+    pki_types::{CertificateDer, PrivateKeyDer},
+    server::{ClientHello, ResolvesServerCert},
+    sign::CertifiedKey,
+};
+use rustls_pki_types::pem::PemObject;
 use thiserror::Error;
+
+use crate::server::tls::Error::{CaCertificateError, GenerateCertificateError};
 
 #[derive(Error, Debug)]
 pub enum Error {

@@ -1,19 +1,22 @@
+#[cfg(feature = "record")]
+use std::path::PathBuf;
+use std::{error::Error, sync::Arc};
+
 #[cfg(feature = "proxy")]
 use crate::common::http::{HttpClient, HttpMockHttpClient};
-#[cfg(any(feature = "record", feature = "record"))]
+#[cfg(feature = "record")]
 use crate::server::persistence::read_static_mock_definitions;
-#[cfg(feature = "https")]
-use crate::server::server::MockServerHttpsConfig;
-#[cfg(feature = "https")]
-use crate::server::tls::{CertificateResolverFactory, GeneratingCertificateResolverFactory};
-
 use crate::server::{
     handler::HttpMockHandler,
     server::{MockServer, MockServerConfig},
     state::{HttpMockStateManager, StateManager},
     HttpMockServer,
 };
-use std::{error::Error, path::PathBuf, sync::Arc};
+#[cfg(feature = "https")]
+use crate::server::{
+    server::MockServerHttpsConfig,
+    tls::{CertificateResolverFactory, GeneratingCertificateResolverFactory},
+};
 
 const DEFAULT_CA_PRIVATE_KEY: &'static str = include_str!("../../certs/ca.key");
 const DEFAULT_CA_CERTIFICATE: &'static str = include_str!("../../certs/ca.pem");

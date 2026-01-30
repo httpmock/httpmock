@@ -1,39 +1,38 @@
-use futures_util::{stream::StreamExt, FutureExt};
-use http::{Request, StatusCode};
-use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
-use hyper::body::{Bytes, Incoming};
 use std::{
     future::{pending, Future},
+    io,
     net::SocketAddr,
-    path::PathBuf,
     sync::Arc,
 };
 
-use hyper_util::server::conn::auto::Builder as ServerBuilder;
-
-use crate::server;
-use hyper::{http, service::service_fn, upgrade::on as upgrade_on, Method, Response};
-use hyper_util::rt::tokio::TokioIo;
+use futures_util::FutureExt;
+use http::{Request, StatusCode};
+use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
+use hyper::{
+    body::{Bytes, Incoming},
+    http,
+    service::service_fn,
+    Method, Response,
+};
+use hyper_util::{rt::tokio::TokioIo, server::conn::auto::Builder as ServerBuilder};
+#[cfg(feature = "https")]
+use rustls::ServerConfig;
 use thiserror::Error;
 use tokio::{
     net::{TcpListener, TcpStream},
     sync::oneshot::Sender,
     task::spawn,
 };
+#[cfg(feature = "https")]
+use tokio_rustls::TlsAcceptor;
 
 use crate::server::{
+    self,
     handler::Handler,
     server::Error::{
         BufferError, LocalSocketAddrError, PublishSocketAddrError, RouterError, SocketBindError,
     },
 };
-
-use std::io;
-
-#[cfg(feature = "https")]
-use rustls::ServerConfig;
-#[cfg(feature = "https")]
-use tokio_rustls::TlsAcceptor;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -214,7 +213,7 @@ where
                 // body) to let Hyper proceed with the upgrade.
 
                 let authority = req.uri().authority().map(|a| a.to_string());
-                let on_upgrade = upgrade_on(req);
+                let on_upgrade = hyper::upgrade::on(req);
                 let server = self.clone();
 
                 spawn(async move {
@@ -426,22 +425,14 @@ fn to_service_response(
     Ok(Response::from_parts(parts, full(body)))
 }
 
-use crate::server::Error::{IOError, ServerConnectionError, ServerError, TlsError, Unknown};
-use async_trait::async_trait;
-use bytes::BytesMut;
 use hyper_util::rt::TokioExecutor;
-use std::{
-    pin::Pin,
-    task::{Context, Poll},
-};
+#[cfg(feature = "https")]
+use tls_detect::is_encrypted;
+use tokio::io::{AsyncRead, AsyncWrite};
 
 #[cfg(feature = "https")]
 use crate::server::tls::{CertificateResolverFactory, TcpStreamPeekBuffer};
-
-use crate::server::RequestMetadata;
-#[cfg(feature = "https")]
-use tls_detect::is_encrypted;
-use tokio::io::{AsyncRead, AsyncWrite, ReadBuf};
+use crate::server::{Error::ServerConnectionError, RequestMetadata};
 
 fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), Error> {
     let default_scheme = req

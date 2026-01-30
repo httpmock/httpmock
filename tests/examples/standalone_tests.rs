@@ -1,9 +1,10 @@
 #[test]
 #[cfg(feature = "remote")]
 fn standalone_test() {
-    use crate::with_standalone_server;
     use httpmock::MockServer;
     use reqwest::blocking::Client;
+
+    use crate::with_standalone_server;
 
     // Arrange
 
@@ -34,9 +35,10 @@ fn standalone_test() {
 #[cfg(feature = "remote")]
 #[tokio::test]
 async fn async_standalone_test() {
-    use crate::with_standalone_server;
     use httpmock::MockServer;
     use reqwest::Client;
+
+    use crate::with_standalone_server;
 
     // Arrange
 
@@ -91,8 +93,9 @@ async fn async_standalone_test() {
 #[test]
 #[should_panic]
 fn unsupported_features() {
-    use crate::with_standalone_server;
     use httpmock::MockServer;
+
+    use crate::with_standalone_server;
 
     // Arrange
 
@@ -113,9 +116,10 @@ fn unsupported_features() {
 #[cfg(feature = "remote")]
 #[test]
 fn binary_body_standalone_test() {
-    use crate::with_standalone_server;
     use httpmock::MockServer;
     use reqwest::blocking::get;
+
+    use crate::with_standalone_server;
 
     // Arrange
 

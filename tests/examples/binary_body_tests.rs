@@ -1,5 +1,6 @@
-use httpmock::prelude::*;
 use std::io::Read;
+
+use httpmock::prelude::*;
 
 #[test]
 fn binary_body_test() {

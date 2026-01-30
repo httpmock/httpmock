@@ -1,4 +1,8 @@
 pub mod expectations {
+    use std::sync::Arc;
+
+    use serde_json::Value;
+
     use crate::{
         common::{
             data::{HttpMockRegex, RequestRequirements},
@@ -6,8 +10,6 @@ pub mod expectations {
         },
         prelude::HttpMockRequest,
     };
-    use serde_json::Value;
-    use std::sync::Arc;
 
     #[inline]
     pub fn scheme_equal_to(mock: &RequestRequirements) -> Option<Vec<&String>> {
@@ -624,7 +626,6 @@ pub mod expectations {
 
 pub mod request_value {
     use crate::{common::util::HttpMockBytes, prelude::HttpMockRequest};
-    use serde_json::Value;
 
     #[inline]
     pub fn scheme(req: &HttpMockRequest) -> Option<String> {

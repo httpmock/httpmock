@@ -76,9 +76,10 @@ fn is_false_matcher_called_once_per_request() {
 
 #[test]
 fn dynamic_responder_test() {
+    use std::sync::Mutex;
+
     use httpmock::prelude::*;
     use reqwest::blocking::Client;
-    use std::sync::Mutex;
 
     // Arrange
     let server = MockServer::start();
@@ -116,9 +117,10 @@ fn dynamic_responder_test() {
 
 #[test]
 fn dynamic_responder_http_crate_test() {
+    use std::sync::Mutex;
+
     use httpmock::prelude::*;
     use reqwest::blocking::Client;
-    use std::sync::Mutex;
 
     // Arrange
     let server = MockServer::start();

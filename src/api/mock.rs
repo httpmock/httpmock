@@ -1,14 +1,12 @@
-use std::{io::Write, net::SocketAddr};
-use tabwriter::TabWriter;
+use std::net::SocketAddr;
 
-use crate::api::output;
 #[cfg(feature = "color")]
 use colored::*;
-use serde::{Deserialize, Serialize};
 
-use crate::api::server::MockServer;
-
-use crate::common::util::Join;
+use crate::{
+    api::{output, server::MockServer},
+    common::util::Join,
+};
 
 /// Provides a reference to a mock configuration stored on a [MockServer](struct.MockServer.html).
 /// This structure is used for interacting with, monitoring, and managing a specific mock's lifecycle,
