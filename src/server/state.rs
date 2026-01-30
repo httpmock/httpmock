@@ -225,16 +225,16 @@ impl StateManager for HttpMockStateManager {
             get_distances(&non_matching_requests, &state.matchers, requirements);
         let best_matches = get_min_distance_requests(&request_distances);
 
-        let closes_match_request_idx = match best_matches.get(0) {
+        let closes_match_request_idx = match best_matches.first() {
             None => return Ok(None),
             Some(idx) => *idx,
         };
 
         let req = non_matching_requests.get(closes_match_request_idx).unwrap();
-        let mismatches = get_request_mismatches(req, &requirements, &state.matchers);
+        let mismatches = get_request_mismatches(req, requirements, &state.matchers);
 
         Ok(Some(ClosestMatch {
-            request: HttpMockRequest::clone(&req),
+            request: HttpMockRequest::clone(req),
             request_index: closes_match_request_idx,
             mismatches,
         }))
@@ -256,10 +256,7 @@ impl StateManager for HttpMockStateManager {
             .values()
             .find(|&mock| request_matches(&state.matchers, &req, &mock.definition.request));
 
-        let found_mock_id = match result {
-            Some(mock) => Some(mock.id),
-            None => None,
-        };
+        let found_mock_id = result.map(|mock| mock.id);
 
         if let Some(found_id) = found_mock_id {
             tracing::debug!(
@@ -442,7 +439,7 @@ impl StateManager for HttpMockStateManager {
     fn find_forward_rule<'a>(
         &'a self,
         req: &'a HttpMockRequest,
-    ) -> Result<(Option<ActiveForwardingRule>), Error> {
+    ) -> Result<Option<ActiveForwardingRule>, Error> {
         let state = self.state.lock().unwrap();
 
         let result = state
@@ -734,7 +731,7 @@ fn get_min_distance_requests(request_distances: &BTreeMap<usize, usize>) -> Vec<
     };
 
     request_distances
-        .into_iter()
+        .iter()
         .filter(|(idx, distance)| **distance == max)
         .map(|(idx, _)| *idx)
         .collect()
@@ -747,8 +744,6 @@ fn get_request_mismatches(
 ) -> Vec<Mismatch> {
     matchers
         .iter()
-        .map(|mat| mat.mismatches(req, mock_rr))
-        .flatten()
-        .into_iter()
+        .flat_map(|mat| mat.mismatches(req, mock_rr))
         .collect()
 }

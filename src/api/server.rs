@@ -70,7 +70,7 @@ impl MockServer {
 
         server.reset_async().await;
 
-        return server;
+        server
     }
 
     /// Asynchronously connects to a remote mock server running in standalone mode.
@@ -323,7 +323,7 @@ impl MockServer {
     /// ```
     #[cfg(not(feature = "https"))]
     pub fn url<S: Into<String>>(&self, path: S) -> String {
-        return format!("http://{}{}", self.address(), path.into());
+        format!("http://{}{}", self.address(), path.into())
     }
 
     /// Builds the base URL for the mock server.

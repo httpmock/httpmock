@@ -14,43 +14,39 @@ use crate::server::matchers::generic::MatchingStrategy;
 #[cfg(feature = "color")]
 use colored::Colorize;
 
-const QUOTED_TEXT: &'static str = "quoted for better readability";
+const QUOTED_TEXT: &str = "quoted for better readability";
 
 pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option<ClosestMatch>) {
-    match closest_match {
-        None => assert!(false, "No request has been received by the mock server."),
-        Some(closest_match) => {
-            let mut output = String::new();
-            output.push_str(&format!(
-                "{} of {} expected requests matched the mock specification.\n",
-                actual_hits, expected_hits
-            ));
-            output.push_str(&format!(
-                "Here is a comparison with the most similar unmatched request (request number {}): \n\n",
-                closest_match.request_index + 1
-            ));
+    let closest_match = closest_match.expect("No request has been received by the mock server.");
+    let mut output = String::new();
+    output.push_str(&format!(
+        "{} of {} expected requests matched the mock specification.\n",
+        actual_hits, expected_hits
+    ));
+    output.push_str(&format!(
+        "Here is a comparison with the most similar unmatched request (request number {}): \n\n",
+        closest_match.request_index + 1
+    ));
 
-            let mut fail_text = None;
+    let mut fail_text = None;
 
-            for (idx, mm) in closest_match.mismatches.iter().enumerate() {
-                let (mm_output, fail_text_pair) = create_mismatch_output(idx, &mm);
+    for (idx, mm) in closest_match.mismatches.iter().enumerate() {
+        let (mm_output, fail_text_pair) = create_mismatch_output(idx, mm);
 
-                if fail_text == None {
-                    if let Some(text) = fail_text_pair {
-                        fail_text = Some(text)
-                    }
-                }
-
-                output.push_str(&mm_output);
+        if fail_text.is_none() {
+            if let Some(text) = fail_text_pair {
+                fail_text = Some(text)
             }
-
-            if let Some((left, right)) = fail_text {
-                assert_eq!(left, right, "{}", output)
-            }
-
-            assert!(false, "{}", output)
         }
+
+        output.push_str(&mm_output);
     }
+
+    if let Some((left, right)) = fail_text {
+        assert_eq!(left, right, "{}", output)
+    }
+
+    panic!("{}", output)
 }
 
 pub fn create_mismatch_output(
@@ -83,7 +79,7 @@ pub fn create_mismatch_output(
 
     let output = String::from_utf8(tw.into_inner().unwrap()).unwrap();
 
-    if ide_diff_left.len() > 0 && ide_diff_right.len() > 0 {
+    if !ide_diff_left.is_empty() && !ide_diff_right.is_empty() {
         return (output, Some((ide_diff_left, ide_diff_right)));
     }
 
@@ -136,7 +132,7 @@ fn handle_key_value_comparison(
     if let Some(key) = &comparison.key {
         let expected = match quote_if_whitespace(&key.expected) {
             (actual, true) => format!("{} ({})", actual, &QUOTED_TEXT),
-            (actual, false) => format!("{}", actual),
+            (actual, false) => actual.to_string(),
         };
         writeln!(tw, "\tkey\t[{}]\t{}", key.operator, expected).unwrap();
     }
@@ -144,7 +140,7 @@ fn handle_key_value_comparison(
     if let Some(value) = &comparison.value {
         let expected = match quote_if_whitespace(&value.expected) {
             (expected, true) => format!("{} ({})", expected, &QUOTED_TEXT),
-            (expected, false) => format!("{}", expected),
+            (expected, false) => expected.to_string(),
         };
         writeln!(tw, "\tvalue\t[{}]\t{}", value.operator, expected).unwrap();
     }
@@ -191,7 +187,7 @@ fn handle_key_value_comparison(
                     most_similar, mismatch.entity, value
                 )
                 .unwrap();
-                (format!("{}", value), format!("{}", value))
+                (value.to_string(), value.to_string())
             }
             (Some(key), None) => {
                 writeln!(
@@ -200,7 +196,7 @@ fn handle_key_value_comparison(
                     most_similar, mismatch.entity, key
                 )
                 .unwrap();
-                (format!("{}", key), format!("{}", key))
+                (key.to_string(), key.to_string())
             }
             (None, None) => {
                 let msg = match &mismatch.matching_strategy {
@@ -235,7 +231,7 @@ fn handle_key_value_comparison(
 fn print_all_request_values(
     tw: &mut TabWriter<Vec<u8>>,
     entity: &str,
-    all: &Vec<KeyValueComparisonKeyValuePair>,
+    all: &[KeyValueComparisonKeyValuePair],
 ) {
     if all.is_empty() {
         return;
@@ -315,11 +311,11 @@ fn create_diff_result_output(dd: &DiffResult) -> String {
     if dd.differences.is_empty() {
         output.push_str("<empty>");
     }
-    output.push_str("\n");
+    output.push('\n');
 
     dd.differences.iter().enumerate().for_each(|(idx, d)| {
         if idx > 0 {
-            output.push_str("\n")
+            output.push('\n')
         }
 
         match d {
@@ -352,10 +348,10 @@ fn create_diff_result_output(dd: &DiffResult) -> String {
 #[inline]
 fn times_str<'a>(v: usize) -> &'a str {
     if v == 1 {
-        return "time";
+        "time"
+    } else {
+        "times"
     }
-
-    return "times";
 }
 
 fn quote_if_whitespace(s: &str) -> (String, bool) {

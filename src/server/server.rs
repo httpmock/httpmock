@@ -136,10 +136,8 @@ where
             .map_err(|e| SocketBindError(addr, e))?;
 
         if let Some(sender) = socket_addr_sender {
-            let addr = listener.local_addr().map_err(|e| LocalSocketAddrError(e))?;
-            sender
-                .send(addr)
-                .map_err(|addr| PublishSocketAddrError(addr))?;
+            let addr = listener.local_addr().map_err(LocalSocketAddrError)?;
+            sender.send(addr).map_err(PublishSocketAddrError)?;
         }
 
         // ****************************************************************************************
