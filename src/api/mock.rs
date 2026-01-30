@@ -132,7 +132,7 @@ impl<'a> Mock<'a> {
     /// This method will panic if the mock server did not receive exactly one matching request or if
     /// there are issues with the mock server's availability.
     pub async fn assert_async(&self) {
-        self.assert_hits_async(1).await
+        self.assert_calls_async(1).await
     }
 
     /// Verifies that the mock server received the specified number of HTTP requests matching all
