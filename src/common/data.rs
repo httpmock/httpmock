@@ -10,6 +10,7 @@ use crate::{
     server::matchers::generic::MatchingStrategy,
 };
 use bytes::Bytes;
+use http::uri::Authority;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 use std::{
@@ -135,6 +136,15 @@ impl HttpMockRequest {
         self.uri.as_ref()
     }
 
+    fn authority(&self) -> Option<Authority> {
+        // 1. Try to get the host from the 'Host' header (HTTP/1.1)
+        self.headers()
+            .get(http::header::HOST)
+            .and_then(|v| Authority::try_from(v.as_bytes()).ok())
+            // 2. Fallback to the URI's authority (HTTP/2 and HTTP/3)
+            .or_else(|| self.uri().authority().cloned())
+    }
+
     /// Returns the host that the request was sent to, based on the `Host` header or `:authority` pseudo-header.
     ///
     /// # Attention
@@ -150,22 +160,7 @@ impl HttpMockRequest {
     /// An `Option<String>` containing the host if the `Host` header or `:authority` pseudo-header is present, or
     /// `None` if neither is found.
     pub fn host(&self) -> Option<String> {
-        // Check the Host header first (HTTP 1.1)
-        if let Some((_, host)) = self
-            .headers
-            .iter()
-            .find(|&&(ref k, _)| k.eq_ignore_ascii_case("host"))
-        {
-            return Some(host.split(':').next().unwrap().to_string());
-        }
-
-        // If Host header is not found, check the URI authority (HTTP/2 and HTTP/3)
-        let uri = self.uri();
-        if let Some(authority) = uri.authority() {
-            return Some(authority.as_str().split(':').next().unwrap().to_string());
-        }
-
-        None
+        self.authority().map(|auth| auth.host().to_string())
     }
 
     /// Returns the port that the request was sent to, based on the `Host` header or `:authority` pseudo-header.
@@ -182,34 +177,15 @@ impl HttpMockRequest {
     /// An `u16` containing the port if the `Host` header or `:authority` pseudo-header is present and includes a valid port,
     /// or 443 (https) or 80 (http) based on the used scheme otherwise.
     pub fn port(&self) -> u16 {
-        // Check the Host header first (HTTP 1.1)
-        if let Some((_, host)) = self
-            .headers
-            .iter()
-            .find(|&&(ref k, _)| k.eq_ignore_ascii_case("host"))
-        {
-            if let Some(port_str) = host.split(':').nth(1) {
-                if let Ok(port) = port_str.parse::<u16>() {
-                    return port;
+        self.authority()
+            .and_then(|auth| auth.port_u16())
+            .unwrap_or_else(|| {
+                if self.scheme().eq_ignore_ascii_case("https") {
+                    443
+                } else {
+                    80
                 }
-            }
-        }
-
-        // If Host header is not found, check the URI authority (HTTP/2 and HTTP/3)
-        let uri = self.uri();
-        if let Some(authority) = uri.authority() {
-            if let Some(port_str) = authority.as_str().split(':').nth(1) {
-                if let Ok(port) = port_str.parse::<u16>() {
-                    return port;
-                }
-            }
-        }
-
-        if self.scheme().eq("https") {
-            return 443;
-        }
-
-        return 80;
+            })
     }
 
     pub fn method(&self) -> http::Method {
@@ -233,7 +209,7 @@ impl HttpMockRequest {
     }
 
     pub fn headers_vec(&self) -> &Vec<(String, String)> {
-        self.headers.as_ref()
+        &self.headers
     }
 
     pub fn query_params_map(&self) -> HashMap<String, String> {
@@ -2066,5 +2042,34 @@ impl From<&str> for Method {
 impl std::fmt::Display for Method {
     fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
         std::fmt::Debug::fmt(self, f)
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::HttpMockRequest;
+    use crate::common::util::HttpMockBytes;
+
+    fn ipv6_host_header_request() -> HttpMockRequest {
+        HttpMockRequest::new(
+            "http".to_string(),
+            "/".to_string(),
+            "GET".to_string(),
+            vec![("Host".to_string(), "[::1]:8080".to_string())],
+            "HTTP/1.1".to_string(),
+            HttpMockBytes::from(Vec::<u8>::new()),
+        )
+    }
+
+    #[test]
+    fn host_returns_ipv6_without_brackets() {
+        let req = ipv6_host_header_request();
+        assert_eq!(req.host(), Some("[::1]".to_string()));
+    }
+
+    #[test]
+    fn port_reads_ipv6_host_header_port() {
+        let req = ipv6_host_header_request();
+        assert_eq!(req.port(), 8080);
     }
 }
