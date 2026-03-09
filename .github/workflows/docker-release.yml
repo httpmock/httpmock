@@ -31,14 +31,14 @@ jobs:
           username: ${{ secrets.DOCKERHUB_USERNAME }}
           password: ${{ secrets.DOCKERHUB_TOKEN }}
       - name: Build and push (provided version only)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         if: github.event.inputs.latest != 'true'
         with:
           context: .
           push: ${{ github.event.inputs.push }}
           tags: httpmock/httpmock:${{ github.event.inputs.version }}
       - name: Build and push (provided version + latest)
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         if: github.event.inputs.latest == 'true'
         with:
           context: .
