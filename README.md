@@ -13,7 +13,7 @@
 [![Build](https://github.com/httpmock/httpmock/actions/workflows/build.yml/badge.svg)](https://github.com/httpmock/httpmock/actions/workflows/build.yml)
 [![crates.io](https://img.shields.io/crates/d/httpmock.svg)](https://crates.io/crates/httpmock)
 [![Mentioned in Awesome](https://raw.githubusercontent.com/alexliesenfeld/docs-assets/refs/heads/main/ab.svg)](https://github.com/rust-unofficial/awesome-rust#testing)
-[![Rust](https://img.shields.io/badge/rust-1.85%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/rust/blob/main/RELEASES.md#version-1851-2025-03-18)
+[![Rust](https://img.shields.io/badge/rust-1.88%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/rust/blob/main/RELEASES.md#version-1880-2025-06-26)
 
 </div>
 
@@ -24,9 +24,7 @@
     ·
     <a href="https://crates.io/crates/httpmock">Crate</a>
     ·
-    <a href="https://discord.com/invite/7QzTfBUe">Chat on Discord</a>
-    ·
- <a href="https://github.com/httpmock/httpmock/discussions">Forum</a>
+    <a href="https://discord.gg/BMyywgTJWK">Chat on Discord</a>
     ·
     <a href="https://github.com/httpmock/httpmock/issues">Report Bug</a>
     ·
@@ -59,7 +57,7 @@ Add `httpmock` to `Cargo.toml`:
 
 ```toml
 [dev-dependencies]
-httpmock = "0.8.2"
+httpmock = "0.8.3"
 ```
 
 You can then use `httpmock` as follows:
@@ -116,7 +114,7 @@ All received query parameter values:
     1. word=hello
 
 Matcher:  query_param
-Docs:     https://docs.rs/httpmock/0.8.2/httpmock/struct.When.html#method.query_param
+Docs:     https://docs.rs/httpmock/0.8.3/httpmock/struct.When.html#method.query_param
 ```
 
 # Usage

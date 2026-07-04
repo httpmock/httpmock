@@ -14,7 +14,10 @@ export default defineConfig({
             },
             social: {
                 github: 'https://github.com/httpmock/httpmock',
-                discord: 'https://discord.com/invite/7QzTfBUe',
+                discord: 'https://discord.gg/BMyywgTJWK',
+            },
+            components: {
+                SocialIcons: './src/components/SocialIcons.astro',
             },
             sidebar: [
                 {

@@ -1,1 +1,4 @@
-github: alexliesenfeld
+github:
+  - httpmock
+  - alexliesenfeld
+  - FalkWoldmann

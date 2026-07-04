@@ -52,7 +52,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
       - name: Build development version
-        uses: docker/build-push-action@v6
+        uses: docker/build-push-action@v7
         with:
           context: .
           push: false

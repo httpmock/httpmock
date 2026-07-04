@@ -5,7 +5,6 @@ description: Describes what resources are available to developers.
 
 To learn more about this project, please refer to the following resources:
 - Issue Tracker: https://github.com/httpmock/httpmock/issues
-- Community Forum: https://github.com/httpmock/httpmock/discussions
 - API Reference: https://docs.rs/httpmock/latest/httpmock/
 - GitHub Repository: https://github.com/httpmock/httpmock
 - Official Website: https://httpmock.rs

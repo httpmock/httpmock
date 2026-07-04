@@ -1,14 +1,15 @@
 # Changelog
 
-## Version 0.8.3 (unreleased / in development)
+## Version 0.8.3
 
-Minimum supported Rust version has been raised to 1.85.
+Minimum supported Rust version has been raised to 1.88.
 
 - [#186](https://github.com/httpmock/httpmock/pull/186): "Remove unused code and trait methods for cleanup" (thanks [@FalkWoldmann](https://github.com/FalkWoldmann))
 - [#191](https://github.com/httpmock/httpmock/pull/191): "upgrade Rust" (thanks [@sebdotv](https://github.com/sebdotv))
 - [#201](https://github.com/httpmock/httpmock/pull/201): "Replace unmaintained rustls-pemfile with rustls-pki-types" (thanks [@aleics](https://github.com/aleics))
 - [#205](https://github.com/httpmock/httpmock/pull/205): "Fix is_false custom matcher" (thanks [@dfaust](https://github.com/dfaust))
 - [#206](https://github.com/httpmock/httpmock/pull/206): "fix: remove unneeded 'Deserialize' trait bound" (thanks [@danieleades](https://github.com/danieleades) and [@FalkWoldmann](https://github.com/FalkWoldmann))
+- [#211](https://github.com/httpmock/httpmock/pull/211): "style: remove unneeded 'mut'" (thanks [@danieleades](https://github.com/danieleades))
 
 ## Version 0.8.2
 
