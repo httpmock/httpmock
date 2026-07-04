@@ -176,12 +176,12 @@ pub fn distance_for_prefix(
         .as_deref()
         .map(|s| &s[..mock_slice_len.min(s.len())]);
 
-    return distance_for_substring(
+    distance_for_substring(
         case_sensitive,
         negated,
         &mock_slice.map(|v| v.as_str()),
         &req_slice,
-    );
+    )
 }
 
 #[cfg(test)]
@@ -503,12 +503,12 @@ pub fn distance_for_suffix(
         .as_deref()
         .map(|s| &s[..mock_slice_len.min(s.len())]);
 
-    return distance_for_substring(
+    distance_for_substring(
         case_sensitive,
         negated,
         &mock_slice.map(|v| v.as_str()),
         &req_slice,
-    );
+    )
 }
 
 pub fn string_contains(
@@ -963,7 +963,7 @@ pub fn hostname_equals(
         }
     }
 
-    return string_equals(false, negated, mock_value, req_value);
+    string_equals(false, negated, mock_value, req_value)
 }
 
 #[cfg(test)]
@@ -1467,15 +1467,14 @@ where
     let req_size = actual.map_or(0, |&v| v.try_into().unwrap_or(0));
 
     match (expected, actual) {
-        (Some(&mv), Some(&rv)) => {
-            let diff = if mock_size > req_size {
+        (Some(_), Some(_)) => {
+            if mock_size > req_size {
                 mock_size - req_size
             } else {
                 req_size - mock_size
-            };
-            diff
+            }
         }
-        (Some(&mv), None) | (None, Some(&mv)) => {
+        (Some(_), None) | (None, Some(_)) => {
             if mock_size == 0 {
                 1
             } else {
@@ -1715,12 +1714,12 @@ pub fn regex_string_distance(
     }
 
     let rv = req_value.map_or("", |s| s.as_str());
-    let unmatched_len = regex_unmatched_length(rv, &mock_value.unwrap());
+    let unmatched_len = regex_unmatched_length(rv, mock_value.unwrap());
 
-    return match negated {
+    match negated {
         true => rv.len() - unmatched_len,
         false => unmatched_len,
-    };
+    }
 }
 
 #[cfg(test)]
