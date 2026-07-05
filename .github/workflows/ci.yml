@@ -2,7 +2,8 @@
 #
 # CI is split into three lanes (see upstream issue #219):
 #   - ci.yml (this file): lint, pairwise feature compile checks, tests for
-#     representative feature sets, coverage. Fast enough to block PRs.
+#     representative feature sets, coverage, dependency policy. Fast enough
+#     to block PRs.
 #   - feature-matrix.yml: full test suite across the feature power set plus
 #     Docker integration. Master pushes, nightly, and on demand.
 #   - platform.yml: macOS/Windows and beta/nightly toolchains. Weekly.
@@ -24,6 +25,7 @@ jobs:
   lint:
     name: Format and lint
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
 
@@ -42,6 +44,7 @@ jobs:
   feature-combinations:
     name: Check feature combinations
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
@@ -72,6 +75,7 @@ jobs:
   test:
     name: Test (${{ matrix.name }})
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     strategy:
       fail-fast: false
       # Three representative feature sets; the full power set is covered by
@@ -97,7 +101,11 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      # The cache action does not key on matrix values by itself, and each
+      # row compiles a different feature set.
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: ${{ matrix.name }}
 
       # Default test-thread parallelism. Tests that talk to the standalone
       # server share one in-process simulation per test binary, which handles
@@ -107,34 +115,54 @@ jobs:
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
-    container:
-      image: xd009642/tarpaulin:develop-nightly
-      options: --security-opt seccomp=unconfined
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
-      # A single representative feature set keeps coverage cheap enough to
-      # run per PR. The exhaustive per-combination configs remain available
-      # locally via `make coverage-full` (tarpaulin.full.toml).
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      # Source-based coverage on the pinned toolchain (no nightly container
+      # or ptrace tricks, unlike tarpaulin, which remains available locally
+      # via `make coverage`). The standalone superset gives one cheap run
+      # that still covers most feature-gated code.
       - name: Generate code coverage
-        run: cargo +nightly tarpaulin --workspace --features remote --timeout 120 --out Xml
+        run: cargo llvm-cov --features standalone --lcov --output-path lcov.info
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v5
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
+          files: lcov.info
           fail_ci_if_error: true
+
+  deny:
+    name: Dependency policy
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      # Enforces deny.toml (previously local-only via `make check`). Only
+      # the deterministic checks run here; security advisories drift over
+      # time independently of the code, so they run nightly in
+      # feature-matrix.yml instead of failing unrelated PRs.
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check bans licenses sources
 
   docker:
     name: Docker image build
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
       # Ensures the standalone server image still builds. Nothing is
       # published here; releases are handled by docker-release.yml.
-      - uses: docker/build-push-action@v7
-        with:
-          context: .
-          push: false
-          tags: httpmock/httpmock:build
+      - run: docker build -t httpmock/httpmock:build .

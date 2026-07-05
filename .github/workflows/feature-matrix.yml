@@ -25,6 +25,7 @@ jobs:
   powerset-test:
     name: Power set tests (shard ${{ matrix.partition }} of 4)
     runs-on: ubuntu-latest
+    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -42,7 +43,11 @@ jobs:
       # Bootstrap channel only; rustup respects the rust-toolchain.toml pin.
       - uses: dtolnay/rust-toolchain@stable
 
+      # Each shard compiles a different slice of the power set, so give each
+      # its own cache key.
       - uses: Swatinem/rust-cache@v2
+        with:
+          key: shard-${{ matrix.partition }}
 
       - uses: taiki-e/install-action@v2
         with:
@@ -59,6 +64,7 @@ jobs:
   docker-integration:
     name: Integration against Dockerised server
     runs-on: ubuntu-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
 
@@ -106,3 +112,17 @@ jobs:
       - name: Stop the server container
         if: always()
         run: docker rm -f httpmock || true
+
+  advisories:
+    name: Security advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v6
+
+      # RustSec advisories change independently of the code, so they are
+      # checked here nightly rather than blocking unrelated PRs (the
+      # deterministic deny.toml checks run per PR in ci.yml).
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check advisories
