@@ -1,0 +1,21 @@
+{
+  "$schema": "https://docs.renovatebot.com/renovate-schema.json",
+  "extends": ["config:recommended"],
+  "customManagers": [
+    {
+      "customType": "regex",
+      "managerFilePatterns": ["/^\\.github/workflows/.+\\.ya?ml$/"],
+      "matchStrings": ["NIGHTLY_TOOLCHAIN:\\s*nightly-(?<currentValue>\\d{4}-\\d{2}-\\d{2})"],
+      "depNameTemplate": "rust-nightly",
+      "datasourceTemplate": "custom.rust-nightly",
+      "versioningTemplate": "regex:^(?<major>\\d+)-(?<minor>\\d+)-(?<patch>\\d+)$"
+    }
+  ],
+  "customDatasources": {
+    "rust-nightly": {
+      "defaultRegistryUrlTemplate": "https://static.rust-lang.org/dist/channel-rust-nightly.toml",
+      "format": "toml",
+      "transformTemplates": ["{ \"releases\": [ { \"version\": date } ] }"]
+    }
+  }
+}
