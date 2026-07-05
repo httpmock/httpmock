@@ -1,9 +1,14 @@
+CORE_FEATURES := default,standalone,remote
+ADVANCED_FEATURES := standalone,proxy,https,record,remote
+CARGO_HACK_FEATURE_POWERSET := cargo hack test --feature-powerset --exclude-no-default-features --exclude-all-features
+CARGO_HACK_FEATURE_POWERSET_WITH_DEFAULT := $(CARGO_HACK_FEATURE_POWERSET) --features default
+
 .PHONY: setup
 setup:
 	cargo install cargo-audit
 	cargo install --locked cargo-deny
 	cargo install cargo-tarpaulin
-	cargo install cargo-hack
+	cargo install --locked cargo-hack
 
 .PHONY: test-full
 test-full:
@@ -27,29 +32,29 @@ coverage-full: clean-coverage
 
 .PHONY: core-features-test
 core-features-test: clean-coverage
-	./scripts/test_all_feature_sets.sh "standalone,remote,remote-https,http2,cookies"
+	$(CARGO_HACK_FEATURE_POWERSET) --include-features "$(CORE_FEATURES)" --mutually-exclusive-features default,standalone --mutually-exclusive-features default,remote -- --test-threads=1
 
 .PHONY: core-features-integration-test
 core-features-integration-test: clean-coverage
-	./scripts/test_all_feature_sets.sh "standalone,remote,remote-https,http2,cookies" "tests"
+	$(CARGO_HACK_FEATURE_POWERSET) --include-features "$(CORE_FEATURES)" --mutually-exclusive-features default,standalone --mutually-exclusive-features default,remote --test lib -- --test-threads=1
 
 .PHONY: advanced-features-test
 advanced-features-test: clean-coverage
-	./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote"
+	$(CARGO_HACK_FEATURE_POWERSET_WITH_DEFAULT) --include-features "$(ADVANCED_FEATURES)" -- --test-threads=1
 
 .PHONY: advanced-features-integration-test
 advanced-features-integration-test: clean-coverage
-	./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote" "tests"
+	$(CARGO_HACK_FEATURE_POWERSET_WITH_DEFAULT) --include-features "$(ADVANCED_FEATURES)" --test lib -- --test-threads=1
 
 .PHONY: advanced-features-test-docker
 advanced-features-test-docker: clean-coverage
 	docker compose up -d
-	HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER=1 ./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote"
+	HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER=1 $(CARGO_HACK_FEATURE_POWERSET_WITH_DEFAULT) --include-features "$(ADVANCED_FEATURES)" -- --test-threads=1
 
 .PHONY: advanced-features-integration-test-docker
 advanced-features-integration-test-docker: clean-coverage
 	docker compose up -d
-	HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER=1 ./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote" "tests"
+	HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER=1 $(CARGO_HACK_FEATURE_POWERSET_WITH_DEFAULT) --include-features "$(ADVANCED_FEATURES)" --test lib -- --test-threads=1
 
 .PHONY: coverage-debug
 coverage-debug:
