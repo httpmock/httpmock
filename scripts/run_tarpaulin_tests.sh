@@ -33,10 +33,7 @@ done
 # Run cargo test for each feature set, stop if an error occurs and wait for confirmation
 for feature in "${features_list[@]}"; do
   echo "Testing with features: $feature"
-  cargo test --features="$feature"
-
-  # Check if the previous command was successful
-  if [ $? -ne 0 ]; then
+  if ! cargo test --features="$feature"; then
     echo "Test failed for features: $feature."
     echo "Press Enter to continue with the next set of features or Ctrl+C to exit."
     read -r
