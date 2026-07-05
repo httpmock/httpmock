@@ -27,9 +27,8 @@ jobs:
     runs-on: ubuntu-latest
     env:
       # Nightly gives clippy its newest lints. Pinned so results only change
-      # when the pin is bumped. The `renovate:` comment is a custom-manager
-      # anchor, ready for automated bumps once Renovate is adopted.
-      # renovate: datasource=custom.rust-nightly depName=rust-nightly
+      # when this date is bumped (by hand, or by an automation matching the
+      # nightly-YYYY-MM-DD pattern).
       NIGHTLY_TOOLCHAIN: nightly-2026-07-01
     steps:
       - uses: actions/checkout@v6
