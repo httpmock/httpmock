@@ -39,7 +39,6 @@ jobs:
           sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
           sudo update-ca-certificates
 
-      # Bootstrap channel only; rustup respects the rust-toolchain.toml pin.
       - uses: dtolnay/rust-toolchain@stable
 
       # Each shard compiles a different slice of the power set, so give each

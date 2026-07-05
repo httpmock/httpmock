@@ -31,10 +31,6 @@ jobs:
             rust: beta
           - os: ubuntu-latest
             rust: nightly
-    env:
-      # Overrides the MSRV pin in rust-toolchain.toml for the whole job;
-      # MSRV itself is enforced per PR by ci.yml.
-      RUSTUP_TOOLCHAIN: ${{ matrix.rust }}
     steps:
       - uses: actions/checkout@v6
 

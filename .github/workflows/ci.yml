@@ -1,9 +1,9 @@
 # Fast lane: runs on every pull request and every push to master.
 #
 # CI is split into three lanes (see upstream issue #219):
-#   - ci.yml (this file): lint, pairwise feature compile checks, tests for
-#     representative feature sets, coverage, dependency policy. Fast enough
-#     to block PRs.
+#   - ci.yml (this file): lint, pairwise feature compile checks, MSRV, tests
+#     for representative feature sets, coverage, dependency policy. Fast
+#     enough to block PRs.
 #   - feature-matrix.yml: full test suite across the feature power set plus
 #     Docker integration. Master pushes, nightly, and on demand.
 #   - platform.yml: macOS/Windows and beta/nightly toolchains. Weekly.
@@ -28,9 +28,8 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Bootstrap channel only; rustup respects the MSRV pin in
-      # rust-toolchain.toml when cargo runs. Warning severity is owned by the
-      # crate's lint configuration, so CI does not escalate warnings.
+      # Warning severity is owned by the crate's lint configuration, so CI
+      # does not escalate warnings.
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
@@ -68,6 +67,25 @@ jobs:
       # Then with dev-dependencies and all targets, so feature-gated code in
       # integration tests and examples is checked as well.
       - run: cargo hack check --feature-powerset --depth 2 --all-targets
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+
+      # Checks that every feature builds on the rust-version declared in
+      # Cargo.toml. Dev dependencies are exempt from the MSRV promise, so
+      # this checks the library as downstream users consume it.
+      - run: cargo hack check --rust-version --each-feature --no-dev-deps
 
   test:
     name: Test (${{ matrix.name }})
