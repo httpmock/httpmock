@@ -31,17 +31,18 @@ jobs:
             rust: beta
           - os: ubuntu-latest
             rust: nightly
+    env:
+      # Overrides the MSRV pin in rust-toolchain.toml for the whole job;
+      # MSRV itself is enforced per PR by ci.yml.
+      RUSTUP_TOOLCHAIN: ${{ matrix.rust }}
     steps:
       - uses: actions/checkout@v6
 
-      # The explicit toolchain input overrides the MSRV pin in
-      # rust-toolchain.toml; MSRV itself is enforced per PR by ci.yml.
-      # rustflags cleared because the action defaults to "-D warnings";
-      # warning severity is owned by the crate's lint configuration.
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: dtolnay/rust-toolchain@master
         with:
           toolchain: ${{ matrix.rust }}
-          rustflags: ""
+
+      - uses: Swatinem/rust-cache@v2
 
       - run: cargo test
 

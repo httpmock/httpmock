@@ -39,11 +39,10 @@ jobs:
           sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
           sudo update-ca-certificates
 
-      # rustflags cleared because the action defaults to "-D warnings";
-      # warning severity is owned by the crate's lint configuration.
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rustflags: ""
+      # Bootstrap channel only; rustup respects the rust-toolchain.toml pin.
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - uses: taiki-e/install-action@v2
         with:
@@ -68,9 +67,9 @@ jobs:
           sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
           sudo update-ca-certificates
 
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rustflags: ""
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - name: Build and start the standalone server container
         run: |

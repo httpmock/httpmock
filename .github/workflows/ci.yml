@@ -27,14 +27,13 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Installs the MSRV toolchain pinned in rust-toolchain.toml and enables
-      # dependency caching (built into this action). The action defaults
-      # RUSTFLAGS to "-D warnings"; warning severity is owned by the crate's
-      # lint configuration, so the default is cleared here (and in every
-      # other job using this action).
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rustflags: ""
+      # The channel here is only a bootstrap; rustup respects the MSRV pin in
+      # rust-toolchain.toml when cargo runs. This action leaves RUSTFLAGS
+      # alone, so warning severity stays owned by the crate's lint
+      # configuration rather than being escalated by CI.
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
 
       - run: cargo fmt --all -- --check
 
@@ -46,9 +45,9 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rustflags: ""
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
 
       # Fetches a prebuilt binary instead of compiling from source.
       - uses: taiki-e/install-action@v2
@@ -96,9 +95,9 @@ jobs:
           sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
           sudo update-ca-certificates
 
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rustflags: ""
+      - uses: dtolnay/rust-toolchain@stable
+
+      - uses: Swatinem/rust-cache@v2
 
       # Default test-thread parallelism. Tests that talk to the standalone
       # server share one in-process simulation per test binary, which handles
