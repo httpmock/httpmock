@@ -1,4 +1,3 @@
-use bytes::{BufMut, Bytes, BytesMut};
 use std::{
     convert::{TryFrom, TryInto},
     fs::{read_dir, read_to_string},
@@ -6,14 +5,16 @@ use std::{
     str::FromStr,
 };
 
+use bytes::{BufMut, Bytes, BytesMut};
 use serde::Deserialize;
-
-use crate::common::data;
 use serde_yaml::{Deserializer, Value as YamlValue};
 use thiserror::Error;
 
 use crate::{
-    common::data::{MockDefinition, StaticMockDefinition},
+    common::{
+        data,
+        data::{MockDefinition, StaticMockDefinition},
+    },
     server::{
         persistence::Error::{DeserializationError, FileReadError},
         state,

@@ -1,28 +1,28 @@
-use crate::common::data::{
-    ForwardingRuleConfig, MockServerHttpResponse, ProxyRuleConfig, RecordingRuleConfig,
-};
 use std::{borrow::Borrow, net::SocketAddr, sync::Arc};
 
-use crate::api::{
-    adapter::{
-        ServerAdapterError,
-        ServerAdapterError::{
-            InvalidMockDefinitionError, JsonDeserializationError, JsonSerializationError,
-            UpstreamError,
-        },
-    },
-    MockServerAdapter,
-};
 use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Request, StatusCode};
 
-use crate::common::{
-    data::{
-        ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch,
-        MockDefinition, RequestRequirements,
+use crate::{
+    api::{
+        adapter::{
+            ServerAdapterError,
+            ServerAdapterError::{
+                InvalidMockDefinitionError, JsonDeserializationError, JsonSerializationError,
+                UpstreamError,
+            },
+        },
+        MockServerAdapter,
     },
-    http::HttpClient,
+    common::{
+        data::{
+            ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch,
+            ForwardingRuleConfig, MockDefinition, MockServerHttpResponse, ProxyRuleConfig,
+            RecordingRuleConfig, RequestRequirements,
+        },
+        http::HttpClient,
+    },
 };
 
 pub struct RemoteMockServerAdapter {

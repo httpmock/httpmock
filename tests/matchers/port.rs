@@ -1,6 +1,7 @@
-use crate::matchers::expect_fails_with;
 use httpmock::MockServer;
 use reqwest::blocking::get;
+
+use crate::matchers::expect_fails_with;
 
 #[test]
 fn host_tests() {

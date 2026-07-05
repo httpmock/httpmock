@@ -19,8 +19,9 @@ fn all_runtimes_test() {
 
 #[cfg(all(feature = "proxy", feature = "https"))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::get_request;
     use httpmock::prelude::*;
+
+    use crate::utils::http::get_request;
 
     // Proxy forwarder
     let server2 = MockServer::connect_async("localhost:5050").await;
@@ -58,8 +59,9 @@ async fn test_fn() -> u16 {
 
 #[cfg(all(feature = "proxy", not(any(feature = "https", feature = "standalone"))))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::get_request;
     use httpmock::prelude::*;
+
+    use crate::utils::http::get_request;
 
     // Proxy forwarder
     let server2 = MockServer::connect_async("localhost:5050").await;
@@ -103,8 +105,9 @@ async fn test_fn() -> u16 {
 
 #[cfg(all(feature = "proxy", feature = "standalone", not(feature = "https")))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::get_request;
     use httpmock::prelude::*;
+
+    use crate::utils::http::get_request;
 
     // Fake GitHub target
     let target_server = MockServer::connect_async("localhost:5050").await;
@@ -142,8 +145,9 @@ async fn test_fn() -> u16 {
 
 #[cfg(not(any(feature = "proxy")))]
 async fn test_fn() -> u16 {
-    use crate::utils::http::get_request;
     use httpmock::prelude::*;
+
+    use crate::utils::http::get_request;
 
     let server = MockServer::start_async().await;
     let mock = server

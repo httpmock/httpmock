@@ -1,5 +1,6 @@
-use httpmock::prelude::*;
 use std::time::{Duration, SystemTime};
+
+use httpmock::prelude::*;
 
 #[test]
 fn delay_test() {

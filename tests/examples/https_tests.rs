@@ -23,9 +23,10 @@ async fn test_http_get_request() {
 #[cfg(feature = "remote")]
 #[tokio::test]
 async fn https_test_reqwest() {
+    use std::{fs::read, path::PathBuf};
+
     use httpmock::MockServer;
     use reqwest::{tls::Certificate, Client};
-    use std::{fs::read, path::PathBuf};
 
     // This starts up a standalone server in the background running on port 5050
     crate::with_standalone_server();
