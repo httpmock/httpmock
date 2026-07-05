@@ -5,10 +5,18 @@ setup:
 	cargo install cargo-tarpaulin
 	cargo install cargo-hack
 
+# Full feature power set against a real standalone server container.
 .PHONY: test-full
 test-full:
 	docker compose up -d
 	HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER=1 cargo hack test --feature-powerset --exclude-features https
+
+# Every feature alone and every feature pair, using the in-process simulated
+# standalone server. Mirrors the CI feature-matrix workflow; cargo-hack skips
+# combinations that are equivalent under feature implications.
+.PHONY: test-matrix
+test-matrix:
+	cargo hack test --feature-powerset --depth 2
 
 .PHONY: check
 check:
@@ -24,32 +32,6 @@ coverage:
 .PHONY: coverage-full
 coverage-full: clean-coverage
 	cargo tarpaulin --config tarpaulin.full.toml --out
-
-.PHONY: core-features-test
-core-features-test: clean-coverage
-	./scripts/test_all_feature_sets.sh "standalone,remote,remote-https,http2,cookies"
-
-.PHONY: core-features-integration-test
-core-features-integration-test: clean-coverage
-	./scripts/test_all_feature_sets.sh "standalone,remote,remote-https,http2,cookies" "tests"
-
-.PHONY: advanced-features-test
-advanced-features-test: clean-coverage
-	./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote"
-
-.PHONY: advanced-features-integration-test
-advanced-features-integration-test: clean-coverage
-	./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote" "tests"
-
-.PHONY: advanced-features-test-docker
-advanced-features-test-docker: clean-coverage
-	docker compose up -d
-	HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER=1 ./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote"
-
-.PHONY: advanced-features-integration-test-docker
-advanced-features-integration-test-docker: clean-coverage
-	docker compose up -d
-	HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER=1 ./scripts/test_all_feature_sets.sh "https,proxy,record,standalone,remote-https,remote" "tests"
 
 .PHONY: coverage-debug
 coverage-debug:

@@ -1,0 +1,45 @@
+# Cross-platform lane: builds and tests on macOS/Windows and on beta/nightly
+# toolchains. These rarely break independently of the Linux/MSRV jobs in
+# ci.yml, so they run weekly and on demand rather than on every PR.
+name: Platforms
+
+on:
+  schedule:
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: ${{ matrix.os }} / ${{ matrix.rust }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      # Stable runs on every OS; beta and nightly only on Linux, since
+      # toolchain regressions are effectively OS-independent.
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+        rust: [stable]
+        include:
+          - os: ubuntu-latest
+            rust: beta
+          - os: ubuntu-latest
+            rust: nightly
+    steps:
+      - uses: actions/checkout@v6
+
+      # The explicit toolchain input overrides the MSRV pin in
+      # rust-toolchain.toml; MSRV itself is enforced per PR by ci.yml.
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ matrix.rust }}
+
+      - run: cargo test
+
+      - run: cargo test --features standalone
