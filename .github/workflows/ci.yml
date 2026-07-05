@@ -1,0 +1,165 @@
+# Fast lane: runs on every pull request and every push to master.
+#
+# CI is split into three lanes (see upstream issue #219):
+#   - ci.yml (this file): lint, pairwise feature compile checks, MSRV, tests
+#     for representative feature sets, coverage, dependency policy. Fast
+#     enough to block PRs.
+#   - feature-matrix.yml: full test suite across the feature power set plus
+#     Docker integration. Master pushes, nightly, and on demand.
+#   - platform.yml: macOS/Windows and beta/nightly toolchains. Weekly.
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [master]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Format and lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # setup-rust-toolchain installs the toolchain and configures caching in
+      # one step. It defaults RUSTFLAGS to "-D warnings"; rustflags: "" clears
+      # that so warning severity stays owned by the crate's lint config.
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          components: clippy, rustfmt
+          rustflags: ""
+
+      - run: cargo fmt --all -- --check
+
+      # Warning severity is owned by the crate's lint configuration, so CI
+      # does not escalate warnings.
+      - run: cargo clippy --all-targets --all-features
+
+  feature-combinations:
+    name: Check feature combinations
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
+
+      # Fetches a prebuilt binary instead of compiling from source.
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+
+      # Compile-check every feature alone and every feature pair. Feature
+      # gating mistakes are almost always compile errors, so this cheap check
+      # catches most of what full matrix *testing* would. cargo-hack drops
+      # combinations that are equivalent under feature implications (e.g.
+      # record -> proxy -> remote-https -> remote), keeping the run small.
+      # The same power set is fully tested in feature-matrix.yml.
+      #
+      # Without dev-dependencies first: dev-dep feature unification can mask
+      # gating bugs in the published crate.
+      - run: cargo hack check --feature-powerset --depth 2 --no-dev-deps
+
+      # Then with dev-dependencies and all targets, so feature-gated code in
+      # integration tests and examples is checked as well.
+      - run: cargo hack check --feature-powerset --depth 2 --all-targets
+
+  test:
+    name: Test (${{ matrix.name }})
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      # Three representative feature sets; the full power set is covered by
+      # feature-matrix.yml. "standalone" already implies remote, remote-https,
+      # record, proxy, http2 and cookies.
+      matrix:
+        include:
+          - name: default
+            args: ""
+          - name: standalone
+            args: --features standalone
+          - name: all-features
+            args: --all-features
+    steps:
+      - uses: actions/checkout@v6
+
+      # HTTPS tests validate the bundled test certificates against the OS
+      # trust store.
+      - name: Trust the repository's test CA
+        run: |
+          sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
+          sudo update-ca-certificates
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          # Each matrix row compiles a different feature set, so each caches
+          # separately.
+          cache-key: ${{ matrix.name }}
+          rustflags: ""
+
+      # Default test-thread parallelism. Tests that talk to the standalone
+      # server share one in-process simulation per test binary, which handles
+      # concurrent requests fine.
+      - run: cargo test ${{ matrix.args }}
+
+  coverage:
+    name: Coverage
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      # Codecov authenticates via GitHub OIDC instead of a stored token.
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-llvm-cov
+
+      # Source-based coverage on the pinned toolchain. The standalone
+      # superset gives one cheap run that covers most feature-gated code.
+      - name: Generate code coverage
+        run: cargo llvm-cov --features standalone --lcov --output-path lcov.info
+
+      - name: Upload to codecov.io
+        uses: codecov/codecov-action@v5
+        with:
+          use_oidc: true
+          files: lcov.info
+          fail_ci_if_error: true
+
+  deny:
+    name: Dependency policy
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # Enforces deny.toml. Only the deterministic checks run here; security
+      # advisories drift over time independently of the code, so they are
+      # checked nightly in feature-matrix.yml instead of failing unrelated
+      # PRs.
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check bans licenses sources
+
+  docker:
+    name: Docker image build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # Ensures the standalone server image still builds. Nothing is
+      # published here; releases are handled by docker-release.yml.
+      - run: docker build -t httpmock/httpmock:build .
