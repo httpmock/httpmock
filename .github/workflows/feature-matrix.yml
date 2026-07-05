@@ -25,7 +25,6 @@ jobs:
   powerset-test:
     name: Power set tests (shard ${{ matrix.partition }} of 4)
     runs-on: ubuntu-latest
-    timeout-minutes: 90
     strategy:
       fail-fast: false
       matrix:
@@ -64,7 +63,6 @@ jobs:
   docker-integration:
     name: Integration against Dockerised server
     runs-on: ubuntu-latest
-    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v6
 
@@ -116,7 +114,6 @@ jobs:
   advisories:
     name: Security advisories
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
 

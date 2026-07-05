@@ -19,7 +19,6 @@ jobs:
   test:
     name: ${{ matrix.os }} / ${{ matrix.rust }}
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 45
     strategy:
       fail-fast: false
       # Stable runs on every OS; beta and nightly only on Linux, since

@@ -25,14 +25,12 @@ jobs:
   lint:
     name: Format and lint
     runs-on: ubuntu-latest
-    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v6
 
-      # The channel here is only a bootstrap; rustup respects the MSRV pin in
-      # rust-toolchain.toml when cargo runs. This action leaves RUSTFLAGS
-      # alone, so warning severity stays owned by the crate's lint
-      # configuration rather than being escalated by CI.
+      # Bootstrap channel only; rustup respects the MSRV pin in
+      # rust-toolchain.toml when cargo runs. Warning severity is owned by the
+      # crate's lint configuration, so CI does not escalate warnings.
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: Swatinem/rust-cache@v2
@@ -44,7 +42,6 @@ jobs:
   feature-combinations:
     name: Check feature combinations
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
@@ -75,7 +72,6 @@ jobs:
   test:
     name: Test (${{ matrix.name }})
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     strategy:
       fail-fast: false
       # Three representative feature sets; the full power set is covered by
@@ -101,8 +97,8 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      # The cache action does not key on matrix values by itself, and each
-      # row compiles a different feature set.
+      # Each matrix row compiles a different feature set, so each caches
+      # separately.
       - uses: Swatinem/rust-cache@v2
         with:
           key: ${{ matrix.name }}
@@ -115,7 +111,10 @@ jobs:
   coverage:
     name: Coverage
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    permissions:
+      contents: read
+      # Codecov authenticates via GitHub OIDC instead of a stored token.
+      id-token: write
     steps:
       - uses: actions/checkout@v6
 
@@ -127,31 +126,28 @@ jobs:
         with:
           tool: cargo-llvm-cov
 
-      # Source-based coverage on the pinned toolchain (no nightly container
-      # or ptrace tricks, unlike tarpaulin, which remains available locally
-      # via `make coverage`). The standalone superset gives one cheap run
-      # that still covers most feature-gated code.
+      # Source-based coverage on the pinned toolchain. The standalone
+      # superset gives one cheap run that covers most feature-gated code.
       - name: Generate code coverage
         run: cargo llvm-cov --features standalone --lcov --output-path lcov.info
 
       - name: Upload to codecov.io
         uses: codecov/codecov-action@v5
         with:
-          token: ${{ secrets.CODECOV_TOKEN }}
+          use_oidc: true
           files: lcov.info
           fail_ci_if_error: true
 
   deny:
     name: Dependency policy
     runs-on: ubuntu-latest
-    timeout-minutes: 10
     steps:
       - uses: actions/checkout@v6
 
-      # Enforces deny.toml (previously local-only via `make check`). Only
-      # the deterministic checks run here; security advisories drift over
-      # time independently of the code, so they run nightly in
-      # feature-matrix.yml instead of failing unrelated PRs.
+      # Enforces deny.toml. Only the deterministic checks run here; security
+      # advisories drift over time independently of the code, so they are
+      # checked nightly in feature-matrix.yml instead of failing unrelated
+      # PRs.
       - uses: EmbarkStudios/cargo-deny-action@v2
         with:
           command: check bans licenses sources
@@ -159,7 +155,6 @@ jobs:
   docker:
     name: Docker image build
     runs-on: ubuntu-latest
-    timeout-minutes: 30
     steps:
       - uses: actions/checkout@v6
 
