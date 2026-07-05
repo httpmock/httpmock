@@ -36,9 +36,12 @@ jobs:
 
       # The explicit toolchain input overrides the MSRV pin in
       # rust-toolchain.toml; MSRV itself is enforced per PR by ci.yml.
+      # rustflags cleared because the action defaults to "-D warnings";
+      # warning severity is owned by the crate's lint configuration.
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
+          rustflags: ""
 
       - run: cargo test
 

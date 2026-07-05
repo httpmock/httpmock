@@ -28,13 +28,16 @@ jobs:
       - uses: actions/checkout@v6
 
       # Installs the MSRV toolchain pinned in rust-toolchain.toml and enables
-      # dependency caching (built into this action).
+      # dependency caching (built into this action). The action defaults
+      # RUSTFLAGS to "-D warnings"; warning severity is owned by the crate's
+      # lint configuration, so the default is cleared here (and in every
+      # other job using this action).
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
 
       - run: cargo fmt --all -- --check
 
-      # Warning severity is owned by the crate's lint configuration, so
-      # warnings are deliberately not escalated to errors here.
       - run: cargo clippy --all-targets --all-features
 
   feature-combinations:
@@ -44,6 +47,8 @@ jobs:
       - uses: actions/checkout@v6
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
 
       # Fetches a prebuilt binary instead of compiling from source.
       - uses: taiki-e/install-action@v2
@@ -56,7 +61,14 @@ jobs:
       # combinations that are equivalent under feature implications (e.g.
       # record -> proxy -> remote-https -> remote), keeping the run small.
       # The same power set is fully tested in feature-matrix.yml.
+      #
+      # Without dev-dependencies first: dev-dep feature unification can mask
+      # gating bugs in the published crate.
       - run: cargo hack check --feature-powerset --depth 2 --no-dev-deps
+
+      # Then with dev-dependencies and all targets, so feature-gated code in
+      # integration tests and examples is checked as well.
+      - run: cargo hack check --feature-powerset --depth 2 --all-targets
 
   test:
     name: Test (${{ matrix.name }})
@@ -85,6 +97,8 @@ jobs:
           sudo update-ca-certificates
 
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
 
       # Default test-thread parallelism. Tests that talk to the standalone
       # server share one in-process simulation per test binary, which handles
