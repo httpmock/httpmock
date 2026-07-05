@@ -25,6 +25,11 @@ jobs:
   lint:
     name: Format and lint
     runs-on: ubuntu-latest
+    env:
+      # Nightly gives clippy its newest lints. Pinned so results only change
+      # when this date is bumped (by hand, or by an automation matching the
+      # nightly-YYYY-MM-DD pattern).
+      NIGHTLY_TOOLCHAIN: nightly-2026-07-01
     steps:
       - uses: actions/checkout@v6
 
@@ -33,6 +38,7 @@ jobs:
       # that so warning severity stays owned by the crate's lint config.
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
+          toolchain: ${{ env.NIGHTLY_TOOLCHAIN }}
           components: clippy, rustfmt
           rustflags: ""
 
