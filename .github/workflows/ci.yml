@@ -90,7 +90,6 @@ jobs:
           # Each matrix row compiles a different feature set, so each caches
           # separately.
           cache-key: ${{ matrix.name }}
-
       - run: cargo test ${{ matrix.args }}
 
   coverage:
