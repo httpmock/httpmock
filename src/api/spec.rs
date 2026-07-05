@@ -3275,6 +3275,7 @@ impl When {
     /// This method specifies that the HTTP request body must match the provided content exactly.
     ///
     /// **Note**: The body content is case-sensitive and must be an exact match.
+    /// For example, `when.body("Example")` does not match a request body of `example`.
     ///
     /// # Parameters
     /// - `body`: The required HTTP request body content. This parameter accepts any type that can be converted into a `String`.
@@ -3315,7 +3316,7 @@ impl When {
     // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must not match the specified value.
-    /// This method ensures that the request body does not contain the provided content exactly.
+    /// This method ensures that the request body does not exactly match the provided content.
     ///
     /// **Note**: The body content is case-sensitive and must be an exact mismatch.
     ///
