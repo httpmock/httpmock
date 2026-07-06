@@ -11,6 +11,34 @@ license = "MIT"
 repository = "https://github.com/httpmock/httpmock"
 rust-version = "1.88.0"
 
+[lints.clippy]
+# Gate `clippy::all` at error level so new violations fail CI. The lints below
+# are the backlog that surfaced when clippy was re-enabled (see the commit that
+# removed `#![allow(warnings)]`); each is allow-listed so the gate can enforce
+# regressions today, and is burned down one class per stacked PR. Do not add to
+# this list — fix the lint instead.
+all = { level = "deny", priority = -1 }
+uninlined_format_args = "allow"
+enum_variant_names = "allow"
+useless_borrows_in_formatting = "allow"
+doc_overindented_list_items = "allow"
+type_complexity = "allow"
+needless_return = "allow"
+expect_fun_call = "allow"
+new_without_default = "allow"
+extra_unused_lifetimes = "allow"
+single_match = "allow"
+needless_borrow = "allow"
+empty_line_after_doc_comments = "allow"
+needless_borrows_for_generic_args = "allow"
+unnecessary_lazy_evaluations = "allow"
+new_ret_no_self = "allow"
+needless_question_mark = "allow"
+manual_abs_diff = "allow"
+module_inception = "allow"
+unnecessary_to_owned = "allow"
+manual_async_fn = "allow"
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

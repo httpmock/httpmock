@@ -421,7 +421,7 @@ where
 
         let mut uri_parts = req_parts.uri.into_parts();
         uri_parts.authority = Some(to_base_uri.authority().unwrap().clone());
-        uri_parts.scheme = to_base_uri.scheme().map(|s| s.clone()).or(uri_parts.scheme);
+        uri_parts.scheme = to_base_uri.scheme().cloned().or(uri_parts.scheme);
         req_parts.uri = Uri::from_parts(uri_parts).unwrap();
 
         // Record the upstream scheme (http/https) so the HttpClient can reconstruct
@@ -436,13 +436,11 @@ where
 
         if !rule.config.request_header.is_empty() {
             for (key, value) in &rule.config.request_header {
-                let key = http::HeaderName::from_str(key).map_err(|err| {
-                    InvalidHeader(format!("invalid header key: {}", err.to_string()))
-                })?;
+                let key = http::HeaderName::from_str(key)
+                    .map_err(|err| InvalidHeader(format!("invalid header key: {err}")))?;
 
-                let value = HeaderValue::from_str(value).map_err(|err| {
-                    InvalidHeader(format!("invalid header value: {}", err.to_string()))
-                })?;
+                let value = HeaderValue::from_str(value)
+                    .map_err(|err| InvalidHeader(format!("invalid header value: {err}")))?;
 
                 req_parts.headers.append(key, value);
             }
@@ -467,13 +465,11 @@ where
             let headers = req.headers_mut();
 
             for (key, value) in &rule.config.request_header {
-                let key = http::HeaderName::from_str(key).map_err(|err| {
-                    InvalidHeader(format!("invalid header key: {}", err.to_string()))
-                })?;
+                let key = http::HeaderName::from_str(key)
+                    .map_err(|err| InvalidHeader(format!("invalid header key: {err}")))?;
 
-                let value = HeaderValue::from_str(value).map_err(|err| {
-                    InvalidHeader(format!("invalid header value: {}", err.to_string()))
-                })?;
+                let value = HeaderValue::from_str(value)
+                    .map_err(|err| InvalidHeader(format!("invalid header value: {err}")))?;
 
                 headers.append(key, value);
             }

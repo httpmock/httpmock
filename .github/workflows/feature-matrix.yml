@@ -1,0 +1,123 @@
+# Deep lane: runs the full test suite across the feature power set, plus an
+# integration run against a real Dockerised standalone server.
+#
+# This is too slow to block every PR, so it runs on pushes to master, on a
+# nightly schedule, and on demand. PRs get a compile-only check of the same
+# power set from ci.yml, which catches most feature-gating mistakes.
+name: Feature Matrix
+
+on:
+  push:
+    branches: [master]
+  schedule:
+    # Nightly, so feature interactions are exercised even while master is quiet.
+    - cron: "30 3 * * *"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  powerset-test:
+    name: Power set tests (shard ${{ matrix.partition }} of 4)
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        partition: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v6
+
+      # HTTPS tests validate the bundled test certificates against the OS
+      # trust store.
+      - name: Trust the repository's test CA
+        run: |
+          sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
+          sudo update-ca-certificates
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          # Each shard compiles a different slice of the power set, so give
+          # each its own cache key.
+          cache-key: shard-${{ matrix.partition }}
+          rustflags: ""
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+
+      # Test every feature alone and every feature pair. Deeper combinations
+      # add little: the features form an implication chain
+      # (record -> proxy -> remote-https -> remote, standalone -> most others),
+      # so cargo-hack collapses equivalent combos and pairs already cover the
+      # realistic interactions. --partition spreads the combinations across
+      # four parallel shards.
+      - run: cargo hack test --feature-powerset --depth 2 --partition ${{ matrix.partition }}/4
+
+  docker-integration:
+    name: Integration against Dockerised server
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Trust the repository's test CA
+        run: |
+          sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
+          sudo update-ca-certificates
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
+
+      - name: Build and start the standalone server container
+        run: |
+          docker build -t httpmock-standalone:local .
+          docker run -d --rm --name httpmock \
+            -p 5050:5050 \
+            -e HTTPMOCK_PORT=5050 \
+            -e RUST_LOG=httpmock=info \
+            httpmock-standalone:local
+
+      - name: Wait for server readiness
+        run: |
+          for i in {1..60}; do
+            if curl -fsS http://localhost:5050/__httpmock__/ping >/dev/null; then
+              exit 0
+            fi
+            sleep 1
+          done
+          echo "httpmock did not become ready in time" >&2
+          docker logs httpmock || true
+          exit 1
+
+      # Everywhere else the standalone server is simulated in-process; this
+      # run points the remote/standalone tests at the real container instead.
+      - name: Test against the real server
+        env:
+          HTTPMOCK_TESTS_DISABLE_SIMULATED_STANDALONE_SERVER: "1"
+        run: cargo test --all-features
+
+      - name: Show server logs on failure
+        if: failure()
+        run: docker logs httpmock || true
+
+      - name: Stop the server container
+        if: always()
+        run: docker rm -f httpmock || true
+
+  advisories:
+    name: Security advisories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      # RustSec advisories change independently of the code, so they are
+      # checked here nightly rather than blocking unrelated PRs (the
+      # deterministic deny.toml checks run per PR in ci.yml).
+      - uses: EmbarkStudios/cargo-deny-action@v2
+        with:
+          command: check advisories
