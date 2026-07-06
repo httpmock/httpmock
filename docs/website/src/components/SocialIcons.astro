@@ -1,5 +1,4 @@
 ---
-import type { Props } from '@astrojs/starlight/props';
 import Default from '@astrojs/starlight/components/SocialIcons.astro';
 ---
 
@@ -15,10 +14,10 @@ import Default from '@astrojs/starlight/components/SocialIcons.astro';
             Star
         </a>
     </div>
-    <Default {...Astro.props} />
+    <Default />
 </div>
 
-<script async defer src="https://buttons.github.io/buttons.js"></script>
+<script is:inline async defer src="https://buttons.github.io/buttons.js"></script>
 
 <style>
     .social-icons-wrapper {
