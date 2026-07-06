@@ -1,4 +1,4 @@
-#[cfg(feature = "record")]
+#[cfg(any(feature = "record", feature = "https"))]
 use std::path::PathBuf;
 use std::{error::Error, sync::Arc};
 

@@ -305,7 +305,7 @@ where
                 // This is important for SNI and selecting the right certificate.
                 // We are not yet in the tunneling case here, so we need to use the servers
                 // local address. The tunneling case is handled in the CONNECT branch of `service()`.
-                let tcp_address = tcp_stream.local_addr().map_err(|err| IOError(err))?;
+                let tcp_address = tcp_stream.local_addr().map_err(Error::IOError)?;
                 return serve_tls_connection(self, tcp_stream, Some(tcp_address.to_string())).await;
             }
 
@@ -351,7 +351,7 @@ where
     let tls_stream = tls_acceptor
         .accept(stream)
         .await
-        .map_err(|e| TlsError(format!("TLS accept failed: {:?}", e)))?;
+        .map_err(|e| Error::TlsError(format!("TLS accept failed: {:?}", e)))?;
 
     serve_connection(server, tls_stream, "https").await
 }
