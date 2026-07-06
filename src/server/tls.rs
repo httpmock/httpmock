@@ -7,7 +7,7 @@ use std::{
 };
 
 use async_trait::async_trait;
-use rcgen::{Certificate, CertificateParams, KeyPair, SanType};
+use rcgen::{Certificate, CertificateParams, Issuer, KeyPair, SanType};
 use rustls::{
     crypto::ring::sign::any_supported_type,
     pki_types::{CertificateDer, PrivateKeyDer},
@@ -167,7 +167,7 @@ impl<'a> GeneratingCertificateResolver {
             if self.authority.is_none() || self.authority_ip().map(|a| a == ip).unwrap_or(false) {
                 // No-SNI fallback or no authority: add localhost variants, all local IPs, and extras from env
                 if let Ok(localhost_dns) =
-                    <rcgen::Ia5String as std::convert::TryFrom<&str>>::try_from("localhost")
+                    <rcgen::string::Ia5String as std::convert::TryFrom<&str>>::try_from("localhost")
                 {
                     p.subject_alt_names.push(SanType::DnsName(localhost_dns));
                 }
@@ -211,23 +211,20 @@ impl<'a> GeneratingCertificateResolver {
 
         let serialized_key_pair = key_pair.serialize_pem();
 
-        // Serialize the new certificate, signing it with the CA's private key
-        let new_host_cert_params = CertificateParams::from_ca_cert_pem(&self.state.ca_cert_str).map_err(|err| {
-            GenerateCertificateError(format!("Cannot create new host certificate parameters from CA certificate (host: {}: error: {:?})", hostname, err))
+        // Build an issuer from the CA certificate, signing new certificates with the CA's private key
+        let issuer = Issuer::from_ca_cert_pem(&self.state.ca_cert_str, &ca_key).map_err(|err| {
+            GenerateCertificateError(format!(
+                "Cannot create issuer from CA certificate (host: {}: error: {:?})",
+                hostname, err
+            ))
         })?;
 
-        let ca_cert = new_host_cert_params.self_signed(&ca_key).map_err(|err| {
-            GenerateCertificateError(format!("Cannot create new host certificate parameters from CA certificate (host: {}: error: {:?})", hostname, err))
+        let new_host_cert = params.signed_by(&key_pair, &issuer).map_err(|err| {
+            GenerateCertificateError(format!(
+                "Cannot generate new host certificate (host: {}: error: {:?})",
+                hostname, err
+            ))
         })?;
-
-        let new_host_cert = params
-            .signed_by(&key_pair, &ca_cert, &ca_key)
-            .map_err(|err| {
-                GenerateCertificateError(format!(
-                    "Cannot generate new host certificate (host: {}: error: {:?})",
-                    hostname, err
-                ))
-            })?;
 
         let cert_pem = new_host_cert.pem();
 
@@ -298,7 +295,9 @@ fn parse_extra_sans_from_env() -> Vec<SanType> {
     for item in raw.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()) {
         if let Ok(ip) = item.parse::<std::net::IpAddr>() {
             out.push(SanType::IpAddress(ip));
-        } else if let Ok(dns) = <rcgen::Ia5String as std::convert::TryFrom<&str>>::try_from(item) {
+        } else if let Ok(dns) =
+            <rcgen::string::Ia5String as std::convert::TryFrom<&str>>::try_from(item)
+        {
             out.push(SanType::DnsName(dns));
         }
     }
