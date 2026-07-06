@@ -1,0 +1,44 @@
+name: MSRV Feature Check
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  msrv-feature-check:
+    name: MSRV feature check
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Rust stable
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+
+      - name: Install cargo-hack
+        run: cargo install --locked cargo-hack
+
+      - name: Set up Rust MSRV
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: 1.88
+
+      - name: Check MSRV feature combinations
+        run: |
+          cargo hack check \
+            --rust-version \
+            --no-dev-deps \
+            --feature-powerset \
+            --exclude-no-default-features \
+            --exclude-all-features \
+            --include-features "default,standalone,proxy,https,record,remote"

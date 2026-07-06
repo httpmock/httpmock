@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   cargo-check:
-    name: cargo check 
+    name: cargo check
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
@@ -21,6 +21,8 @@ jobs:
 
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
 
       - name: Cargo check
         run: cargo check --workspace --all-targets
@@ -41,6 +43,8 @@ jobs:
 
       - name: Set up Rust
         uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
 
       - name: Install cargo-hack
         run: cargo install --locked cargo-hack
