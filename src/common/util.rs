@@ -139,7 +139,7 @@ mod test {
     fn with_retry_error_test() {
         let result: Result<(), &str> = with_retry(1, || async { Err("test error") }).join();
 
-        assert_eq!(result.is_err(), true);
+        assert!(result.is_err());
         assert_eq!(result.err().unwrap(), "test error")
     }
 }
