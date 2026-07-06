@@ -30,3 +30,30 @@ jobs:
 
       - name: Cargo check (standalone feature)
         run: cargo check --workspace --all-targets --features standalone
+
+  core-features-test:
+    name: core-features-test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+
+      - name: Set up Rust
+        uses: actions-rust-lang/setup-rust-toolchain@v1
+
+      - name: Install cargo-hack
+        run: cargo install --locked cargo-hack
+
+      - name: Trust custom CA certificates
+        shell: bash
+        run: |
+          set -euxo pipefail
+          cp certs/ca.pem certs/ca.crt
+          sudo apt-get update
+          sudo apt-get install -y ca-certificates
+          sudo cp certs/*.crt /usr/local/share/ca-certificates/
+          sudo update-ca-certificates
+
+      - name: Run core feature combinations test
+        run: make core-features-test

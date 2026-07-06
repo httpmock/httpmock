@@ -27,6 +27,9 @@ jobs:
           cp certs/*.crt /usr/local/share/ca-certificates/
           update-ca-certificates
 
+      - name: Install cargo-hack
+        run: cargo install --locked cargo-hack
+
       - name: Run feature power set test
         run: make core-features-test
 
@@ -49,6 +52,9 @@ jobs:
           sudo apt-get install -y ca-certificates curl
           sudo cp certs/*.crt /usr/local/share/ca-certificates/
           sudo update-ca-certificates
+
+      - name: Install cargo-hack
+        run: cargo install --locked cargo-hack
 
       - name: Build httpmock standalone Docker image (all features)
         run: |
