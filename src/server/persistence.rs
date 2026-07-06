@@ -88,7 +88,7 @@ pub fn deserialize_mock_defs_from_yaml(
     Ok(definitions)
 }
 
-pub fn serialize_mock_defs_to_yaml(mocks: &Vec<MockDefinition>) -> Result<Bytes, Error> {
+pub fn serialize_mock_defs_to_yaml(mocks: &[MockDefinition]) -> Result<Bytes, Error> {
     let mut buffer = BytesMut::new();
 
     for (idx, mock) in mocks.iter().enumerate() {

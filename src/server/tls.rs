@@ -348,7 +348,7 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
         tracing::debug!("no hostname using: {}", hostname);
         return Some(
             self.generate(&hostname)
-                .expect(&format!("Cannot generate fallback certificate")),
+                .expect("Cannot generate fallback certificate"),
         );
     }
 }

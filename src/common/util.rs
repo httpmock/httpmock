@@ -221,11 +221,11 @@ impl HttpMockBytes {
     ///
     /// # Returns
     /// `true` if the vector is found, otherwise `false`.
-    pub fn contains_vec(&self, vec: &Vec<u8>) -> bool {
+    pub fn contains_vec(&self, vec: &[u8]) -> bool {
         self.0
             .as_ref()
             .windows(vec.len())
-            .any(|window| window == vec.as_slice())
+            .any(|window| window == vec)
     }
 
     /// Converts the bytes to a UTF-8 string, potentially lossy.
