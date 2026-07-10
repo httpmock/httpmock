@@ -28,6 +28,7 @@ env:
 jobs:
 
   formatting:
+    name: Formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -38,6 +39,7 @@ jobs:
       - run: cargo fmt --all -- --check
 
   lint:
+    name: Linting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
