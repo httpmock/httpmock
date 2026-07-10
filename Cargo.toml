@@ -15,6 +15,9 @@ rust-version = "1.88.0"
 # Gate the `warnings` group at error level so new rustc warnings fail CI. The
 # allowed lints are a temporary allow list that should be removed over time.
 warnings = { level = "deny", priority = -1 }
+# Allowed so lint names below that only exist on newer toolchains (e.g.
+# mismatched_lifetime_syntaxes) don't fail the MSRV build.
+unknown_lints = "allow"
 dead_code = "allow"
 mismatched_lifetime_syntaxes = "allow"
 private_bounds = "allow"
