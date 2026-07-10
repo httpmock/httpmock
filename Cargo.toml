@@ -11,6 +11,51 @@ license = "MIT"
 repository = "https://github.com/httpmock/httpmock"
 rust-version = "1.88.0"
 
+[lints.rust]
+# Gate the `warnings` group at error level so new rustc warnings fail CI. The
+# allowed lints are a temporary allow list that should be removed over time.
+warnings = { level = "deny", priority = -1 }
+# Allowed so lint names below that only exist on newer toolchains (e.g.
+# mismatched_lifetime_syntaxes) don't fail the MSRV build.
+unknown_lints = "allow"
+dead_code = "allow"
+mismatched_lifetime_syntaxes = "allow"
+private_bounds = "allow"
+unused_imports = "allow"
+unused_mut = "allow"
+unused_parens = "allow"
+unused_variables = "allow"
+
+[lints.clippy]
+# Gate all clippy lints. The allowed lints are a temporary allow list that should be removed
+# over time.
+all = { level = "deny", priority = -1 }
+uninlined_format_args = "allow"
+enum_variant_names = "allow"
+useless_borrows_in_formatting = "allow"
+doc_overindented_list_items = "allow"
+type_complexity = "allow"
+redundant_closure = "allow"
+needless_return = "allow"
+expect_fun_call = "allow"
+new_without_default = "allow"
+to_string_in_format_args = "allow"
+extra_unused_lifetimes = "allow"
+single_match = "allow"
+needless_borrow = "allow"
+empty_line_after_doc_comments = "allow"
+needless_borrows_for_generic_args = "allow"
+unnecessary_lazy_evaluations = "allow"
+new_ret_no_self = "allow"
+needless_question_mark = "allow"
+map_clone = "allow"
+manual_abs_diff = "allow"
+module_inception = "allow"
+unnecessary_to_owned = "allow"
+manual_async_fn = "allow"
+ptr_arg = "allow"
+useless_format = "allow"
+
 [dependencies]
 serde = { version = "1", features = ["derive"] }
 serde_json = "1"

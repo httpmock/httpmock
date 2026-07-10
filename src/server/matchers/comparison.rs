@@ -977,15 +977,13 @@ mod hostname_equals_tests {
         let mock_value_str = "github.com".to_string();
         let req_value_str = "not_github.com".to_string();
 
-        assert_eq!(
-            hostname_equals(false, &Some(&mock_value_str), &Some(&req_value_str)),
-            false
-        );
+        assert!(!(hostname_equals(false, &Some(&mock_value_str), &Some(&req_value_str))));
 
-        assert_eq!(
-            hostname_equals(true, &Some(&mock_value_str), &Some(&req_value_str)),
-            true
-        );
+        assert!(hostname_equals(
+            true,
+            &Some(&mock_value_str),
+            &Some(&req_value_str)
+        ));
     }
 
     #[test]
@@ -993,15 +991,13 @@ mod hostname_equals_tests {
         let mock_value_str = "github.com".to_string();
         let req_value_str = "github.com".to_string();
 
-        assert_eq!(
-            hostname_equals(false, &Some(&mock_value_str), &Some(&req_value_str)),
-            true
-        );
+        assert!(hostname_equals(
+            false,
+            &Some(&mock_value_str),
+            &Some(&req_value_str)
+        ));
 
-        assert_eq!(
-            hostname_equals(true, &Some(&mock_value_str), &Some(&req_value_str)),
-            false
-        );
+        assert!(!(hostname_equals(true, &Some(&mock_value_str), &Some(&req_value_str))));
     }
 
     #[test]
@@ -1009,39 +1005,33 @@ mod hostname_equals_tests {
         let localhost_str = "localhost".to_string();
         let ip_str = "127.0.0.1".to_string();
 
-        assert_eq!(
-            hostname_equals(false, &Some(&localhost_str), &Some(&localhost_str)),
-            true
-        );
+        assert!(hostname_equals(
+            false,
+            &Some(&localhost_str),
+            &Some(&localhost_str)
+        ));
 
-        assert_eq!(
-            hostname_equals(true, &Some(&localhost_str), &Some(&localhost_str)),
-            false
-        );
+        assert!(!(hostname_equals(true, &Some(&localhost_str), &Some(&localhost_str))));
 
-        assert_eq!(
-            hostname_equals(false, &Some(&localhost_str), &Some(&ip_str)),
-            true
-        );
+        assert!(hostname_equals(
+            false,
+            &Some(&localhost_str),
+            &Some(&ip_str)
+        ));
 
-        assert_eq!(
-            hostname_equals(true, &Some(&localhost_str), &Some(&ip_str)),
-            false
-        );
+        assert!(!(hostname_equals(true, &Some(&localhost_str), &Some(&ip_str))));
 
-        assert_eq!(
-            hostname_equals(false, &Some(&ip_str), &Some(&localhost_str)),
-            true
-        );
+        assert!(hostname_equals(
+            false,
+            &Some(&ip_str),
+            &Some(&localhost_str)
+        ));
 
-        assert_eq!(
-            hostname_equals(true, &Some(&ip_str), &Some(&localhost_str)),
-            false
-        );
+        assert!(!(hostname_equals(true, &Some(&ip_str), &Some(&localhost_str))));
 
-        assert_eq!(hostname_equals(false, &Some(&ip_str), &Some(&ip_str)), true);
+        assert!(hostname_equals(false, &Some(&ip_str), &Some(&ip_str)));
 
-        assert_eq!(hostname_equals(true, &Some(&ip_str), &Some(&ip_str)), false);
+        assert!(!(hostname_equals(true, &Some(&ip_str), &Some(&ip_str))));
     }
 
     #[test]
@@ -1049,25 +1039,21 @@ mod hostname_equals_tests {
         let github_str = "github.com".to_string();
         let localhost_str = "localhost".to_string();
 
-        assert_eq!(
-            hostname_equals(false, &Some(&github_str), &Some(&localhost_str)),
-            false
-        );
+        assert!(!(hostname_equals(false, &Some(&github_str), &Some(&localhost_str))));
 
-        assert_eq!(
-            hostname_equals(true, &Some(&github_str), &Some(&localhost_str)),
-            true
-        );
+        assert!(hostname_equals(
+            true,
+            &Some(&github_str),
+            &Some(&localhost_str)
+        ));
 
-        assert_eq!(
-            hostname_equals(false, &Some(&localhost_str), &Some(&github_str)),
-            false
-        );
+        assert!(!(hostname_equals(false, &Some(&localhost_str), &Some(&github_str))));
 
-        assert_eq!(
-            hostname_equals(true, &Some(&localhost_str), &Some(&github_str)),
-            true
-        );
+        assert!(hostname_equals(
+            true,
+            &Some(&localhost_str),
+            &Some(&github_str)
+        ));
     }
 }
 
@@ -1278,52 +1264,52 @@ mod usize_equals_tests {
 
     #[test]
     fn test_usize_equals_equal_values_not_negated() {
-        assert_eq!(true, integer_equals(false, &Some(&10), &Some(&10)));
+        assert!(integer_equals(false, &Some(&10), &Some(&10)));
     }
 
     #[test]
     fn test_usize_equals_unequal_values_not_negated() {
-        assert_eq!(false, integer_equals(false, &Some(&10), &Some(&20)));
+        assert!(!(integer_equals(false, &Some(&10), &Some(&20))));
     }
 
     #[test]
     fn test_usize_equals_equal_values_negated() {
-        assert_eq!(false, integer_equals(true, &Some(&10), &Some(&10)));
+        assert!(!(integer_equals(true, &Some(&10), &Some(&10))));
     }
 
     #[test]
     fn test_usize_equals_unequal_values_negated() {
-        assert_eq!(true, integer_equals(true, &Some(&10), &Some(&20)));
+        assert!(integer_equals(true, &Some(&10), &Some(&20)));
     }
 
     #[test]
     fn test_usize_equals_mock_value_none_not_negated() {
-        assert_eq!(true, integer_equals(false, &None, &Some(&10)));
+        assert!(integer_equals(false, &None, &Some(&10)));
     }
 
     #[test]
     fn test_usize_equals_req_value_none_not_negated() {
-        assert_eq!(false, integer_equals(false, &Some(&10), &None));
+        assert!(!(integer_equals(false, &Some(&10), &None)));
     }
 
     #[test]
     fn test_usize_equals_both_none_not_negated() {
-        assert_eq!(true, integer_equals::<i32>(false, &None, &None));
+        assert!(integer_equals::<i32>(false, &None, &None));
     }
 
     #[test]
     fn test_usize_equals_mock_value_none_negated() {
-        assert_eq!(true, integer_equals(true, &None, &Some(&10)));
+        assert!(integer_equals(true, &None, &Some(&10)));
     }
 
     #[test]
     fn test_usize_equals_req_value_none_negated() {
-        assert_eq!(true, integer_equals(true, &Some(&10), &None));
+        assert!(integer_equals(true, &Some(&10), &None));
     }
 
     #[test]
     fn test_usize_equals_both_none_negated() {
-        assert_eq!(true, integer_equals::<i32>(true, &None, &None));
+        assert!(integer_equals::<i32>(true, &None, &None));
     }
 }
 
@@ -1382,16 +1368,13 @@ mod bytes_includes_test {
 
     #[test]
     fn test_bytes_includes() {
-        assert_eq!(
-            bytes_includes(
-                false,
-                &Some(&HttpMockBytes::from(bytes::Bytes::from("   b\n c"))),
-                &Some(&HttpMockBytes::from(bytes::Bytes::from(
-                    "a   b\n c  \ncd ef"
-                ))),
-            ),
-            true
-        );
+        assert!(bytes_includes(
+            false,
+            &Some(&HttpMockBytes::from(bytes::Bytes::from("   b\n c"))),
+            &Some(&HttpMockBytes::from(bytes::Bytes::from(
+                "a   b\n c  \ncd ef"
+            ))),
+        ));
     }
 }
 
@@ -1537,16 +1520,15 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
         let req_value = "Hello, world!".to_string();
-        assert_eq!(
-            string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(
+            false,
+            true,
+            &Some(&pattern),
+            &Some(&req_value)
+        ));
 
         let req_value = "Goodbye, world!".to_string();
-        assert_eq!(
-            string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)),
-            false
-        );
+        assert!(!(string_matches_regex(false, true, &Some(&pattern), &Some(&req_value))));
     }
 
     #[test]
@@ -1554,16 +1536,15 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
         let req_value = "Hello, world!".to_string();
-        assert_eq!(
-            string_matches_regex(true, true, &Some(&pattern), &Some(&req_value)),
-            false
-        );
+        assert!(!(string_matches_regex(true, true, &Some(&pattern), &Some(&req_value))));
 
         let req_value = "Goodbye, world!".to_string();
-        assert_eq!(
-            string_matches_regex(true, true, &Some(&pattern), &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(
+            true,
+            true,
+            &Some(&pattern),
+            &Some(&req_value)
+        ));
     }
 
     #[test]
@@ -1571,10 +1552,12 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"").unwrap());
 
         let req_value = "Anything".to_string();
-        assert_eq!(
-            string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(
+            false,
+            true,
+            &Some(&pattern),
+            &Some(&req_value)
+        ));
     }
 
     #[test]
@@ -1582,10 +1565,7 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
         let req_value = "".to_string();
-        assert_eq!(
-            string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)),
-            false
-        );
+        assert!(!(string_matches_regex(false, true, &Some(&pattern), &Some(&req_value))));
     }
 
     #[test]
@@ -1593,58 +1573,48 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"").unwrap());
 
         let req_value = "".to_string();
-        assert_eq!(
-            string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(
+            false,
+            true,
+            &Some(&pattern),
+            &Some(&req_value)
+        ));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern() {
         let req_value = "Hello, world!".to_string();
-        assert_eq!(
-            string_matches_regex(false, true, &None, &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(false, true, &None, &Some(&req_value)));
     }
 
     #[test]
     fn test_string_matches_regex_none_request_value() {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
-        assert_eq!(
-            string_matches_regex(false, true, &Some(&pattern), &None),
-            false
-        );
+        assert!(!(string_matches_regex(false, true, &Some(&pattern), &None)));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern_and_request_value() {
-        assert_eq!(string_matches_regex(false, true, &None, &None), true);
+        assert!(string_matches_regex(false, true, &None, &None));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern_negated() {
         let req_value = "Hello, world!".to_string();
-        assert_eq!(
-            string_matches_regex(true, true, &None, &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(true, true, &None, &Some(&req_value)));
     }
 
     #[test]
     fn test_string_matches_regex_none_request_value_negated() {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
-        assert_eq!(
-            string_matches_regex(true, true, &Some(&pattern), &None),
-            true
-        );
+        assert!(string_matches_regex(true, true, &Some(&pattern), &None));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern_and_request_value_negated() {
-        assert_eq!(string_matches_regex(true, true, &None, &None), true);
+        assert!(string_matches_regex(true, true, &None, &None));
     }
 
     #[test]
@@ -1652,16 +1622,15 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^\d{3}-\d{2}-\d{4}$").unwrap());
 
         let req_value = "123-45-6789".to_string();
-        assert_eq!(
-            string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(
+            false,
+            true,
+            &Some(&pattern),
+            &Some(&req_value)
+        ));
 
         let req_value = "123-45-678".to_string();
-        assert_eq!(
-            string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)),
-            false
-        );
+        assert!(!(string_matches_regex(false, true, &Some(&pattern), &Some(&req_value))));
     }
 
     #[test]
@@ -1669,22 +1638,28 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"(?i)^hello.*").unwrap());
 
         let req_value = "Hello, world!".to_string();
-        assert_eq!(
-            string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(
+            false,
+            false,
+            &Some(&pattern),
+            &Some(&req_value)
+        ));
 
         let req_value = "hello, world!".to_string();
-        assert_eq!(
-            string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(
+            false,
+            false,
+            &Some(&pattern),
+            &Some(&req_value)
+        ));
 
         let req_value = "HELLO, WORLD!".to_string();
-        assert_eq!(
-            string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)),
-            true
-        );
+        assert!(string_matches_regex(
+            false,
+            false,
+            &Some(&pattern),
+            &Some(&req_value)
+        ));
     }
 }
 /// Computes the distance between a given string and a regex pattern based on whether the match is negated or not.

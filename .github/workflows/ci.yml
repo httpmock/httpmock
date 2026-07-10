@@ -21,17 +21,38 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # pin to a recent nightly for up-to-date but reproducible results
+  NIGHTLY_TOOLCHAIN: nightly-2026-07-01
+
 jobs:
+
+  formatting:
+    name: Formatting
+    runs-on: ubuntu-latest
+    env:
+      # Nightly gives clippy its newest lints. Pinned so results only change
+      # when this date is bumped (by hand, or by an automation matching the
+      # nightly-YYYY-MM-DD pattern).
+      NIGHTLY_TOOLCHAIN: nightly-2026-07-01
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.NIGHTLY_TOOLCHAIN }}
+          components: rustfmt
+      - run: cargo fmt --all -- --check
+
   lint:
-    name: Format and lint
+    name: Linting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: clippy, rustfmt
+          toolchain: ${{ env.NIGHTLY_TOOLCHAIN }}
+          components: clippy
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
-      - run: cargo fmt --all -- --check
       - run: cargo clippy --all-targets --all-features
 
   feature-combinations:
@@ -58,6 +79,25 @@ jobs:
       # Then with dev-dependencies and all targets, so feature-gated code in
       # integration tests and examples is checked as well.
       - run: cargo hack check --feature-powerset --depth 2 --all-targets
+
+  msrv:
+    name: MSRV
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""
+
+      - uses: taiki-e/install-action@v2
+        with:
+          tool: cargo-hack
+
+      # Checks that every feature builds on the rust-version declared in
+      # Cargo.toml. Dev dependencies are exempt from the MSRV promise, so
+      # this checks the library as downstream users consume it.
+      - run: cargo hack check --rust-version --each-feature --no-dev-deps
 
   test:
     name: Test (${{ matrix.name }})
@@ -90,7 +130,6 @@ jobs:
           # Each matrix row compiles a different feature set, so each caches
           # separately.
           cache-key: ${{ matrix.name }}
-
       - run: cargo test ${{ matrix.args }}
 
   coverage:
