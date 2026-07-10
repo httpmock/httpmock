@@ -1,10 +1,11 @@
+#![cfg(feature = "cookies")]
+
 use http::{HeaderMap, HeaderValue};
 use httpmock::{MockServer, When};
 
 use crate::matchers::{expect_fails_with2, MultiValueMatcherTestSet};
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie() {
     for (idx, data) in generate_data().attribute.iter().enumerate() {
         run_test(
@@ -17,7 +18,6 @@ fn cookie() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_not() {
     for (idx, data) in generate_data().attribute_not.iter().enumerate() {
         run_test(
@@ -30,7 +30,6 @@ fn cookie_not() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_exists() {
     for (idx, data) in generate_data().attribute_exists.iter().enumerate() {
         run_test(
@@ -43,7 +42,6 @@ fn cookie_exists() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_missing() {
     for (idx, data) in generate_data().attribute_missing.iter().enumerate() {
         run_test(
@@ -56,7 +54,6 @@ fn cookie_missing() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_includes() {
     for (idx, data) in generate_data().attribute_includes.iter().enumerate() {
         run_test(
@@ -69,7 +66,6 @@ fn cookie_includes() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_excludes() {
     for (idx, data) in generate_data().attribute_excludes.iter().enumerate() {
         run_test(
@@ -82,7 +78,6 @@ fn cookie_excludes() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_prefix() {
     for (idx, data) in generate_data().attribute_prefix.iter().enumerate() {
         run_test(
@@ -95,7 +90,6 @@ fn cookie_prefix() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_suffix() {
     for (idx, data) in generate_data().attribute_suffix.iter().enumerate() {
         run_test(
@@ -108,7 +102,6 @@ fn cookie_suffix() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_prefix_not() {
     for (idx, data) in generate_data().attribute_prefix_not.iter().enumerate() {
         run_test(
@@ -121,7 +114,6 @@ fn cookie_prefix_not() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_suffix_not() {
     for (idx, data) in generate_data().attribute_suffix_not.iter().enumerate() {
         run_test(
@@ -134,7 +126,6 @@ fn cookie_suffix_not() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_matches() {
     for (idx, data) in generate_data().attribute_matches.iter().enumerate() {
         run_test(
@@ -147,7 +138,6 @@ fn cookie_matches() {
 }
 
 #[test]
-#[cfg(feature = "cookies")]
 fn cookie_count() {
     for (idx, data) in generate_data().attribute_count.iter().enumerate() {
         run_test(
