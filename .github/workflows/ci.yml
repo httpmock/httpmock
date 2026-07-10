@@ -1,6 +1,6 @@
 # Fast lane: runs on every pull request and every push to master.
 #
-# CI is split into three lanes (see upstream issue #219):
+# CI is split into three lanes:
 #   - ci.yml (this file): lint, pairwise feature compile checks, MSRV, tests
 #     for representative feature sets, coverage, dependency policy. Fast
 #     enough to block PRs.
@@ -27,19 +27,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      # setup-rust-toolchain installs the toolchain and configures caching in
-      # one step. It defaults RUSTFLAGS to "-D warnings"; rustflags: "" clears
-      # that so warning severity stays owned by the crate's lint config.
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           components: clippy, rustfmt
-          rustflags: ""
-
+          rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - run: cargo fmt --all -- --check
-
-      # Warning severity is owned by the crate's lint configuration, so CI
-      # does not escalate warnings.
       - run: cargo clippy --all-targets --all-features
 
   feature-combinations:
@@ -47,12 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rustflags: ""
-
-      # Fetches a prebuilt binary instead of compiling from source.
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-hack
@@ -103,11 +90,7 @@ jobs:
           # Each matrix row compiles a different feature set, so each caches
           # separately.
           cache-key: ${{ matrix.name }}
-          rustflags: ""
 
-      # Default test-thread parallelism. Tests that talk to the standalone
-      # server share one in-process simulation per test binary, which handles
-      # concurrent requests fine.
       - run: cargo test ${{ matrix.args }}
 
   coverage:
@@ -115,15 +98,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      # Codecov authenticates via GitHub OIDC instead of a stored token.
       id-token: write
     steps:
       - uses: actions/checkout@v6
-
       - uses: actions-rust-lang/setup-rust-toolchain@v1
-        with:
-          rustflags: ""
-
       - uses: taiki-e/install-action@v2
         with:
           tool: cargo-llvm-cov
@@ -146,7 +124,7 @@ jobs:
     steps:
       - uses: actions/checkout@v6
 
-      # Enforces deny.toml. Only the deterministic checks run here; security
+      # Only the deterministic checks run here. Security
       # advisories drift over time independently of the code, so they are
       # checked nightly in feature-matrix.yml instead of failing unrelated
       # PRs.

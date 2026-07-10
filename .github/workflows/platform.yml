@@ -21,7 +21,7 @@ jobs:
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      # Stable runs on every OS; beta and nightly only on Linux, since
+      # Stable runs on every OS, beta and nightly only on Linux, since
       # toolchain regressions are effectively OS-independent.
       matrix:
         os: [ubuntu-latest, macos-latest, windows-latest]
@@ -37,7 +37,6 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           toolchain: ${{ matrix.rust }}
-          rustflags: ""
 
       - run: cargo test
 
