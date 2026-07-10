@@ -15,6 +15,10 @@ rust-version = "1.88.0"
 # Gate the `warnings` group at error level so new rustc warnings fail CI. The
 # allowed lints are a temporary allow list that should be removed over time.
 warnings = { level = "deny", priority = -1 }
+# Allowed so lint names below that only exist on newer toolchains (e.g.
+# mismatched_lifetime_syntaxes) don't fail the MSRV build.
+unknown_lints = "allow"
+unsafe_code = "forbid"
 dead_code = "allow"
 mismatched_lifetime_syntaxes = "allow"
 private_bounds = "allow"
@@ -27,6 +31,7 @@ unused_variables = "allow"
 # Gate all clippy lints. The allowed lints are a temporary allow list that should be removed
 # over time.
 all = { level = "deny", priority = -1 }
+collapsible_if = "allow"
 uninlined_format_args = "allow"
 enum_variant_names = "allow"
 useless_borrows_in_formatting = "allow"
@@ -119,6 +124,3 @@ required-features = ["standalone"]
 
 [package.metadata.docs.rs]
 all-features = true
-
-[lints.rust]
-unsafe_code = "forbid"
