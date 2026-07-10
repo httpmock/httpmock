@@ -11,12 +11,21 @@ license = "MIT"
 repository = "https://github.com/httpmock/httpmock"
 rust-version = "1.88.0"
 
+[lints.rust]
+# Gate the `warnings` group at error level so new rustc warnings fail CI. The
+# allowed lints are a temporary allow list that should be removed over time.
+warnings = { level = "deny", priority = -1 }
+dead_code = "allow"
+mismatched_lifetime_syntaxes = "allow"
+private_bounds = "allow"
+unused_imports = "allow"
+unused_mut = "allow"
+unused_parens = "allow"
+unused_variables = "allow"
+
 [lints.clippy]
-# Gate `clippy::all` at error level so new violations fail CI. The lints below
-# are the backlog that surfaced when clippy was re-enabled (see the commit that
-# removed `#![allow(warnings)]`); each is allow-listed so the gate can enforce
-# regressions today, and is burned down one class per stacked PR. Do not add to
-# this list — fix the lint instead.
+# Gate all clippy lints. The allowed lints are a temporary allow list that should be removed
+# over time.
 all = { level = "deny", priority = -1 }
 uninlined_format_args = "allow"
 enum_variant_names = "allow"
