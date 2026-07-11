@@ -2,7 +2,6 @@ extern crate serde_regex;
 
 use std::{
     cmp::Ordering,
-    collections::HashMap,
     convert::{TryFrom, TryInto},
     fmt,
     fmt::Debug,
@@ -16,7 +15,6 @@ use bytes::Bytes;
 use headers::{Cookie, HeaderMapExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use url::Url;
 
 use crate::{
     common::{
@@ -237,28 +235,14 @@ impl HttpMockRequest {
         self.headers.as_ref()
     }
 
-    pub fn query_params_map(&self) -> HashMap<String, String> {
-        self.query_params().into_iter().collect()
-    }
-
     pub fn query_params(&self) -> Vec<(String, String)> {
-        // There doesn't seem to be a way to just parse Query string with `url` crate, so we're
-        // prefixing a dummy URL for parsing.
-        let url = format!("http://dummy?{}", self.uri().query().unwrap_or(""));
-        let url = Url::parse(&url).unwrap();
-
-        url.query_pairs()
-            .map(|(k, v)| (k.into_owned(), v.into_owned()))
+        form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes())
+            .into_owned()
             .collect()
     }
 
     pub fn query_param_length(&self) -> usize {
-        // There doesn't seem to be a way to just parse Query string with `url` crate, so we're
-        // prefixing a dummy URL for parsing.
-        let url = format!("http://dummy?{}", self.uri().query().unwrap_or(""));
-        let url = Url::parse(&url).unwrap();
-
-        url.query_pairs().count()
+        form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes()).count()
     }
 
     pub fn body(&self) -> &HttpMockBytes {
@@ -310,10 +294,6 @@ impl HttpMockRequest {
         }
 
         Ok(result)
-    }
-
-    pub fn to_http_request(&self) -> http::Request<Bytes> {
-        http::Request::<Bytes>::from(self)
     }
 }
 

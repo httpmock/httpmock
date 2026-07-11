@@ -30,7 +30,6 @@ pub struct HttpsConfigBuilder {
     ca_key: Option<String>,
     ca_cert_path: Option<PathBuf>,
     ca_key_path: Option<PathBuf>,
-    enable_https: Option<bool>,
     cert_resolver_factory: Option<Arc<dyn CertificateResolverFactory + Send + Sync>>,
 }
 
@@ -43,24 +42,21 @@ impl HttpsConfigBuilder {
             ca_cert_path: None,
             ca_key_path: None,
             cert_resolver_factory: None,
-            enable_https: None,
         }
     }
 
     /// Validates the HTTPS configuration to ensure no conflicting settings are present.
     fn validate(&self) -> Result<(), Box<dyn Error>> {
-        if self.enable_https.unwrap_or(true) {
-            let has_ca_cert = self.ca_cert.is_some() || self.ca_key.is_some();
-            let has_ca_cert_path = self.ca_cert_path.is_some() || self.ca_key_path.is_some();
-            let has_cert_generator = self.cert_resolver_factory.is_some();
+        let has_ca_cert = self.ca_cert.is_some() || self.ca_key.is_some();
+        let has_ca_cert_path = self.ca_cert_path.is_some() || self.ca_key_path.is_some();
+        let has_cert_generator = self.cert_resolver_factory.is_some();
 
-            if has_ca_cert && has_ca_cert_path {
-                return Err("A CA certificate and a CA certificate path have both been configured. Please choose only one method.".into());
-            }
+        if has_ca_cert && has_ca_cert_path {
+            return Err("A CA certificate and a CA certificate path have both been configured. Please choose only one method.".into());
+        }
 
-            if (has_ca_cert || has_ca_cert_path) && has_cert_generator {
-                return Err("Both a CA certificate and a certificate generator were configured. Please use only one of them.".into());
-            }
+        if (has_ca_cert || has_ca_cert_path) && has_cert_generator {
+            return Err("Both a CA certificate and a certificate generator were configured. Please use only one of them.".into());
         }
 
         Ok(())
@@ -134,14 +130,6 @@ impl HttpsConfigBuilder {
         self.cert_resolver_factory = generator;
         self
     }
-
-    /// Enables or disables HTTPS.
-    ///
-    /// # Parameters
-    /// - `enable`: An optional boolean to enable or disable HTTPS.
-    ///
-    /// # Returns
-    /// A modified `HttpsConfigBuilder` instance for method chaining.
 
     /// Builds the `MockServerHttpsConfig` with the current settings.
     ///

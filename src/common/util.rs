@@ -174,60 +174,6 @@ impl HttpMockBytes {
         self.0.is_empty()
     }
 
-    /// Checks if the byte slice is blank (empty or only contains ASCII whitespace).
-    ///
-    /// # Returns
-    /// `true` if the byte slice is blank, otherwise `false`.
-    pub fn is_blank(&self) -> bool {
-        self.is_empty() || self.0.iter().all(|&b| b.is_ascii_whitespace())
-    }
-
-    /// Checks if the byte slice contains the specified substring.
-    ///
-    /// # Arguments
-    /// * `substring` - The substring to search for.
-    ///
-    /// # Returns
-    /// `true` if the substring is found, otherwise `false`.
-    pub fn contains_str(&self, substring: &str) -> bool {
-        if substring.is_empty() {
-            return true;
-        }
-
-        self.0
-            .as_ref()
-            .windows(substring.len())
-            .any(|window| window == substring.as_bytes())
-    }
-
-    /// Checks if the byte slice contains the specified byte slice.
-    ///
-    /// # Arguments
-    /// * `slice` - The byte slice to search for.
-    ///
-    /// # Returns
-    /// `true` if the byte slice is found, otherwise `false`.
-    pub fn contains_slice(&self, slice: &[u8]) -> bool {
-        self.0
-            .as_ref()
-            .windows(slice.len())
-            .any(|window| window == slice)
-    }
-
-    /// Checks if the byte slice contains the specified `Vec<u8>`.
-    ///
-    /// # Arguments
-    /// * `vec` - The vector to search for.
-    ///
-    /// # Returns
-    /// `true` if the vector is found, otherwise `false`.
-    pub fn contains_vec(&self, vec: &Vec<u8>) -> bool {
-        self.0
-            .as_ref()
-            .windows(vec.len())
-            .any(|window| window == vec.as_slice())
-    }
-
     /// Converts the bytes to a UTF-8 string, potentially lossy.
     /// Tries to parse input as a UTF-8 string first to avoid copying and creating an owned instance.
     /// If the bytes are not valid UTF-8, it creates a lossy string by replacing invalid characters
