@@ -344,7 +344,7 @@ where
 
     #[cfg(feature = "record")]
     fn handle_delete_recording(&self, params: Path) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_proxy_rule(param("id", params)?);
+        let deleted = self.state.delete_recording(param("id", params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
         } else {
