@@ -62,3 +62,35 @@ fn forward_to_website() {
         .unwrap()
         .contains("Simple yet powerful HTTP mocking library for Rust"));
 }
+
+/// Deletes a forwarding rule through the admin API of a remote server and
+/// verifies that deleting an unknown rule id returns 404.
+#[cfg(feature = "remote")]
+#[test]
+fn delete_forwarding_rule_on_remote_server_test() {
+    use crate::with_standalone_server;
+
+    // Arrange: connect to a standalone server so the deletion goes through
+    // the HTTP admin API rather than the in-process state manager.
+    with_standalone_server();
+    let server = MockServer::connect("localhost:5050");
+
+    let mut rule = server.forward_to("http://localhost:12345", |rule| {
+        rule.filter(|when| {
+            when.any_request();
+        });
+    });
+
+    // Act + Assert: panics if the server does not respond with 204.
+    rule.delete();
+
+    // Deleting an unknown rule id must return 404.
+    let response = Client::new()
+        .delete(format!(
+            "{}/__httpmock__/forwarding_rules/4242",
+            server.base_url()
+        ))
+        .send()
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 404);
+}

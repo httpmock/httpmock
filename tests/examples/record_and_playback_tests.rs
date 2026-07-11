@@ -311,3 +311,40 @@ fn record_with_forwarding_all_request_parts_test() {
         .unwrap()
         .contains("Simple yet powerful HTTP mocking library for Rust"));
 }
+
+/// Regression test: `DELETE /__httpmock__/recordings/:id` used to delete a
+/// proxy rule instead of the recording, so deleting a recording through the
+/// admin API of a remote server returned 404 and left the recording in place.
+#[cfg(all(feature = "remote", feature = "record"))]
+#[test]
+fn delete_recording_on_remote_server_test() {
+    use httpmock::MockServer;
+
+    use crate::with_standalone_server;
+
+    // Arrange: connect to a standalone server so the deletion goes through
+    // the HTTP admin API rather than the in-process state manager.
+    with_standalone_server();
+    let server = MockServer::connect("localhost:5050");
+
+    let mut recording = server.record(|rule| {
+        rule.filter(|when| {
+            when.any_request();
+        });
+    });
+
+    // Act + Assert: panics if the server does not respond with 204.
+    let id = recording.id;
+    recording.delete();
+
+    // Deleting it again must return 404 — the recording no longer exists.
+    let response = Client::new()
+        .delete(format!(
+            "{}/__httpmock__/recordings/{}",
+            server.base_url(),
+            id
+        ))
+        .send()
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 404);
+}
