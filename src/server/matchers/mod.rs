@@ -6,7 +6,7 @@ use crate::{
             BytesPrefixComparator, BytesSuffixComparator, FunctionMatchesRequestComparator,
             HostEqualsComparator, HttpMockBytesPatternComparator, JSONContainsMatchComparator,
             JSONExactMatchComparator, StringContainsComparator, StringEqualsComparator,
-            StringPatternMatchComparator, StringPrefixMatchComparator, StringRegexMatchComparator,
+            StringPatternMatchComparator, StringPrefixMatchComparator,
             StringSuffixMatchComparator, U16ExactMatchComparator,
         },
         generic::{
@@ -273,7 +273,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "path",
             matcher_method: "path_matches",
             matching_strategy: MatchingStrategy::Presence,
-            comparator: Box::new(StringRegexMatchComparator::new()),
+            comparator: Box::new(StringPatternMatchComparator::new(false, true)),
             expectation: readers::expectations::path_matches,
             request_value: readers::request_value::path,
             diff_with: None,

@@ -13,8 +13,8 @@ use crate::{
         comparison,
         comparison::{
             distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix,
-            equal_weight_distance_for, hostname_equals, regex_unmatched_length, string_contains,
-            string_distance, string_equals, string_has_prefix, string_has_suffix,
+            hostname_equals, regex_unmatched_length, string_contains, string_distance,
+            string_equals, string_has_prefix, string_has_suffix,
         },
     },
 };
@@ -100,7 +100,7 @@ impl ValueComparator<Value, Value> for JSONContainsMatchComparator {
     fn distance(&self, mock_value: &Option<&Value>, req_value: &Option<&Value>) -> usize {
         let mv_bytes = mock_value.map_or(Vec::new(), |v| v.to_string().into_bytes());
         let rv_bytes = req_value.map_or(Vec::new(), |v| v.to_string().into_bytes());
-        let distance = equal_weight_distance_for(&mv_bytes, &rv_bytes);
+        let distance = distance_for(&mv_bytes, &rv_bytes);
 
         if self.negated {
             std::cmp::max(mv_bytes.len(), rv_bytes.len()) - distance
@@ -419,41 +419,6 @@ impl ValueComparator<HttpMockRegex, HttpMockBytes> for HttpMockBytesPatternCompa
 }
 
 // ************************************************************************************************
-// StringExactMatchComparator
-// ************************************************************************************************
-pub struct StringRegexMatchComparator {}
-
-impl StringRegexMatchComparator {
-    pub fn new() -> Self {
-        Self {}
-    }
-}
-
-impl ValueComparator<HttpMockRegex, String> for StringRegexMatchComparator {
-    fn matches(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&String>) -> bool {
-        match (mock_value, req_value) {
-            (None, Some(_)) => true,
-            (Some(_), None) => false,
-            (Some(mv), Some(rv)) => mv.0.is_match(rv),
-            (None, None) => true,
-        }
-    }
-
-    fn name(&self) -> &str {
-        "matches regex"
-    }
-
-    fn distance(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&String>) -> usize {
-        let rv = req_value.map_or("", |s| s.as_str());
-        let mut mv = &HttpMockRegex(regex::Regex::new(".*").unwrap());
-        if mock_value.is_some() {
-            mv = mock_value.unwrap()
-        };
-        regex_unmatched_length(rv, mv)
-    }
-}
-
-// ************************************************************************************************
 // IntegerExactMatchComparator
 // ************************************************************************************************
 pub struct U16ExactMatchComparator {
@@ -582,6 +547,56 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesIncludesComparator {
     }
 }
 
+/// Shared implementation of the byte prefix/suffix distance.
+///
+/// The mock slice is compared against a mock-length window of the request
+/// slice: the leading window for prefixes (`from_end = false`) and the
+/// trailing window for suffixes (`from_end = true`).
+fn bytes_affix_distance(
+    negated: bool,
+    from_end: bool,
+    mock_value: &Option<&HttpMockBytes>,
+    req_value: &Option<&HttpMockBytes>,
+) -> usize {
+    let mock_slice = mock_value
+        .as_ref()
+        .map(|mv| mv.to_bytes().clone())
+        .unwrap_or_default();
+
+    let req_slice = req_value
+        .as_ref()
+        .map(|rv| rv.to_bytes().clone())
+        .unwrap_or_default();
+
+    // If mock has no requirement, distance is always 0
+    if mock_value.is_none() || mock_slice.is_empty() {
+        return 0;
+    }
+
+    // If request does not contain any data
+    if req_value.is_none() || req_slice.is_empty() {
+        return mock_slice.len();
+    }
+
+    // Compare only up to the length of the mock_slice
+    let compared_window = std::cmp::min(mock_slice.len(), req_slice.len());
+    let req_window = if from_end {
+        &req_slice[req_slice.len() - compared_window..]
+    } else {
+        &req_slice[..compared_window]
+    };
+    // Unit-weight Levenshtein distance counts the number of differing bytes,
+    // which is what we need to derive the negated distance below.
+    let distance = distance_for(&mock_slice[..compared_window], req_window);
+
+    // if negated, we want to find out how many bytes differ
+    if negated {
+        compared_window - distance
+    } else {
+        distance
+    }
+}
+
 // ************************************************************************************************
 // BytesPrefixComparator
 // ************************************************************************************************
@@ -617,41 +632,7 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
         mock_value: &Option<&HttpMockBytes>,
         req_value: &Option<&HttpMockBytes>,
     ) -> usize {
-        let mock_slice = mock_value
-            .as_ref()
-            .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_default();
-
-        let req_slice = req_value
-            .as_ref()
-            .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_default();
-
-        // If mock has no requirement, distance is always 0
-        if mock_value.is_none() || mock_slice.is_empty() {
-            return 0;
-        }
-
-        // If request does not contain any data
-        if req_value.is_none() || req_slice.is_empty() {
-            return mock_slice.len();
-        }
-
-        // Compare only up to the length of the mock_slice
-        let compared_window = std::cmp::min(mock_slice.len(), req_slice.len());
-        let distance = equal_weight_distance_for(
-            &mock_slice[..compared_window],
-            &req_slice[..compared_window],
-        );
-
-        // if negated, we want to find out how many
-        if self.negated {
-            // This is why we need the equal_weight_distance_for function:
-            // to calculate the distance as the number of differing characters.
-            compared_window - distance
-        } else {
-            distance
-        }
+        bytes_affix_distance(self.negated, false, mock_value, req_value)
     }
 }
 
@@ -690,41 +671,7 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
         mock_value: &Option<&HttpMockBytes>,
         req_value: &Option<&HttpMockBytes>,
     ) -> usize {
-        let mock_slice = mock_value
-            .as_ref()
-            .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_default();
-
-        let req_slice = req_value
-            .as_ref()
-            .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_default();
-
-        // If mock has no requirement, distance is always 0
-        if mock_value.is_none() || mock_slice.is_empty() {
-            return 0;
-        }
-
-        // If request does not contain any data
-        if req_value.is_none() || req_slice.is_empty() {
-            return mock_slice.len();
-        }
-
-        // Compare only up to the length of the mock_slice
-        let compared_window = std::cmp::min(mock_slice.len(), req_slice.len());
-        let distance = equal_weight_distance_for(
-            &mock_slice[..compared_window],
-            &req_slice[req_slice.len() - compared_window..],
-        );
-
-        // if negated, we want to find out how many
-        if self.negated {
-            // This is why we need the equal_weight_distance_for function:
-            // to calculate the distance as the number of differing characters.
-            compared_window - distance
-        } else {
-            distance
-        }
+        bytes_affix_distance(self.negated, true, mock_value, req_value)
     }
 }
 
@@ -820,7 +767,7 @@ mod test {
         common::data::HttpMockRegex,
         server::matchers::comparators::{
             AnyValueComparator, JSONContainsMatchComparator, JSONExactMatchComparator,
-            StringContainsComparator, StringEqualsComparator, StringRegexMatchComparator,
+            StringContainsComparator, StringEqualsComparator, StringPatternMatchComparator,
             ValueComparator,
         },
     };
@@ -967,7 +914,7 @@ mod test {
     #[test]
     fn regex_comparator_match() {
         run_test(
-            &StringRegexMatchComparator::new(),
+            &StringPatternMatchComparator::new(false, true),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
             &"2014-01-01".to_string(),
             true,
@@ -979,7 +926,7 @@ mod test {
     #[test]
     fn regex_comparator_no_match() {
         run_test(
-            &StringRegexMatchComparator::new(),
+            &StringPatternMatchComparator::new(false, true),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
             &"xxx".to_string(),
             false,

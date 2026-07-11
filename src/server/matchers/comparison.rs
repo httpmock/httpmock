@@ -1,7 +1,6 @@
 use std::{convert::TryInto, ops::Deref};
 
 use regex::Regex;
-use stringmetrics::LevWeights;
 
 use crate::common::{data::HttpMockRegex, util::HttpMockBytes};
 
@@ -494,23 +493,10 @@ pub fn distance_for_suffix(
     mock_value: &Option<&String>,
     req_value: &Option<&String>,
 ) -> usize {
-    if mock_value.map_or(0, |v| v.len()) == 0 {
-        return 0;
-    }
-
-    let mock_slice = mock_value.as_deref();
-    let mock_slice_len = mock_slice.map_or(0, |v| v.len());
-
-    let req_slice = req_value
-        .as_deref()
-        .map(|s| &s[..mock_slice_len.min(s.len())]);
-
-    distance_for_substring(
-        case_sensitive,
-        negated,
-        &mock_slice.map(|v| v.as_str()),
-        &req_slice,
-    )
+    // The suffix distance is currently computed identically to the prefix
+    // distance (both compare against the leading window of `req_value`).
+    // Delegating keeps the behavior byte-for-byte identical.
+    distance_for_prefix(case_sensitive, negated, mock_value, req_value)
 }
 
 pub fn string_contains(
@@ -1104,7 +1090,7 @@ pub fn string_distance(
         (mock_slice.to_lowercase(), req_slice.to_lowercase())
     };
 
-    let distance = equal_weight_distance_for(mock_slice.as_bytes(), req_slice.as_bytes());
+    let distance = distance_for(mock_slice.as_bytes(), req_slice.as_bytes());
 
     if negated {
         std::cmp::max(mock_slice.len(), req_slice.len()) - distance
@@ -1210,29 +1196,16 @@ mod string_distance_tests {
 // *************************************************************************************************
 // Helper functions
 // *************************************************************************************************
+/// Computes the unit-weight Levenshtein (edit) distance between two slices.
+///
+/// Insertions, deletions, and substitutions each cost 1. The comparison is
+/// performed element-wise, so callers control the granularity (e.g. bytes or
+/// chars) by choosing the slice element type.
 pub fn distance_for<T>(expected: &[T], actual: &[T]) -> usize
 where
     T: PartialEq + Sized,
 {
     stringmetrics::levenshtein_limit_iter(expected.iter(), actual.iter(), u32::MAX) as usize
-}
-
-pub fn equal_weight_distance_for<T>(expected: &[T], actual: &[T]) -> usize
-where
-    T: PartialEq + Sized,
-{
-    stringmetrics::try_levenshtein_weight_iter(
-        expected.iter(),
-        actual.iter(),
-        u32::MAX,
-        &LevWeights {
-            insertion: 1,
-            deletion: 1,
-            substitution: 1,
-        },
-    )
-    // Option=None is only returned in case limit is maxed out here it realistically can't
-    .expect("character limit exceeded") as usize
 }
 
 pub fn regex_unmatched_length(text: &str, re: &HttpMockRegex) -> usize {
@@ -1469,13 +1442,7 @@ where
     let req_size = actual.map_or(0, |&v| v.try_into().unwrap_or(0));
 
     match (expected, actual) {
-        (Some(_), Some(_)) => {
-            if mock_size > req_size {
-                mock_size - req_size
-            } else {
-                req_size - mock_size
-            }
-        }
+        (Some(_), Some(_)) => mock_size.abs_diff(req_size),
         (Some(_), None) | (None, Some(_)) => {
             if mock_size == 0 {
                 1
