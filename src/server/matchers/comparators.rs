@@ -11,9 +11,9 @@ use crate::{
     server::matchers::{
         comparison,
         comparison::{
-            distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix,
-            hostname_equals, regex_unmatched_length, string_contains, string_distance,
-            string_equals, string_has_prefix, string_has_suffix,
+            distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix, hostname_equals,
+            regex_unmatched_length, string_contains, string_distance, string_equals, string_has_prefix,
+            string_has_suffix,
         },
     },
 };
@@ -483,15 +483,9 @@ fn bytes_affix_distance(
     mock_value: &Option<&HttpMockBytes>,
     req_value: &Option<&HttpMockBytes>,
 ) -> usize {
-    let mock_slice = mock_value
-        .as_ref()
-        .map(|mv| mv.to_bytes().clone())
-        .unwrap_or_default();
+    let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes().clone()).unwrap_or_default();
 
-    let req_slice = req_value
-        .as_ref()
-        .map(|rv| rv.to_bytes().clone())
-        .unwrap_or_default();
+    let req_slice = req_value.as_ref().map(|rv| rv.to_bytes().clone()).unwrap_or_default();
 
     // If mock has no requirement, distance is always 0
     if mock_value.is_none() || mock_slice.is_empty() {
@@ -515,11 +509,7 @@ fn bytes_affix_distance(
     let distance = distance_for(&mock_slice[..compared_window], req_window);
 
     // if negated, we want to find out how many bytes differ
-    if negated {
-        compared_window - distance
-    } else {
-        distance
-    }
+    if negated { compared_window - distance } else { distance }
 }
 
 // ************************************************************************************************
@@ -548,11 +538,7 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
         "has prefix"
     }
 
-    fn distance(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> usize {
+    fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
         bytes_affix_distance(self.negated, false, mock_value, req_value)
     }
 }
@@ -579,11 +565,7 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
         if self.negated { "suffix not" } else { "has suffix" }
     }
 
-    fn distance(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> usize {
+    fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
         bytes_affix_distance(self.negated, true, mock_value, req_value)
     }
 }
@@ -676,9 +658,8 @@ mod test {
     use crate::{
         common::data::HttpMockRegex,
         server::matchers::comparators::{
-            AnyValueComparator, JSONContainsMatchComparator, JSONExactMatchComparator,
-            StringContainsComparator, StringEqualsComparator, StringPatternMatchComparator,
-            ValueComparator,
+            AnyValueComparator, JSONContainsMatchComparator, JSONExactMatchComparator, StringContainsComparator,
+            StringEqualsComparator, StringPatternMatchComparator, ValueComparator,
         },
     };
 
