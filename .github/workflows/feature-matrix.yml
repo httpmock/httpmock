@@ -30,7 +30,7 @@ jobs:
       matrix:
         partition: [1, 2, 3, 4]
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # HTTPS tests validate the bundled test certificates against the OS
       # trust store.
@@ -62,7 +62,7 @@ jobs:
     name: Integration against Dockerised server
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       - name: Trust the repository's test CA
         run: |
@@ -111,7 +111,7 @@ jobs:
     name: Security advisories
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v6
+      - uses: actions/checkout@v7
 
       # RustSec advisories change independently of the code, so they are
       # checked here nightly rather than blocking unrelated PRs (the
