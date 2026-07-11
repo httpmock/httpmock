@@ -18,7 +18,6 @@ serde_regex = "1"
 base64 = "0.22"
 regex = "1"
 tracing = { version = "0.1", features = ["log"] }
-url = "2"
 stringmetrics = "2"
 assert-json-diff = "2"
 async-trait = "0.1"
