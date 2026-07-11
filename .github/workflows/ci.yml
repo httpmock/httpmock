@@ -64,13 +64,22 @@ jobs:
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
-      # Three representative feature sets; the full power set is covered by
+      # Representative feature sets; the full power set is covered by
       # feature-matrix.yml. "standalone" already implies remote, remote-https,
       # record, proxy, http2 and cookies.
+      #
+      # "https" is tested on its own because server-side TLS must not rely on
+      # rustls' crate-feature crypto-provider auto-detection: dev-dependencies
+      # (reqwest) enable rustls' aws-lc-rs feature alongside our ring feature,
+      # making auto-detection ambiguous. all-features masks this because a
+      # remote client path installs the default provider first, so only an
+      # isolated https build exercises the failure. See rustls issue #1938.
       matrix:
         include:
           - name: default
             args: ""
+          - name: https
+            args: --no-default-features --features https
           - name: standalone
             args: --features standalone
           - name: all-features
