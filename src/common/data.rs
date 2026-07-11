@@ -2,7 +2,6 @@ extern crate serde_regex;
 
 use std::{
     cmp::Ordering,
-    collections::HashMap,
     convert::{TryFrom, TryInto},
     fmt,
     fmt::Debug,
@@ -16,7 +15,6 @@ use bytes::Bytes;
 use headers::{Cookie, HeaderMapExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
-use url::Url;
 
 use crate::{
     common::{
@@ -237,28 +235,14 @@ impl HttpMockRequest {
         self.headers.as_ref()
     }
 
-    pub fn query_params_map(&self) -> HashMap<String, String> {
-        self.query_params().into_iter().collect()
-    }
-
     pub fn query_params(&self) -> Vec<(String, String)> {
-        // There doesn't seem to be a way to just parse Query string with `url` crate, so we're
-        // prefixing a dummy URL for parsing.
-        let url = format!("http://dummy?{}", self.uri().query().unwrap_or(""));
-        let url = Url::parse(&url).unwrap();
-
-        url.query_pairs()
-            .map(|(k, v)| (k.into_owned(), v.into_owned()))
+        form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes())
+            .into_owned()
             .collect()
     }
 
     pub fn query_param_length(&self) -> usize {
-        // There doesn't seem to be a way to just parse Query string with `url` crate, so we're
-        // prefixing a dummy URL for parsing.
-        let url = format!("http://dummy?{}", self.uri().query().unwrap_or(""));
-        let url = Url::parse(&url).unwrap();
-
-        url.query_pairs().count()
+        form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes()).count()
     }
 
     pub fn body(&self) -> &HttpMockBytes {
@@ -310,10 +294,6 @@ impl HttpMockRequest {
         }
 
         Ok(result)
-    }
-
-    pub fn to_http_request(&self) -> http::Request<Bytes> {
-        http::Request::<Bytes>::from(self)
     }
 }
 
@@ -1599,7 +1579,7 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
                     self.when.body_suffix_not,
                     self.when.body_suffix_not_base64,
                 ),
-                body_matches: from_pattern_vec(self.when.body_matches),
+                body_matches: self.when.body_matches,
 
                 // JSON Body-related fields
                 json_body: self.when.json_body,
@@ -1665,10 +1645,6 @@ fn from_method_vec(value: Option<Vec<Method>>) -> Option<Vec<String>> {
     value.map(|vec| vec.iter().map(|m| m.to_string()).collect())
 }
 
-fn from_pattern_vec(patterns: Option<Vec<HttpMockRegex>>) -> Option<Vec<HttpMockRegex>> {
-    patterns.map(|vec| vec.to_vec())
-}
-
 fn from_name_value_string_pair_vec(
     kvp: Option<Vec<NameValueStringPair>>,
 ) -> Option<Vec<(String, String)>> {
@@ -1681,14 +1657,6 @@ fn from_name_value_pattern_pair_vec(
     kvp.map(|vec| {
         vec.into_iter()
             .map(|pair| (pair.name, pair.value))
-            .collect()
-    })
-}
-
-fn from_string_pair_vec(vec: Option<Vec<(String, String)>>) -> Option<Vec<NameValueStringPair>> {
-    vec.map(|vec| {
-        vec.into_iter()
-            .map(|(name, value)| NameValueStringPair { name, value })
             .collect()
     })
 }
@@ -1888,11 +1856,11 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 path_suffix: value.request.path_suffix,
                 path_prefix_not: value.request.path_prefix_not,
                 path_suffix_not: value.request.path_suffix_not,
-                path_matches: from_pattern_vec(value.request.path_matches),
+                path_matches: value.request.path_matches,
 
                 // Header-related fields
-                header: from_string_pair_vec(value.request.header),
-                header_not: from_string_pair_vec(value.request.header_not),
+                header: to_name_value_string_pair_vec(value.request.header),
+                header_not: to_name_value_string_pair_vec(value.request.header_not),
                 header_exists: value.request.header_exists,
                 header_missing: value.request.header_missing,
                 header_contains: to_name_value_string_pair_vec(value.request.header_includes),
@@ -1905,8 +1873,8 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 header_count: to_key_value_pattern_count_triple_vec(value.request.header_count),
 
                 // Cookie-related fields
-                cookie: from_string_pair_vec(value.request.cookie),
-                cookie_not: from_string_pair_vec(value.request.cookie_not),
+                cookie: to_name_value_string_pair_vec(value.request.cookie),
+                cookie_not: to_name_value_string_pair_vec(value.request.cookie_not),
                 cookie_exists: value.request.cookie_exists,
                 cookie_missing: value.request.cookie_missing,
                 cookie_contains: to_name_value_string_pair_vec(value.request.cookie_includes),
@@ -1920,8 +1888,8 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 cookie_count: to_key_value_pattern_count_triple_vec(value.request.cookie_count),
 
                 // Query Parameter-related fields
-                query_param: from_string_pair_vec(value.request.query_param),
-                query_param_not: from_string_pair_vec(value.request.query_param_not),
+                query_param: to_name_value_string_pair_vec(value.request.query_param),
+                query_param_not: to_name_value_string_pair_vec(value.request.query_param_not),
                 query_param_exists: value.request.query_param_exists,
                 query_param_missing: value.request.query_param_missing,
                 query_param_contains: to_name_value_string_pair_vec(
@@ -1962,7 +1930,7 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 body_prefix_not_base64: request_body_prefix_not_base64,
                 body_suffix_not: request_body_suffix_not,
                 body_suffix_not_base64: request_body_suffix_not_base64,
-                body_matches: from_pattern_vec(value.request.body_matches),
+                body_matches: value.request.body_matches,
 
                 // JSON Body-related fields
                 json_body: value.request.json_body,
@@ -1971,8 +1939,10 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 json_body_excludes: value.request.json_body_excludes,
 
                 // Form URL-encoded fields
-                form_urlencoded_tuple: from_string_pair_vec(value.request.form_urlencoded_tuple),
-                form_urlencoded_tuple_not: from_string_pair_vec(
+                form_urlencoded_tuple: to_name_value_string_pair_vec(
+                    value.request.form_urlencoded_tuple,
+                ),
+                form_urlencoded_tuple_not: to_name_value_string_pair_vec(
                     value.request.form_urlencoded_tuple_not,
                 ),
                 form_urlencoded_key_exists: value.request.form_urlencoded_tuple_exists,
@@ -2005,7 +1975,7 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
             },
             then: StaticHTTPResponse {
                 status: value.response.status,
-                header: from_string_pair_vec(value.response.headers),
+                header: to_name_value_string_pair_vec(value.response.headers),
                 body: response_body,
                 body_base64: response_body_base64,
                 // Reason for the cast to u64: The Duration::as_millis method returns the total
