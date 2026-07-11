@@ -9,7 +9,7 @@ use crate::server::persistence::read_static_mock_definitions;
 use crate::server::{
     handler::HttpMockHandler,
     server::{MockServer, MockServerConfig},
-    state::{HttpMockStateManager, StateManager},
+    state::{HttpMockStateManager, StateManager, DEFAULT_HISTORY_LIMIT},
     HttpMockServer,
 };
 #[cfg(feature = "https")]
@@ -460,7 +460,8 @@ impl HttpMockServerBuilder {
     /// # Returns
     /// A `HttpMockServer` instance or an error if the build process fails.
     pub fn build(self) -> Result<HttpMockServer, Box<dyn Error>> {
-        self.build_with_state(Arc::new(HttpMockStateManager::default()))
+        let history_limit = self.history_limit.unwrap_or(DEFAULT_HISTORY_LIMIT);
+        self.build_with_state(Arc::new(HttpMockStateManager::new(history_limit)))
     }
 
     /// Builds the `MockServer` with the current settings and provided state manager.

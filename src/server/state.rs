@@ -46,11 +46,16 @@ pub enum Error {
     Unknown,
 }
 
+/// The default maximum number of requests retained in the server's history when
+/// no explicit limit is configured.
+pub(crate) const DEFAULT_HISTORY_LIMIT: usize = 100;
+
 pub struct MockServerState {
     next_mock_id: usize,
     next_forwarding_rule_id: usize,
     next_proxy_rule_id: usize,
     next_recording_id: usize,
+    history_limit: usize,
     pub mocks: BTreeMap<usize, ActiveMock>,
     pub history: Vec<Arc<HttpMockRequest>>,
     pub matchers: Vec<Box<dyn Matcher + Sync + Send>>,
@@ -67,6 +72,7 @@ impl MockServerState {
             proxy_rules: BTreeMap::new(),
             recordings: BTreeMap::new(),
             history: Vec::new(),
+            history_limit,
             next_mock_id: 0,
             next_forwarding_rule_id: 0,
             next_proxy_rule_id: 0,
@@ -140,7 +146,7 @@ impl HttpMockStateManager {
 
 impl Default for HttpMockStateManager {
     fn default() -> Self {
-        HttpMockStateManager::new(usize::MAX)
+        HttpMockStateManager::new(DEFAULT_HISTORY_LIMIT)
     }
 }
 
@@ -250,8 +256,7 @@ impl StateManager for HttpMockStateManager {
 
         let req = Arc::new(req.clone());
 
-        if state.history.len() > 100 {
-            // TODO: Make max history configurable
+        if state.history.len() > state.history_limit {
             state.history.remove(0);
         }
         state.history.push(req.clone());
@@ -751,4 +756,51 @@ fn get_request_mismatches(
         .iter()
         .flat_map(|mat| mat.mismatches(req, mock_rr))
         .collect()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::common::util::HttpMockBytes;
+
+    fn dummy_request() -> HttpMockRequest {
+        HttpMockRequest::new(
+            "http".to_string(),
+            "/test".to_string(),
+            "GET".to_string(),
+            Vec::new(),
+            "HTTP/1.1".to_string(),
+            HttpMockBytes::from(bytes::Bytes::new()),
+        )
+    }
+
+    #[test]
+    fn history_is_capped_at_configured_limit() {
+        let history_limit = 3;
+        let manager = HttpMockStateManager::new(history_limit);
+
+        // Serve more requests than the configured limit.
+        for _ in 0..10 {
+            manager
+                .serve_mock(&dummy_request())
+                .expect("serving a request should not fail");
+        }
+
+        let history_len = manager.state.lock().unwrap().history.len();
+
+        // The trim logic removes the oldest entry once the length exceeds the
+        // limit and then pushes the new request, so the history stabilizes at
+        // `history_limit + 1` and must never grow unbounded.
+        assert!(
+            history_len <= history_limit + 1,
+            "history length {history_len} exceeded the configured limit {history_limit}"
+        );
+        assert_eq!(history_len, history_limit + 1);
+    }
+
+    #[test]
+    fn default_history_limit_is_preserved() {
+        let manager = HttpMockStateManager::default();
+        assert_eq!(manager.state.lock().unwrap().history_limit, DEFAULT_HISTORY_LIMIT);
+    }
 }
