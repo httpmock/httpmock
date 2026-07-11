@@ -334,5 +334,17 @@ fn delete_recording_on_remote_server_test() {
     });
 
     // Act + Assert: panics if the server does not respond with 204.
+    let id = recording.id;
     recording.delete();
+
+    // Deleting it again must return 404 — the recording no longer exists.
+    let response = Client::new()
+        .delete(format!(
+            "{}/__httpmock__/recordings/{}",
+            server.base_url(),
+            id
+        ))
+        .send()
+        .unwrap();
+    assert_eq!(response.status().as_u16(), 404);
 }
