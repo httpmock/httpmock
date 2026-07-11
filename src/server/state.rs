@@ -557,14 +557,6 @@ fn build_mock_definition(
         } else {
             None
         },
-        host_not: None,
-        host_contains: None,
-        host_excludes: None,
-        host_prefix: None,
-        host_suffix: None,
-        host_prefix_not: None,
-        host_suffix_not: None,
-        host_matches: None,
         port: if is_proxied {
             request.uri().port().map(|h| h.as_u16())
         } else {
@@ -576,93 +568,23 @@ fn build_mock_definition(
             None
         },
         path: Some(request.uri().path().to_string()),
-        path_not: None,
-        path_includes: None,
-        path_excludes: None,
-        path_prefix: None,
-        path_suffix: None,
-        path_prefix_not: None,
-        path_suffix_not: None,
-        path_matches: None,
         method: Some(request.method().to_string()),
         header: if !headers.is_empty() {
             Some(headers)
         } else {
             None
         },
-        header_not: None,
-        header_exists: None,
-        header_missing: None,
-        header_includes: None,
-        header_excludes: None,
-        header_prefix: None,
-        header_suffix: None,
-        header_prefix_not: None,
-        header_suffix_not: None,
-        header_matches: None,
-        header_count: None,
-        cookie: None,
-        cookie_not: None,
-        cookie_exists: None,
-        cookie_missing: None,
-        cookie_includes: None,
-        cookie_excludes: None,
-        cookie_prefix: None,
-        cookie_suffix: None,
-        cookie_prefix_not: None,
-        cookie_suffix_not: None,
-        cookie_matches: None,
-        cookie_count: None,
         body: if request.body().is_empty() {
             None
         } else {
             Some(request.body().clone())
         },
-        json_body: None,
-        json_body_not: None,
-        json_body_includes: None,
-        body_includes: None,
-        body_excludes: None,
-        body_prefix: None,
-        body_suffix: None,
-        body_prefix_not: None,
-        body_suffix_not: None,
-        body_matches: None,
-        query_param_exists: None,
-        query_param_missing: None,
-        query_param_includes: None,
-        query_param_excludes: None,
-        query_param_prefix: None,
-        query_param_suffix: None,
-        query_param_prefix_not: None,
-        query_param_suffix_not: None,
-        query_param_matches: None,
-        query_param_count: None,
         query_param: if request.query_param_length() == 0 {
             None
         } else {
             Some(request.query_params())
         },
-        form_urlencoded_tuple_exists: None,
-        form_urlencoded_tuple_missing: None,
-        form_urlencoded_tuple_includes: None,
-        form_urlencoded_tuple_excludes: None,
-        form_urlencoded_tuple_prefix: None,
-        form_urlencoded_tuple_suffix: None,
-        form_urlencoded_tuple_prefix_not: None,
-        form_urlencoded_tuple_suffix_not: None,
-        form_urlencoded_tuple_matches: None,
-        form_urlencoded_tuple_count: None,
-        form_urlencoded_tuple: None,
-        is_true: None,
-        scheme_not: None,
-        port_not: None,
-        method_not: None,
-        query_param_not: None,
-        body_not: None,
-        json_body_excludes: None,
-        form_urlencoded_tuple_not: None,
-        is_false: None,
+        ..Default::default()
     };
 
     // ************************************************************************************
