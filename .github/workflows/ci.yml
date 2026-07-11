@@ -21,17 +21,33 @@ concurrency:
 permissions:
   contents: read
 
+env:
+  # pin to a recent nightly for up-to-date but reproducible results
+  NIGHTLY_TOOLCHAIN: nightly-2026-07-01
+
 jobs:
-  lint:
-    name: Format and lint
+
+  formatting:
+    name: Formatting
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
-          components: clippy, rustfmt
-          rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
+          toolchain: ${{ env.NIGHTLY_TOOLCHAIN }}
+          components: rustfmt
       - run: cargo fmt --all -- --check
+
+  lint:
+    name: Linting
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: ${{ env.NIGHTLY_TOOLCHAIN }}
+          components: clippy
+          rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - run: cargo clippy --all-targets --all-features
 
   feature-combinations:
