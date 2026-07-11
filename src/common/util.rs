@@ -7,16 +7,15 @@ use std::{
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::Arc,
-    task::{Context, Poll},
+    task::{Context, Poll, Wake, Waker},
+    thread::{self, Thread},
     time::Duration,
 };
 
 use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
 use bytes::Bytes;
-/// Extension trait for efficiently blocking on a future.
-use crossbeam_utils::sync::{Parker, Unparker};
 use futures_timer::Delay;
-use futures_util::{pin_mut, task::ArcWake};
+use futures_util::pin_mut;
 use serde::{Deserialize, Serialize};
 
 // ===============================================================================================
@@ -70,16 +69,22 @@ pub trait Join: Future {
 
 impl<F: Future> Join for F {
     fn join(self) -> <Self as Future>::Output {
-        struct ThreadWaker(Unparker);
+        /// Waker that unparks the blocked thread when the future is ready to
+        /// make progress. `unpark` before `park` leaves a token that makes the
+        /// next `park` return immediately, so no wakeups are lost.
+        struct ThreadWaker(Thread);
 
-        impl ArcWake for ThreadWaker {
-            fn wake_by_ref(arc_self: &Arc<Self>) {
-                arc_self.0.unpark();
+        impl Wake for ThreadWaker {
+            fn wake(self: Arc<Self>) {
+                self.0.unpark();
+            }
+
+            fn wake_by_ref(self: &Arc<Self>) {
+                self.0.unpark();
             }
         }
 
-        let parker = Parker::new();
-        let waker = futures_util::task::waker(Arc::new(ThreadWaker(parker.unparker().clone())));
+        let waker = Waker::from(Arc::new(ThreadWaker(thread::current())));
         let mut context = Context::from_waker(&waker);
 
         let future = self;
@@ -88,7 +93,9 @@ impl<F: Future> Join for F {
         loop {
             match future.as_mut().poll(&mut context) {
                 Poll::Ready(output) => return output,
-                Poll::Pending => parker.park(),
+                // `park` may wake spuriously, so we loop and re-poll rather
+                // than assuming one park corresponds to exactly one wake.
+                Poll::Pending => thread::park(),
             }
         }
     }
