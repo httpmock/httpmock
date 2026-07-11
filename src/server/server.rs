@@ -336,9 +336,17 @@ where
 {
     // Build TLS acceptor inline for this connection
     let cert_resolver = server.config.https.cert_resolver_factory.build(authority);
-    let mut server_config = ServerConfig::builder()
-        .with_no_client_auth()
-        .with_cert_resolver(cert_resolver);
+    // Select the ring crypto provider explicitly rather than relying on
+    // `ServerConfig::builder`'s crate-feature auto-detection: dev-dependencies
+    // (e.g. reqwest) can enable rustls' `aws-lc-rs` feature alongside our `ring`
+    // feature, which makes auto-detection ambiguous and panics.
+    // See https://github.com/rustls/rustls/issues/1938
+    let mut server_config =
+        ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
+            .with_safe_default_protocol_versions()
+            .map_err(|e| Error::TlsError(format!("cannot build TLS server config: {:?}", e)))?
+            .with_no_client_auth()
+            .with_cert_resolver(cert_resolver);
 
     server_config.alpn_protocols = vec![
         #[cfg(feature = "http2")]
