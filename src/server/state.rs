@@ -801,6 +801,9 @@ mod tests {
     #[test]
     fn default_history_limit_is_preserved() {
         let manager = HttpMockStateManager::default();
-        assert_eq!(manager.state.lock().unwrap().history_limit, DEFAULT_HISTORY_LIMIT);
+        assert_eq!(
+            manager.state.lock().unwrap().history_limit,
+            DEFAULT_HISTORY_LIMIT
+        );
     }
 }
