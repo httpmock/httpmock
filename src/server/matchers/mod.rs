@@ -6,8 +6,8 @@ use crate::{
             BytesPrefixComparator, BytesSuffixComparator, FunctionMatchesRequestComparator,
             HostEqualsComparator, HttpMockBytesPatternComparator, JSONContainsMatchComparator,
             JSONExactMatchComparator, StringContainsComparator, StringEqualsComparator,
-            StringPatternMatchComparator, StringPrefixMatchComparator,
-            StringSuffixMatchComparator, U16ExactMatchComparator,
+            StringPatternMatchComparator, StringPrefixMatchComparator, StringSuffixMatchComparator,
+            U16ExactMatchComparator,
         },
         generic::{
             FunctionValueMatcher, KeyValueOperator, MatchingStrategy, MultiValueCountMatcher,
