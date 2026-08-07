@@ -1,4 +1,4 @@
-use std::{cell::Cell, path::Path, rc::Rc, str::FromStr, sync::Arc, time::Duration};
+use std::{path::Path, str::FromStr, sync::Arc, time::Duration};
 
 use bytes::Bytes;
 use serde::Serialize;
@@ -8,7 +8,7 @@ use crate::{
     Method, Regex,
     common::{
         data::{MockServerHttpResponse, RequestRequirements},
-        util::{HttpMockBytes, get_test_resource_file_path, update_cell},
+        util::{HttpMockBytes, get_test_resource_file_path},
     },
     prelude::{HttpMockRequest, HttpMockResponse},
 };
@@ -26,11 +26,11 @@ fn push_to<T>(opt: &mut Option<Vec<T>>, value: T) {
 /// These specifications determine whether a request matches the mock setup and should be handled accordingly.
 /// This structure is part of the setup process in creating a mock server, typically used before defining the response
 /// behavior with a `Then` structure.
-pub struct When {
-    pub(crate) expectations: Rc<Cell<RequestRequirements>>,
+pub struct When<'a> {
+    pub(crate) expectations: &'a mut RequestRequirements,
 }
 
-impl When {
+impl<'a> When<'a> {
     /// Configures the mock server to respond to any incoming request, regardless of the URL path,
     /// query parameters, headers, or method.
     ///
@@ -125,9 +125,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let scheme = scheme.try_into().expect("cannot convert scheme into a string");
-        update_cell(&self.expectations, |e| {
-            e.scheme = Some(scheme);
-        });
+        self.expectations.scheme = Some(scheme);
         self
     }
     // @docs-group: Scheme
@@ -176,9 +174,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let scheme = scheme.try_into().expect("cannot convert scheme into a string");
-        update_cell(&self.expectations, |e| {
-            e.scheme_not = Some(scheme);
-        });
+        self.expectations.scheme_not = Some(scheme);
         self
     }
     // @docs-group: Scheme
@@ -227,7 +223,7 @@ impl When {
     {
         let method = method.try_into().expect("cannot convert method into httpmock::Method");
 
-        update_cell(&self.expectations, |e| e.method = Some(method.to_string()));
+        self.expectations.method = Some(method.to_string());
         self
     }
     // @docs-group: Method
@@ -271,9 +267,7 @@ impl When {
     /// The updated `When` instance to allow for method chaining.
     ///
     pub fn method_not<IntoMethod: Into<Method>>(self, method: IntoMethod) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.method_not, method.into().to_string())
-        });
+        push_to(&mut self.expectations.method_not, method.into().to_string());
 
         self
     }
@@ -319,7 +313,7 @@ impl When {
     /// The updated `When` instance to enable method chaining.
     ///
     pub fn host<IntoString: Into<String>>(self, host: IntoString) -> Self {
-        update_cell(&self.expectations, |e| e.host = Some(host.into()));
+        self.expectations.host = Some(host.into());
         self
     }
     // @docs-group: Host
@@ -363,7 +357,7 @@ impl When {
     /// The updated `When` instance to enable method chaining.
     ///
     pub fn host_not<IntoString: Into<String>>(self, host: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.host_not, host.into()));
+        push_to(&mut self.expectations.host_not, host.into());
         self
     }
     // @docs-group: Host
@@ -417,7 +411,7 @@ impl When {
     /// The updated `When` instance to enable method chaining.
     ///
     pub fn host_includes<IntoString: Into<String>>(self, host: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.host_contains, host.into()));
+        push_to(&mut self.expectations.host_contains, host.into());
         self
     }
     // @docs-group: Host
@@ -468,7 +462,7 @@ impl When {
     /// The updated `When` instance to enable method chaining.
     ///
     pub fn host_excludes<IntoString: Into<String>>(self, host: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.host_excludes, host.into()));
+        push_to(&mut self.expectations.host_excludes, host.into());
         self
     }
     // @docs-group: Host
@@ -517,7 +511,7 @@ impl When {
     /// The updated `When` instance to enable method chaining.
     ///
     pub fn host_prefix<IntoString: Into<String>>(self, host: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.host_prefix, host.into()));
+        push_to(&mut self.expectations.host_prefix, host.into());
         self
     }
     // @docs-group: Host
@@ -566,7 +560,7 @@ impl When {
     /// The updated `When` instance to enable method chaining.
     ///
     pub fn host_suffix<IntoString: Into<String>>(self, host: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.host_suffix, host.into()));
+        push_to(&mut self.expectations.host_suffix, host.into());
         self
     }
     // @docs-group: Host
@@ -615,7 +609,7 @@ impl When {
     /// The updated `When` instance to enable method chaining.
     ///
     pub fn host_prefix_not<IntoString: Into<String>>(self, prefix: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.host_prefix_not, prefix.into()));
+        push_to(&mut self.expectations.host_prefix_not, prefix.into());
         self
     }
     // @docs-group: Host
@@ -663,7 +657,7 @@ impl When {
     /// The updated `When` instance to enable method chaining.
     ///
     pub fn host_suffix_not<IntoString: Into<String>>(self, host: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.host_suffix_not, host.into()));
+        push_to(&mut self.expectations.host_suffix_not, host.into());
         self
     }
     // @docs-group: Host
@@ -711,7 +705,7 @@ impl When {
     /// The updated `When` instance to enable method chaining.
     ///
     pub fn host_matches<IntoRegex: Into<Regex>>(self, regex: IntoRegex) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.host_matches, regex.into()));
+        push_to(&mut self.expectations.host_matches, regex.into());
         self
     }
     // @docs-group: Host
@@ -766,7 +760,7 @@ impl When {
     {
         let port: u16 = port.try_into().expect("Port value is out of range for u16");
 
-        update_cell(&self.expectations, |e| e.port = Some(port));
+        self.expectations.port = Some(port);
         self
     }
     // @docs-group: Port
@@ -821,7 +815,7 @@ impl When {
     {
         let port: u16 = port.try_into().expect("Port value is out of range for u16");
 
-        update_cell(&self.expectations, |e| push_to(&mut e.port_not, port));
+        push_to(&mut self.expectations.port_not, port);
         self
     }
     // @docs-group: Port
@@ -863,9 +857,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let path = path.try_into().expect("cannot convert path into a string");
-        update_cell(&self.expectations, |e| {
-            e.path = Some(path);
-        });
+        self.expectations.path = Some(path);
         self
     }
     // @docs-group: Path
@@ -909,7 +901,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let path = path.try_into().expect("cannot convert path into string");
-        update_cell(&self.expectations, |e| push_to(&mut e.path_not, path));
+        push_to(&mut self.expectations.path_not, path);
         self
     }
     // @docs-group: Path
@@ -951,7 +943,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let substring = substring.try_into().expect("cannot convert substring into string");
-        update_cell(&self.expectations, |e| push_to(&mut e.path_includes, substring));
+        push_to(&mut self.expectations.path_includes, substring);
         self
     }
     // @docs-group: Path
@@ -993,7 +985,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let substring = substring.try_into().expect("cannot convert substring into string");
-        update_cell(&self.expectations, |e| push_to(&mut e.path_excludes, substring));
+        push_to(&mut self.expectations.path_excludes, substring);
         self
     }
     // @docs-group: Path
@@ -1035,7 +1027,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let prefix = prefix.try_into().expect("cannot convert prefix into string");
-        update_cell(&self.expectations, |e| push_to(&mut e.path_prefix, prefix));
+        push_to(&mut self.expectations.path_prefix, prefix);
         self
     }
     // @docs-group: Path
@@ -1077,7 +1069,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let suffix = suffix.try_into().expect("cannot convert suffix into string");
-        update_cell(&self.expectations, |e| push_to(&mut e.path_suffix, suffix));
+        push_to(&mut self.expectations.path_suffix, suffix);
         self
     }
     // @docs-group: Path
@@ -1119,7 +1111,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let prefix = prefix.try_into().expect("cannot convert prefix into string");
-        update_cell(&self.expectations, |e| push_to(&mut e.path_prefix_not, prefix));
+        push_to(&mut self.expectations.path_prefix_not, prefix);
         self
     }
     // @docs-group: Path
@@ -1161,7 +1153,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let suffix = suffix.try_into().expect("cannot convert suffix into string");
-        update_cell(&self.expectations, |e| push_to(&mut e.path_suffix_not, suffix));
+        push_to(&mut self.expectations.path_suffix_not, suffix);
         self
     }
     // @docs-group: Path
@@ -1206,7 +1198,7 @@ impl When {
         <TryIntoRegex as TryInto<Regex>>::Error: std::fmt::Debug,
     {
         let regex = regex.try_into().expect("cannot convert provided value into regex");
-        update_cell(&self.expectations, |e| push_to(&mut e.path_matches, regex));
+        push_to(&mut self.expectations.path_matches, regex);
         self
     }
     // @docs-group: Path
@@ -1251,9 +1243,7 @@ impl When {
         name: KeyString,
         value: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param, (name.into(), value.into()))
-        });
+        push_to(&mut self.expectations.query_param, (name.into(), value.into()));
         self
     }
     // @docs-group: Query Parameters
@@ -1298,9 +1288,7 @@ impl When {
         name: KeyString,
         value: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param_not, (name.into(), value.into()))
-        });
+        push_to(&mut self.expectations.query_param_not, (name.into(), value.into()));
         self
     }
     // @docs-group: Query Parameters
@@ -1340,7 +1328,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_exists<IntoString: Into<String>>(self, name: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.query_param_exists, name.into()));
+        push_to(&mut self.expectations.query_param_exists, name.into());
         self
     }
     // @docs-group: Query Parameters
@@ -1380,7 +1368,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn query_param_missing<IntoString: Into<String>>(self, name: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.query_param_missing, name.into()));
+        push_to(&mut self.expectations.query_param_missing, name.into());
         self
     }
     // @docs-group: Query Parameters
@@ -1427,9 +1415,10 @@ impl When {
         name: KeyString,
         substring: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param_includes, (name.into(), substring.into()))
-        });
+        push_to(
+            &mut self.expectations.query_param_includes,
+            (name.into(), substring.into()),
+        );
         self
     }
     // @docs-group: Query Parameters
@@ -1476,9 +1465,10 @@ impl When {
         name: KeyString,
         substring: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param_excludes, (name.into(), substring.into()))
-        });
+        push_to(
+            &mut self.expectations.query_param_excludes,
+            (name.into(), substring.into()),
+        );
 
         self
     }
@@ -1525,9 +1515,7 @@ impl When {
         name: KeyString,
         prefix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param_prefix, (name.into(), prefix.into()))
-        });
+        push_to(&mut self.expectations.query_param_prefix, (name.into(), prefix.into()));
         self
     }
     // @docs-group: Query Parameters
@@ -1573,9 +1561,7 @@ impl When {
         name: KeyString,
         suffix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param_suffix, (name.into(), suffix.into()))
-        });
+        push_to(&mut self.expectations.query_param_suffix, (name.into(), suffix.into()));
         self
     }
     // @docs-group: Query Parameters
@@ -1621,9 +1607,10 @@ impl When {
         name: KeyString,
         prefix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param_prefix_not, (name.into(), prefix.into()))
-        });
+        push_to(
+            &mut self.expectations.query_param_prefix_not,
+            (name.into(), prefix.into()),
+        );
         self
     }
     // @docs-group: Query Parameters
@@ -1669,9 +1656,10 @@ impl When {
         name: KeyString,
         suffix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param_suffix_not, (name.into(), suffix.into()))
-        });
+        push_to(
+            &mut self.expectations.query_param_suffix_not,
+            (name.into(), suffix.into()),
+        );
         self
     }
     // @docs-group: Query Parameters
@@ -1717,9 +1705,7 @@ impl When {
         let key_regex = key_regex.into();
         let value_regex = value_regex.into();
 
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param_matches, (key_regex, value_regex))
-        });
+        push_to(&mut self.expectations.query_param_matches, (key_regex, value_regex));
         self
     }
     // @docs-group: Query Parameters
@@ -1769,9 +1755,10 @@ impl When {
         let key_regex = key_regex.into();
         let value_regex = value_regex.into();
 
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.query_param_count, (key_regex, value_regex, expected_count))
-        });
+        push_to(
+            &mut self.expectations.query_param_count,
+            (key_regex, value_regex, expected_count),
+        );
         self
     }
     // @docs-group: Query Parameters
@@ -1817,9 +1804,7 @@ impl When {
         name: KeyString,
         value: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header, (name.into(), value.into()))
-        });
+        push_to(&mut self.expectations.header, (name.into(), value.into()));
         self
     }
     // @docs-group: Headers
@@ -1867,9 +1852,7 @@ impl When {
         name: KeyString,
         value: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header_not, (name.into(), value.into()))
-        });
+        push_to(&mut self.expectations.header_not, (name.into(), value.into()));
         self
     }
     // @docs-group: Headers
@@ -1910,7 +1893,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_exists<IntoString: Into<String>>(self, name: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.header_exists, name.into()));
+        push_to(&mut self.expectations.header_exists, name.into());
         self
     }
     // @docs-group: Headers
@@ -1952,7 +1935,7 @@ impl When {
     /// The updated `When` instance to allow method chaining for additional configuration.
     ///
     pub fn header_missing<IntoString: Into<String>>(self, name: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.header_missing, name.into()));
+        push_to(&mut self.expectations.header_missing, name.into());
         self
     }
     // @docs-group: Headers
@@ -2000,9 +1983,7 @@ impl When {
         name: KeyString,
         substring: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header_includes, (name.into(), substring.into()))
-        });
+        push_to(&mut self.expectations.header_includes, (name.into(), substring.into()));
         self
     }
     // @docs-group: Headers
@@ -2050,9 +2031,7 @@ impl When {
         name: KeyString,
         substring: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header_excludes, (name.into(), substring.into()))
-        });
+        push_to(&mut self.expectations.header_excludes, (name.into(), substring.into()));
         self
     }
     // @docs-group: Headers
@@ -2100,9 +2079,7 @@ impl When {
         name: KeyString,
         prefix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header_prefix, (name.into(), prefix.into()))
-        });
+        push_to(&mut self.expectations.header_prefix, (name.into(), prefix.into()));
         self
     }
     // @docs-group: Headers
@@ -2150,9 +2127,7 @@ impl When {
         name: KeyString,
         suffix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header_suffix, (name.into(), suffix.into()))
-        });
+        push_to(&mut self.expectations.header_suffix, (name.into(), suffix.into()));
         self
     }
     // @docs-group: Headers
@@ -2200,9 +2175,7 @@ impl When {
         name: KeyString,
         prefix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header_prefix_not, (name.into(), prefix.into()))
-        });
+        push_to(&mut self.expectations.header_prefix_not, (name.into(), prefix.into()));
         self
     }
     // @docs-group: Headers
@@ -2250,9 +2223,7 @@ impl When {
         name: KeyString,
         suffix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header_suffix_not, (name.into(), suffix.into()))
-        });
+        push_to(&mut self.expectations.header_suffix_not, (name.into(), suffix.into()));
         self
     }
     // @docs-group: Headers
@@ -2301,9 +2272,10 @@ impl When {
         key_regex: KeyString,
         value_regex: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header_matches, (key_regex.into(), value_regex.into()))
-        });
+        push_to(
+            &mut self.expectations.header_matches,
+            (key_regex.into(), value_regex.into()),
+        );
         self
     }
     // @docs-group: Headers
@@ -2368,9 +2340,7 @@ impl When {
         let key_pattern = key_pattern.try_into().expect("cannot convert key to regex");
         let value_pattern = value_pattern.try_into().expect("cannot convert key to regex");
 
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.header_count, (key_pattern, value_pattern, count))
-        });
+        push_to(&mut self.expectations.header_count, (key_pattern, value_pattern, count));
         self
     }
     // @docs-group: Headers
@@ -2417,9 +2387,7 @@ impl When {
         name: KeyString,
         value: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie, (name.into(), value.into()))
-        });
+        push_to(&mut self.expectations.cookie, (name.into(), value.into()));
         self
     }
     // @docs-group: Cookies
@@ -2466,9 +2434,7 @@ impl When {
         name: KeyString,
         value: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie_not, (name.into(), value.into()))
-        });
+        push_to(&mut self.expectations.cookie_not, (name.into(), value.into()));
         self
     }
     // @docs-group: Cookies
@@ -2510,7 +2476,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_exists<IntoString: Into<String>>(self, name: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.cookie_exists, name.into()));
+        push_to(&mut self.expectations.cookie_exists, name.into());
         self
     }
     // @docs-group: Cookies
@@ -2552,7 +2518,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn cookie_missing<IntoString: Into<String>>(self, name: IntoString) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.cookie_missing, name.into()));
+        push_to(&mut self.expectations.cookie_missing, name.into());
         self
     }
     // @docs-group: Cookies
@@ -2599,9 +2565,10 @@ impl When {
         name: KeyString,
         value_substring: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie_includes, (name.into(), value_substring.into()))
-        });
+        push_to(
+            &mut self.expectations.cookie_includes,
+            (name.into(), value_substring.into()),
+        );
         self
     }
     // @docs-group: Cookies
@@ -2648,9 +2615,10 @@ impl When {
         name: KeyString,
         value_substring: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie_excludes, (name.into(), value_substring.into()))
-        });
+        push_to(
+            &mut self.expectations.cookie_excludes,
+            (name.into(), value_substring.into()),
+        );
         self
     }
     // @docs-group: Cookies
@@ -2697,9 +2665,7 @@ impl When {
         name: KeyString,
         value_prefix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie_prefix, (name.into(), value_prefix.into()))
-        });
+        push_to(&mut self.expectations.cookie_prefix, (name.into(), value_prefix.into()));
         self
     }
     // @docs-group: Cookies
@@ -2746,9 +2712,7 @@ impl When {
         name: KeyString,
         value_suffix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie_suffix, (name.into(), value_suffix.into()))
-        });
+        push_to(&mut self.expectations.cookie_suffix, (name.into(), value_suffix.into()));
         self
     }
     // @docs-group: Cookies
@@ -2795,9 +2759,10 @@ impl When {
         name: KeyString,
         value_prefix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie_prefix_not, (name.into(), value_prefix.into()))
-        });
+        push_to(
+            &mut self.expectations.cookie_prefix_not,
+            (name.into(), value_prefix.into()),
+        );
         self
     }
     // @docs-group: Cookies
@@ -2844,9 +2809,10 @@ impl When {
         name: KeyString,
         value_suffix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie_suffix_not, (name.into(), value_suffix.into()))
-        });
+        push_to(
+            &mut self.expectations.cookie_suffix_not,
+            (name.into(), value_suffix.into()),
+        );
         self
     }
     // @docs-group: Cookies
@@ -2894,9 +2860,10 @@ impl When {
         key_regex: KeyRegex,
         value_regex: ValueRegex,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie_matches, (key_regex.into(), value_regex.into()))
-        });
+        push_to(
+            &mut self.expectations.cookie_matches,
+            (key_regex.into(), value_regex.into()),
+        );
         self
     }
     // @docs-group: Cookies
@@ -2946,9 +2913,10 @@ impl When {
         value_regex: ValueRegex,
         count: usize,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.cookie_count, (key_regex.into(), value_regex.into(), count))
-        });
+        push_to(
+            &mut self.expectations.cookie_count,
+            (key_regex.into(), value_regex.into(), count),
+        );
         self
     }
     // @docs-group: Cookies
@@ -2994,9 +2962,7 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn body<IntoString: Into<String>>(self, body: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            e.body = Some(HttpMockBytes::from(Bytes::from(body.into())));
-        });
+        self.expectations.body = Some(HttpMockBytes::from(Bytes::from(body.into())));
         self
     }
     // @docs-group: Body
@@ -3038,9 +3004,10 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn body_not<IntoString: Into<String>>(self, body: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.body_not, HttpMockBytes::from(Bytes::from(body.into())))
-        });
+        push_to(
+            &mut self.expectations.body_not,
+            HttpMockBytes::from(Bytes::from(body.into())),
+        );
         self
     }
     // @docs-group: Body
@@ -3081,9 +3048,10 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn body_includes<IntoString: Into<String>>(self, substring: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.body_includes, HttpMockBytes::from(Bytes::from(substring.into())))
-        });
+        push_to(
+            &mut self.expectations.body_includes,
+            HttpMockBytes::from(Bytes::from(substring.into())),
+        );
         self
     }
     // @docs-group: Body
@@ -3124,9 +3092,10 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn body_excludes<IntoString: Into<String>>(self, substring: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.body_excludes, HttpMockBytes::from(Bytes::from(substring.into())))
-        });
+        push_to(
+            &mut self.expectations.body_excludes,
+            HttpMockBytes::from(Bytes::from(substring.into())),
+        );
         self
     }
     // @docs-group: Body
@@ -3167,9 +3136,10 @@ impl When {
     /// # Returns
     /// The updated `When` instance to allow method chaining for additional configuration.
     pub fn body_prefix<IntoString: Into<String>>(self, prefix: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.body_prefix, HttpMockBytes::from(Bytes::from(prefix.into())))
-        });
+        push_to(
+            &mut self.expectations.body_prefix,
+            HttpMockBytes::from(Bytes::from(prefix.into())),
+        );
         self
     }
     // @docs-group: Body
@@ -3210,9 +3180,10 @@ impl When {
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
     pub fn body_suffix<IntoString: Into<String>>(self, suffix: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.body_suffix, HttpMockBytes::from(Bytes::from(suffix.into())))
-        });
+        push_to(
+            &mut self.expectations.body_suffix,
+            HttpMockBytes::from(Bytes::from(suffix.into())),
+        );
         self
     }
     // @docs-group: Body
@@ -3253,9 +3224,10 @@ impl When {
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
     pub fn body_prefix_not<IntoString: Into<String>>(self, prefix: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.body_prefix_not, HttpMockBytes::from(Bytes::from(prefix.into())))
-        });
+        push_to(
+            &mut self.expectations.body_prefix_not,
+            HttpMockBytes::from(Bytes::from(prefix.into())),
+        );
         self
     }
     // @docs-group: Body
@@ -3296,9 +3268,10 @@ impl When {
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
     pub fn body_suffix_not<IntoString: Into<String>>(self, suffix: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.body_suffix_not, HttpMockBytes::from(Bytes::from(suffix.into())))
-        });
+        push_to(
+            &mut self.expectations.body_suffix_not,
+            HttpMockBytes::from(Bytes::from(suffix.into())),
+        );
         self
     }
     // @docs-group: Body
@@ -3339,7 +3312,7 @@ impl When {
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
     pub fn body_matches<IntoRegex: Into<Regex>>(self, pattern: IntoRegex) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.body_matches, pattern.into()));
+        push_to(&mut self.expectations.body_matches, pattern.into());
         self
     }
     // @docs-group: Body
@@ -3389,9 +3362,7 @@ impl When {
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
     pub fn json_body<JsonValue: Into<Value>>(self, json_value: JsonValue) -> Self {
-        update_cell(&self.expectations, |e| {
-            e.json_body = Some(json_value.into());
-        });
+        self.expectations.json_body = Some(json_value.into());
         self
     }
     // @docs-group: Body
@@ -3519,10 +3490,8 @@ impl When {
     /// It's important that the partial JSON contains the full object hierarchy necessary to reach the target attribute.
     /// Irrelevant attributes such as `parent_attribute` and `child.other_attribute` can be omitted.
     pub fn json_body_includes<IntoString: Into<String>>(self, partial: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            let value = Value::from_str(&partial.into()).expect("cannot convert JSON string to serde value");
-            push_to(&mut e.json_body_includes, value);
-        });
+        let value = Value::from_str(&partial.into()).expect("cannot convert JSON string to serde value");
+        push_to(&mut self.expectations.json_body_includes, value);
         self
     }
     // @docs-group: Body
@@ -3589,10 +3558,8 @@ impl When {
     /// It's important that the partial JSON contains the full object hierarchy necessary to reach the target attribute.
     /// Irrelevant attributes such as `parent_attribute` and `child.other_attribute` in the example can be omitted.
     pub fn json_body_excludes<IntoString: Into<String>>(self, partial: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            let value = Value::from_str(&partial.into()).expect("cannot convert JSON string to serde value");
-            push_to(&mut e.json_body_excludes, value);
-        });
+        let value = Value::from_str(&partial.into()).expect("cannot convert JSON string to serde value");
+        push_to(&mut self.expectations.json_body_excludes, value);
         self
     }
     // @docs-group: Body
@@ -3646,9 +3613,7 @@ impl When {
         key: KeyString,
         value: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple, (key.into(), value.into()))
-        });
+        push_to(&mut self.expectations.form_urlencoded_tuple, (key.into(), value.into()));
         self
     }
     // @docs-group: Body
@@ -3701,9 +3666,10 @@ impl When {
         key: KeyString,
         value: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple_not, (key.into(), value.into()))
-        });
+        push_to(
+            &mut self.expectations.form_urlencoded_tuple_not,
+            (key.into(), value.into()),
+        );
         self
     }
     // @docs-group: Body
@@ -3753,9 +3719,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key existence requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_exists<IntoString: Into<String>>(self, key: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple_exists, key.into())
-        });
+        push_to(&mut self.expectations.form_urlencoded_tuple_exists, key.into());
         self
     }
     // @docs-group: Body
@@ -3805,9 +3769,7 @@ impl When {
     /// `When`: Returns the modified `When` object with the new key absence requirement added to the
     /// `application/x-www-form-urlencoded` expectations.
     pub fn form_urlencoded_tuple_missing<IntoString: Into<String>>(self, key: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple_missing, key.into())
-        });
+        push_to(&mut self.expectations.form_urlencoded_tuple_missing, key.into());
         self
     }
     // @docs-group: Body
@@ -3862,9 +3824,10 @@ impl When {
         key: KeyString,
         substring: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple_includes, (key.into(), substring.into()))
-        });
+        push_to(
+            &mut self.expectations.form_urlencoded_tuple_includes,
+            (key.into(), substring.into()),
+        );
         self
     }
     // @docs-group: Body
@@ -3918,9 +3881,10 @@ impl When {
         key: KeyString,
         substring: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple_excludes, (key.into(), substring.into()))
-        });
+        push_to(
+            &mut self.expectations.form_urlencoded_tuple_excludes,
+            (key.into(), substring.into()),
+        );
         self
     }
     // @docs-group: Body
@@ -3975,9 +3939,10 @@ impl When {
         key: KeyString,
         prefix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple_prefix, (key.into(), prefix.into()))
-        });
+        push_to(
+            &mut self.expectations.form_urlencoded_tuple_prefix,
+            (key.into(), prefix.into()),
+        );
         self
     }
     // @docs-group: Body
@@ -4032,9 +3997,10 @@ impl When {
         key: KeyString,
         prefix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple_prefix_not, (key.into(), prefix.into()))
-        });
+        push_to(
+            &mut self.expectations.form_urlencoded_tuple_prefix_not,
+            (key.into(), prefix.into()),
+        );
         self
     }
     // @docs-group: Body
@@ -4089,9 +4055,10 @@ impl When {
         key: KeyString,
         suffix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple_suffix, (key.into(), suffix.into()))
-        });
+        push_to(
+            &mut self.expectations.form_urlencoded_tuple_suffix,
+            (key.into(), suffix.into()),
+        );
         self
     }
     // @docs-group: Body
@@ -4146,9 +4113,10 @@ impl When {
         key: KeyString,
         suffix: ValueString,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(&mut e.form_urlencoded_tuple_suffix_not, (key.into(), suffix.into()))
-        });
+        push_to(
+            &mut self.expectations.form_urlencoded_tuple_suffix_not,
+            (key.into(), suffix.into()),
+        );
         self
     }
     // @docs-group: Body
@@ -4206,12 +4174,10 @@ impl When {
         key_regex: KeyRegex,
         value_regex: ValueRegex,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(
-                &mut e.form_urlencoded_tuple_matches,
-                (key_regex.into(), value_regex.into()),
-            )
-        });
+        push_to(
+            &mut self.expectations.form_urlencoded_tuple_matches,
+            (key_regex.into(), value_regex.into()),
+        );
         self
     }
     // @docs-group: Body
@@ -4273,12 +4239,10 @@ impl When {
         value_regex: ValueRegex,
         count: usize,
     ) -> Self {
-        update_cell(&self.expectations, |e| {
-            push_to(
-                &mut e.form_urlencoded_tuple_count,
-                (key_regex.into(), value_regex.into(), count),
-            )
-        });
+        push_to(
+            &mut self.expectations.form_urlencoded_tuple_count,
+            (key_regex.into(), value_regex.into(), count),
+        );
         self
     }
     // @docs-group: Body
@@ -4358,7 +4322,7 @@ impl When {
     /// # Returns
     /// `When`: Returns the modified `When` object with the new custom matcher added to the expectations.
     pub fn is_true(self, matcher: impl Fn(&HttpMockRequest) -> bool + Sync + Send + 'static) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.is_true, Arc::new(matcher)));
+        push_to(&mut self.expectations.is_true, Arc::new(matcher));
         self
     }
     // @docs-group: Custom
@@ -4398,7 +4362,7 @@ impl When {
     /// # Returns
     /// `When`: Returns the modified `When` object with the new custom matcher added to the expectations.
     pub fn is_false(self, matcher: impl Fn(&HttpMockRequest) -> bool + Sync + Send + 'static) -> Self {
-        update_cell(&self.expectations, |e| push_to(&mut e.is_false, Arc::new(matcher)));
+        push_to(&mut self.expectations.is_false, Arc::new(matcher));
         self
     }
     // @docs-group: Custom
@@ -4451,11 +4415,11 @@ impl When {
 /// allows for detailed customization of response aspects such as status codes, headers, body
 /// content, and delays. This structure is integral to defining how the mock server behaves when
 /// it receives a request that matches the defined expectations.
-pub struct Then {
-    pub(crate) response_template: Rc<Cell<MockServerHttpResponse>>,
+pub struct Then<'a> {
+    pub(crate) response_template: &'a mut MockServerHttpResponse,
 }
 
-impl Then {
+impl<'a> Then<'a> {
     /// Configures the HTTP response status code that the mock server will return.
     ///
     /// # Parameters
@@ -4490,9 +4454,7 @@ impl Then {
     where
         <U16 as TryInto<u16>>::Error: std::fmt::Debug,
     {
-        update_cell(&self.response_template, |r| {
-            r.status = Some(status.try_into().expect("cannot parse status code to usize"));
-        });
+        self.response_template.status = Some(status.try_into().expect("cannot parse status code to usize"));
         self
     }
     // @docs-group: Status
@@ -4534,9 +4496,7 @@ impl Then {
     /// assert_eq!(response.text().unwrap(), "ohi!");
     /// ```
     pub fn body<SliceRef: AsRef<[u8]>>(self, body: SliceRef) -> Self {
-        update_cell(&self.response_template, |r| {
-            r.body = Some(HttpMockBytes::from(Bytes::copy_from_slice(body.as_ref())));
-        });
+        self.response_template.body = Some(HttpMockBytes::from(Bytes::copy_from_slice(body.as_ref())));
         self
     }
     // @docs-group: Body
@@ -4652,9 +4612,7 @@ impl Then {
     /// assert_eq!(user["name"], "Hans");
     /// ```
     pub fn json_body<V: Into<Value>>(self, body: V) -> Self {
-        update_cell(&self.response_template, |r| {
-            r.body = Some(HttpMockBytes::from(Bytes::from(body.into().to_string())));
-        });
+        self.response_template.body = Some(HttpMockBytes::from(Bytes::from(body.into().to_string())));
         self
     }
     // @docs-group: Body
@@ -4779,9 +4737,7 @@ impl Then {
         name: KeyString,
         value: ValueString,
     ) -> Self {
-        update_cell(&self.response_template, |r| {
-            push_to(&mut r.headers, (name.into(), value.into()))
-        });
+        push_to(&mut self.response_template.headers, (name.into(), value.into()));
         self
     }
     // @docs-group: Headers
@@ -4842,9 +4798,7 @@ impl Then {
             panic!("A delay higher than {} milliseconds is not supported.", max)
         }
 
-        update_cell(&self.response_template, |r| {
-            r.delay = Some(duration.as_millis() as u64);
-        });
+        self.response_template.delay = Some(duration.as_millis() as u64);
         self
     }
     // @docs-group: Network
@@ -5042,9 +4996,7 @@ impl Then {
     where
         F: Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync + 'static,
     {
-        update_cell(&self.response_template, |r| {
-            r.respond_with = Some(std::sync::Arc::new(f));
-        });
+        self.response_template.respond_with = Some(std::sync::Arc::new(f));
         self
     }
 }

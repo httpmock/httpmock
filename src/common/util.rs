@@ -1,6 +1,5 @@
 use std::{
     borrow::Cow,
-    cell::Cell,
     env,
     fs::{File, create_dir_all},
     io::{Read, Write},
@@ -15,15 +14,6 @@ use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;
 use futures_timer::Delay;
 use serde::{Deserialize, Serialize};
-
-// ===============================================================================================
-// Misc
-// ===============================================================================================
-pub(crate) fn update_cell<T: Sized + Default, F: FnOnce(&mut T)>(v: &Cell<T>, f: F) {
-    let mut vv = v.take();
-    f(&mut vv);
-    v.set(vv);
-}
 
 // ===============================================================================================
 // Retry
