@@ -1,11 +1,11 @@
 use std::{
     convert::TryInto,
     fmt::{Debug, Display},
+    future::Future,
     str::FromStr,
     sync::Arc,
 };
 
-use async_trait::async_trait;
 use http::{HeaderValue, StatusCode, Uri};
 use hyper::{body::Bytes, Method, Request, Response};
 use path_tree::{Path, PathTree};
@@ -94,9 +94,11 @@ enum RoutePath {
     SingleRecording,
 }
 
-#[async_trait]
 pub(crate) trait Handler {
-    async fn handle(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error>;
+    fn handle(
+        &self,
+        req: Request<Bytes>,
+    ) -> impl Future<Output = Result<Response<Bytes>, Error>> + Send;
 }
 
 pub struct HttpMockHandler<S>
@@ -109,7 +111,6 @@ where
     http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
 }
 
-#[async_trait]
 impl<H> Handler for HttpMockHandler<H>
 where
     H: StateManager + Send + Sync + 'static,

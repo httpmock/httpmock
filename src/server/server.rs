@@ -5,7 +5,7 @@ use std::{
     sync::Arc,
 };
 
-use futures_util::FutureExt;
+use futures_util::{future::BoxFuture, FutureExt};
 use http::{Request, StatusCode};
 use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
 use hyper::{
@@ -217,15 +217,10 @@ where
                 spawn(async move {
                     match on_upgrade.await {
                         Ok(upgraded) => {
-                            spawn(async move {
-                                let io = TokioIo::new(upgraded);
-                                if let Err(e) = serve_tls_connection(server, io, authority).await {
-                                    tracing::warn!(
-                                        "failed to serve upgraded TLS connection: {:?}",
-                                        e
-                                    );
-                                }
-                            });
+                            let io = TokioIo::new(upgraded);
+                            if let Err(e) = serve_tls_connection(server, io, authority).await {
+                                tracing::warn!("failed to serve upgraded TLS connection: {:?}", e);
+                            }
                         }
                         Err(err) => {
                             let e =
@@ -355,16 +350,24 @@ where
     serve_connection(server, tls_stream, "https").await
 }
 
+// `serve_connection` cannot be a plain `async fn` (nor return an implicit/explicit
+// `impl Future`): `service_fn`'s closure below calls `MockServer::service`, which can spawn a
+// task that calls `serve_tls_connection` -> `serve_connection` again for CONNECT/upgrade
+// tunneling. Any opaque `impl Future` return type here would need to resolve itself through
+// that indirect cycle, which rustc cannot do ("cycle detected when computing type of opaque
+// type"), surfacing as cascading bogus "is not Send" errors. Returning a `BoxFuture` erases
+// the concrete type and breaks the cycle. This runs once per TCP connection (not per
+// request, unlike `service`), so the extra heap allocation is negligible.
 fn serve_connection<H, S>(
     server: Arc<MockServer<H>>,
     stream: S,
     scheme: &'static str,
-) -> impl Future<Output = Result<(), Error>> + Send + 'static
+) -> BoxFuture<'static, Result<(), Error>>
 where
     H: Handler + Send + Sync + 'static,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    async move {
+    Box::pin(async move {
         let mut server_builder = ServerBuilder::new(TokioExecutor::new());
 
         server_builder.http1().preserve_header_case(true);
@@ -384,7 +387,7 @@ where
             )
             .await
             .map_err(ServerConnectionError)
-    }
+    })
 }
 
 async fn buffer_request(req: Request<Incoming>) -> Result<Request<Bytes>, hyper::Error> {
