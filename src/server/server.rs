@@ -310,8 +310,7 @@ where
             }
 
             if tracing::log::max_level() >= tracing::log::LevelFilter::Trace {
-                let peeked_str =
-                    String::from_utf8_lossy(&peek_buffer.buffer().to_vec()).to_string();
+                let peeked_str = String::from_utf8_lossy(peek_buffer.buffer()).to_string();
                 tracing::trace!(
                     "TCP connection seems NOT to be TLS encrypted (based on peeked data: {}",
                     peeked_str

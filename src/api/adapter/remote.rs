@@ -1,4 +1,4 @@
-use std::{borrow::Borrow, net::SocketAddr, sync::Arc};
+use std::{net::SocketAddr, sync::Arc};
 
 use async_trait::async_trait;
 use bytes::Bytes;
@@ -72,7 +72,7 @@ impl RemoteMockServerAdapter {
         &self,
         req: Request<Bytes>,
     ) -> Result<(u16, Bytes), ServerAdapterError> {
-        let mut response = self
+        let response = self
             .http_client
             .send(req)
             .await
@@ -99,7 +99,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     async fn reset(&self) -> Result<(), ServerAdapterError> {
         let request = Request::builder()
             .method("DELETE")
-            .uri(format!("http://{}/__httpmock__/state", &self.addr))
+            .uri(format!("http://{}/__httpmock__/state", self.addr))
             .body(Bytes::new())
             .map_err(|e| UpstreamError(e.to_string()))?;
 
@@ -119,11 +119,11 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         self.validate_request_requirements(&mock.request)?;
         self.validate_response(&mock.response)?;
 
-        let json = serde_json::to_string(mock).map_err(|e| JsonSerializationError(e))?;
+        let json = serde_json::to_string(mock).map_err(JsonSerializationError)?;
 
         let request = Request::builder()
             .method("POST")
-            .uri(format!("http://{}/__httpmock__/mocks", &self.address()))
+            .uri(format!("http://{}/__httpmock__/mocks", self.address()))
             .header("content-type", "application/json")
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
@@ -137,8 +137,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             )));
         }
 
-        let response: ActiveMock =
-            serde_json::from_str(&body).map_err(|e| JsonDeserializationError(e))?;
+        let response: ActiveMock = serde_json::from_str(&body).map_err(JsonDeserializationError)?;
 
         Ok(response)
     }
@@ -148,7 +147,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .method("GET")
             .uri(format!(
                 "http://{}/__httpmock__/mocks/{}",
-                &self.address(),
+                self.address(),
                 mock_id
             ))
             .body(Bytes::new())
@@ -163,8 +162,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             )));
         }
 
-        let response: ActiveMock =
-            serde_json::from_str(&body).map_err(|e| JsonDeserializationError(e))?;
+        let response: ActiveMock = serde_json::from_str(&body).map_err(JsonDeserializationError)?;
 
         Ok(response)
     }
@@ -174,7 +172,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .method("DELETE")
             .uri(format!(
                 "http://{}/__httpmock__/mocks/{}",
-                &self.address(),
+                self.address(),
                 mock_id
             ))
             .body(Bytes::new())
@@ -196,11 +194,11 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         &self,
         requirements: &RequestRequirements,
     ) -> Result<Option<ClosestMatch>, ServerAdapterError> {
-        let json = serde_json::to_string(requirements).map_err(|e| JsonSerializationError(e))?;
+        let json = serde_json::to_string(requirements).map_err(JsonSerializationError)?;
 
         let request = Request::builder()
             .method("POST")
-            .uri(format!("http://{}/__httpmock__/verify", &self.address()))
+            .uri(format!("http://{}/__httpmock__/verify", self.address()))
             .header("content-type", "application/json")
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
@@ -219,7 +217,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         }
 
         let response: ClosestMatch =
-            serde_json::from_str(&body).map_err(|e| JsonDeserializationError(e))?;
+            serde_json::from_str(&body).map_err(JsonDeserializationError)?;
 
         Ok(Some(response))
     }
@@ -230,13 +228,13 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     ) -> Result<ActiveForwardingRule, ServerAdapterError> {
         self.validate_request_requirements(&config.request_requirements)?;
 
-        let json = serde_json::to_string(&config).map_err(|e| JsonSerializationError(e))?;
+        let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
 
         let request = Request::builder()
             .method("POST")
             .uri(format!(
                 "http://{}/__httpmock__/forwarding_rules",
-                &self.address()
+                self.address()
             ))
             .header("content-type", "application/json")
             .body(Bytes::from(json))
@@ -252,7 +250,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         }
 
         let response: ActiveForwardingRule =
-            serde_json::from_str(&body).map_err(|e| JsonDeserializationError(e))?;
+            serde_json::from_str(&body).map_err(JsonDeserializationError)?;
 
         Ok(response)
     }
@@ -262,7 +260,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .method("DELETE")
             .uri(format!(
                 "http://{}/__httpmock__/forwarding_rules/{}",
-                &self.address(),
+                self.address(),
                 id
             ))
             .body(Bytes::new())
@@ -286,13 +284,13 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     ) -> Result<ActiveProxyRule, ServerAdapterError> {
         self.validate_request_requirements(&config.request_requirements)?;
 
-        let json = serde_json::to_string(&config).map_err(|e| JsonSerializationError(e))?;
+        let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
 
         let request = Request::builder()
             .method("POST")
             .uri(format!(
                 "http://{}/__httpmock__/proxy_rules",
-                &self.address()
+                self.address()
             ))
             .header("content-type", "application/json")
             .body(Bytes::from(json))
@@ -308,7 +306,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         }
 
         let response: ActiveProxyRule =
-            serde_json::from_str(&body).map_err(|e| JsonDeserializationError(e))?;
+            serde_json::from_str(&body).map_err(JsonDeserializationError)?;
 
         Ok(response)
     }
@@ -318,7 +316,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .method("DELETE")
             .uri(format!(
                 "http://{}/__httpmock__/proxy_rules/{}",
-                &self.address(),
+                self.address(),
                 id
             ))
             .body(Bytes::new())
@@ -342,14 +340,11 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     ) -> Result<ActiveRecording, ServerAdapterError> {
         self.validate_request_requirements(&config.request_requirements)?;
 
-        let json = serde_json::to_string(&config).map_err(|e| JsonSerializationError(e))?;
+        let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
 
         let request = Request::builder()
             .method("POST")
-            .uri(format!(
-                "http://{}/__httpmock__/recordings",
-                &self.address()
-            ))
+            .uri(format!("http://{}/__httpmock__/recordings", self.address()))
             .header("content-type", "application/json")
             .body(Bytes::from(json))
             .map_err(|e| UpstreamError(e.to_string()))?;
@@ -364,7 +359,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         }
 
         let response: ActiveRecording =
-            serde_json::from_str(&body).map_err(|e| JsonDeserializationError(e))?;
+            serde_json::from_str(&body).map_err(JsonDeserializationError)?;
 
         Ok(response)
     }
@@ -374,7 +369,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .method("DELETE")
             .uri(format!(
                 "http://{}/__httpmock__/recordings/{}",
-                &self.address(),
+                self.address(),
                 id
             ))
             .body(Bytes::new())
@@ -398,7 +393,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .method("GET")
             .uri(format!(
                 "http://{}/__httpmock__/recordings/{}",
-                &self.address(),
+                self.address(),
                 id
             ))
             .body(Bytes::new())
@@ -425,10 +420,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     ) -> Result<Vec<usize>, ServerAdapterError> {
         let request = Request::builder()
             .method("POST")
-            .uri(format!(
-                "http://{}/__httpmock__/recordings",
-                &self.address(),
-            ))
+            .uri(format!("http://{}/__httpmock__/recordings", self.address(),))
             .body(Bytes::from(recording_file_content.to_owned()))
             .map_err(|e| UpstreamError(e.to_string()))?;
 
@@ -441,8 +433,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             )));
         }
 
-        let response: Vec<usize> =
-            serde_json::from_str(&body).map_err(|e| JsonDeserializationError(e))?;
+        let response: Vec<usize> = serde_json::from_str(&body).map_err(JsonDeserializationError)?;
 
         Ok(response)
     }

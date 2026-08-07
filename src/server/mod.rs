@@ -1,5 +1,3 @@
-#![allow(clippy::trivial_regex)]
-
 mod builder;
 mod handler;
 pub mod matchers;

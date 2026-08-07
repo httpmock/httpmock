@@ -1635,7 +1635,7 @@ fn from_bytes_to_string(data: Option<HttpMockBytes>) -> (Option<String>, Option<
         if let Ok(text_str) = std::str::from_utf8(&bytes_container.to_bytes()) {
             text_representation = Some(text_str.to_string());
         } else {
-            base64_representation = Some(BASE64.encode(&bytes_container.to_bytes()));
+            base64_representation = Some(BASE64.encode(bytes_container.to_bytes()));
         }
     }
 
@@ -1959,7 +1959,7 @@ impl From<&str> for Method {
     fn from(value: &str) -> Self {
         value
             .parse()
-            .expect(&format!("Cannot parse HTTP method from string {:?}", value))
+            .unwrap_or_else(|_| panic!("Cannot parse HTTP method from string {:?}", value))
     }
 }
 

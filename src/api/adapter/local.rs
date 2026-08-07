@@ -63,7 +63,7 @@ impl MockServerAdapter for LocalMockServerAdapter {
             .state
             .read_mock(mock_id)
             .map_err(|e| UpstreamError(e.to_string()))?
-            .ok_or_else(|| MockNotFound(mock_id))?;
+            .ok_or(MockNotFound(mock_id))?;
         Ok(mock)
     }
 

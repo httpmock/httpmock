@@ -1,7 +1,6 @@
 use std::{borrow::Cow, sync::Arc};
 
 use assert_json_diff::{assert_json_matches_no_panic, CompareMode, Config};
-use bytes::Bytes;
 use serde_json::Value;
 
 use crate::{

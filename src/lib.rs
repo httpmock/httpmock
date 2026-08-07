@@ -1,4 +1,3 @@
-#![allow(warnings)]
 //! HTTP mocking library that allows you to simulate responses from HTTP-based services.
 //!
 //! # Features

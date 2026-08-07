@@ -1,0 +1,7 @@
+allow-expect-in-tests = true
+allow-unwrap-in-tests = true
+allow-print-in-tests = true
+allow-dbg-in-tests = true
+avoid-breaking-exported-api = true 
+allow-indexing-slicing-in-tests = true 
+

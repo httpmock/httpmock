@@ -294,7 +294,7 @@ impl MockServer {
     /// ```
     #[cfg(feature = "https")]
     pub fn url<S: Into<String>>(&self, path: S) -> String {
-        return format!("https://{}{}", self.address(), path.into());
+        format!("https://{}{}", self.address(), path.into())
     }
 
     /// Builds the URL for a specific path on the mock server.
@@ -635,8 +635,8 @@ impl MockServer {
         ForwardingRuleBuilderFn: FnOnce(ForwardingRuleBuilder),
         IntoString: Into<String>,
     {
-        let mut headers = Rc::new(Cell::new(Vec::new()));
-        let mut req = Rc::new(Cell::new(RequestRequirements::new()));
+        let headers = Rc::new(Cell::new(Vec::new()));
+        let req = Rc::new(Cell::new(RequestRequirements::new()));
 
         rule(ForwardingRuleBuilder {
             headers: headers.clone(),
@@ -794,8 +794,8 @@ impl MockServer {
     where
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
     {
-        let mut headers = Rc::new(Cell::new(Vec::new()));
-        let mut req = Rc::new(Cell::new(RequestRequirements::new()));
+        let headers = Rc::new(Cell::new(Vec::new()));
+        let req = Rc::new(Cell::new(RequestRequirements::new()));
 
         rule(ProxyRuleBuilder {
             headers: headers.clone(),
@@ -993,7 +993,7 @@ impl MockServer {
     where
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
     {
-        let mut config = Rc::new(Cell::new(RecordingRuleConfig {
+        let config = Rc::new(Cell::new(RecordingRuleConfig {
             request_requirements: RequestRequirements::new(),
             record_headers: Vec::new(),
             record_response_delays: false,
@@ -1177,12 +1177,14 @@ impl MockServer {
         use std::fs;
 
         let path = path.into();
-        let content = fs::read_to_string(&path).expect(&format!(
-            "could not read from file {}",
-            path.as_os_str()
-                .to_str()
-                .map_or(String::new(), |p| p.to_string())
-        ));
+        let content = fs::read_to_string(&path).unwrap_or_else(|_| {
+            panic!(
+                "could not read from file {}",
+                path.as_os_str()
+                    .to_str()
+                    .map_or(String::new(), |p| p.to_string())
+            )
+        });
 
         return self.playback_from_yaml_async(content).await;
     }

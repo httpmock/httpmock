@@ -234,7 +234,7 @@ impl<'a> Recording<'a> {
         let filepath = dir.join(filename);
 
         if let Some(bytes) = rec {
-            return Ok(write_file(&filepath, &bytes, true).await?);
+            return write_file(&filepath, &bytes, true).await;
         }
 
         Err("No recording data available".into())

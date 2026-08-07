@@ -2,12 +2,11 @@ use std::{
     collections::HashMap,
     fmt::Debug,
     io::Cursor,
-    net::SocketAddr,
     sync::{Arc, Mutex, RwLock},
 };
 
 use async_trait::async_trait;
-use rcgen::{Certificate, CertificateParams, Issuer, KeyPair, SanType};
+use rcgen::{CertificateParams, Issuer, KeyPair, SanType};
 use rustls::{
     crypto::ring::sign::any_supported_type,
     pki_types::{CertificateDer, PrivateKeyDer},
@@ -330,10 +329,11 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
         if let Some(hostname) = client_hello.server_name() {
             tracing::info!("have hostname: {}", hostname);
 
-            return Some(self.generate(hostname).expect(&format!(
-                "Cannot generate certificate for host {}",
-                hostname
-            )));
+            return Some(
+                self.generate(hostname).unwrap_or_else(|_| {
+                    panic!("Cannot generate certificate for host {}", hostname)
+                }),
+            );
         }
 
         // According to https://datatracker.ietf.org/doc/html/rfc6066#section-3
@@ -347,7 +347,7 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
         tracing::debug!("no hostname using: {}", hostname);
         return Some(
             self.generate(&hostname)
-                .expect(&format!("Cannot generate fallback certificate")),
+                .expect(&"Cannot generate fallback certificate".to_string()),
         );
     }
 }
@@ -366,7 +366,7 @@ impl<'a> TcpStreamPeekBuffer<'a> {
     }
 
     pub fn buffer(&self) -> &[u8] {
-        return &self.buffer;
+        &self.buffer
     }
 
     pub async fn advance(&mut self, offset: usize) -> std::io::Result<()> {

@@ -67,7 +67,7 @@ fn read_static_mocks(path: PathBuf) -> Result<Vec<StaticMockDefinition>, Error> 
         definitions.extend(deserialize_mock_defs_from_yaml(&content)?);
     }
 
-    return Ok(definitions);
+    Ok(definitions)
 }
 
 pub fn deserialize_mock_defs_from_yaml(
@@ -75,7 +75,7 @@ pub fn deserialize_mock_defs_from_yaml(
 ) -> Result<Vec<StaticMockDefinition>, Error> {
     let mut definitions = Vec::new();
 
-    for document in Deserializer::from_str(&yaml_content) {
+    for document in Deserializer::from_str(yaml_content) {
         let value = YamlValue::deserialize(document)
             .map_err(|err| DeserializationError(err.to_string()))?;
 

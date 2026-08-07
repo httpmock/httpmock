@@ -3,7 +3,7 @@ use std::{
 };
 
 use bytes::Bytes;
-use serde::{Deserialize, Serialize};
+use serde::Serialize;
 use serde_json::Value;
 
 use crate::{
@@ -4726,13 +4726,15 @@ impl Then {
             true => path.to_path_buf(),
             false => get_test_resource_file_path(&resource_file_path).expect(&format!(
                 "Cannot create absolute path from string '{}'",
-                &resource_file_path
+                resource_file_path
             )),
         };
-        let content = crate::common::util::read_file(&absolute_path).expect(&format!(
-            "Cannot read from file {}",
-            absolute_path.to_str().expect("Invalid OS path")
-        ));
+        let content = crate::common::util::read_file(&absolute_path).unwrap_or_else(|_| {
+            panic!(
+                "Cannot read from file {}",
+                absolute_path.to_str().expect("Invalid OS path")
+            )
+        });
         self.body(content)
     }
     // @docs-group: Body

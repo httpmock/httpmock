@@ -1,6 +1,3 @@
-// TODO: Remove this at some point
-#![allow(clippy::needless_lifetimes)]
-
 #[cfg(feature = "remote")]
 pub use adapter::remote::RemoteMockServerAdapter;
 pub use adapter::{local::LocalMockServerAdapter, MockServerAdapter};

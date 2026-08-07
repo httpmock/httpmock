@@ -88,14 +88,14 @@ pub fn create_mismatch_output(
 }
 
 fn write_header(tw: &mut TabWriter<Vec<u8>>, idx: usize, mismatch: &Mismatch) {
-    writeln!(tw, "{}", &"-".repeat(60)).unwrap();
+    writeln!(tw, "{}", "-".repeat(60)).unwrap();
     writeln!(
         tw,
         "{}",
         &format!("{} : {} Mismatch ", idx + 1, title_case(&mismatch.entity),)
     )
     .unwrap();
-    writeln!(tw, "{}", &"-".repeat(60)).unwrap();
+    writeln!(tw, "{}", "-".repeat(60)).unwrap();
 }
 
 fn handle_single_value_comparison(
@@ -132,7 +132,7 @@ fn handle_key_value_comparison(
 
     if let Some(key) = &comparison.key {
         let expected = match quote_if_whitespace(&key.expected) {
-            (actual, true) => format!("{} ({})", actual, &QUOTED_TEXT),
+            (actual, true) => format!("{} ({})", actual, QUOTED_TEXT),
             (actual, false) => actual.to_string(),
         };
         writeln!(tw, "\tkey\t[{}]\t{}", key.operator, expected).unwrap();
@@ -140,7 +140,7 @@ fn handle_key_value_comparison(
 
     if let Some(value) = &comparison.value {
         let expected = match quote_if_whitespace(&value.expected) {
-            (expected, true) => format!("{} ({})", expected, &QUOTED_TEXT),
+            (expected, true) => format!("{} ({})", expected, QUOTED_TEXT),
             (expected, false) => expected.to_string(),
         };
         writeln!(tw, "\tvalue\t[{}]\t{}", value.operator, expected).unwrap();
@@ -297,7 +297,7 @@ fn write_footer(tw: &mut TabWriter<Vec<u8>>, mismatch: &Mismatch) {
     writeln!(tw).unwrap();
 
     if let Some(diff_result) = &mismatch.diff {
-        writeln!(tw, "{}", &create_diff_result_output(diff_result)).unwrap();
+        writeln!(tw, "{}", create_diff_result_output(diff_result)).unwrap();
         writeln!(tw).unwrap();
     }
 

@@ -159,10 +159,11 @@ where
                     _ => {}
                 },
                 #[cfg(feature = "proxy")]
-                RoutePath::SingleForwardingRule => match method {
-                    Method::DELETE => return self.handle_delete_forwarding_rule(params),
-                    _ => {}
-                },
+                RoutePath::SingleForwardingRule => {
+                    if method == Method::DELETE {
+                        return self.handle_delete_forwarding_rule(params);
+                    }
+                }
                 #[cfg(feature = "proxy")]
                 RoutePath::ProxyRuleCollection => match method {
                     Method::POST => return self.handle_add_proxy_rule(req),
@@ -170,10 +171,11 @@ where
                     _ => {}
                 },
                 #[cfg(feature = "proxy")]
-                RoutePath::SingleProxyRule => match method {
-                    Method::DELETE => return self.handle_delete_proxy_rule(params),
-                    _ => {}
-                },
+                RoutePath::SingleProxyRule => {
+                    if method == Method::DELETE {
+                        return self.handle_delete_proxy_rule(params);
+                    }
+                }
                 #[cfg(feature = "record")]
                 RoutePath::RecordingCollection => match method {
                     Method::POST => return self.handle_add_recording_matcher(req),
@@ -339,7 +341,7 @@ where
     fn handle_add_recording_matcher(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let req_req: RecordingRuleConfig = parse_json_body(req)?;
         let active_recording = self.state.create_recording(req_req);
-        return response(StatusCode::CREATED, Some(active_recording));
+        response(StatusCode::CREATED, Some(active_recording))
     }
 
     #[cfg(feature = "record")]
@@ -350,13 +352,13 @@ where
         } else {
             StatusCode::NOT_FOUND
         };
-        return response::<()>(status_code, None);
+        response::<()>(status_code, None)
     }
 
     #[cfg(feature = "record")]
     fn handle_delete_all_recording_matchers(&self) -> Result<Response<Bytes>, Error> {
         self.state.delete_all_recordings();
-        return response::<()>(StatusCode::NO_CONTENT, None);
+        response::<()>(StatusCode::NO_CONTENT, None)
     }
 
     #[cfg(feature = "record")]
@@ -365,18 +367,18 @@ where
         let status_code = rec
             .as_ref()
             .map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
-        return response(status_code, rec);
+        response(status_code, rec)
     }
 
     #[cfg(feature = "record")]
     fn handle_load_recording(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
-        let recording_file_content = std::str::from_utf8(&req.body())
+        let recording_file_content = std::str::from_utf8(req.body())
             .map_err(|err| RequestConversionError(err.to_string()))?;
 
         let rec = self
             .state
             .load_mocks_from_recording(recording_file_content)?;
-        return response(StatusCode::OK, Some(rec));
+        response(StatusCode::OK, Some(rec))
     }
 
     async fn catch_all(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
@@ -421,7 +423,7 @@ where
 
         let mut uri_parts = req_parts.uri.into_parts();
         uri_parts.authority = Some(to_base_uri.authority().unwrap().clone());
-        uri_parts.scheme = to_base_uri.scheme().map(|s| s.clone()).or(uri_parts.scheme);
+        uri_parts.scheme = to_base_uri.scheme().cloned().or(uri_parts.scheme);
         req_parts.uri = Uri::from_parts(uri_parts).unwrap();
 
         // Record the upstream scheme (http/https) so the HttpClient can reconstruct
@@ -436,13 +438,11 @@ where
 
         if !rule.config.request_header.is_empty() {
             for (key, value) in &rule.config.request_header {
-                let key = http::HeaderName::from_str(key).map_err(|err| {
-                    InvalidHeader(format!("invalid header key: {}", err.to_string()))
-                })?;
+                let key = http::HeaderName::from_str(key)
+                    .map_err(|err| InvalidHeader(format!("invalid header key: {}", err)))?;
 
-                let value = HeaderValue::from_str(value).map_err(|err| {
-                    InvalidHeader(format!("invalid header value: {}", err.to_string()))
-                })?;
+                let value = HeaderValue::from_str(value)
+                    .map_err(|err| InvalidHeader(format!("invalid header value: {}", err)))?;
 
                 req_parts.headers.append(key, value);
             }
@@ -467,13 +467,11 @@ where
             let headers = req.headers_mut();
 
             for (key, value) in &rule.config.request_header {
-                let key = http::HeaderName::from_str(key).map_err(|err| {
-                    InvalidHeader(format!("invalid header key: {}", err.to_string()))
-                })?;
+                let key = http::HeaderName::from_str(key)
+                    .map_err(|err| InvalidHeader(format!("invalid header key: {}", err)))?;
 
-                let value = HeaderValue::from_str(value).map_err(|err| {
-                    InvalidHeader(format!("invalid header value: {}", err.to_string()))
-                })?;
+                let value = HeaderValue::from_str(value)
+                    .map_err(|err| InvalidHeader(format!("invalid header value: {}", err)))?;
 
                 headers.append(key, value);
             }

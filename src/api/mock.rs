@@ -1,8 +1,5 @@
 use std::net::SocketAddr;
 
-#[cfg(feature = "color")]
-use colored::*;
-
 use crate::{
     api::{output, server::MockServer},
     common::util::Join,

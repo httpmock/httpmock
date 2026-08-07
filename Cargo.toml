@@ -58,7 +58,6 @@ reqwest = { version = "0.13", features = ["blocking", "cookies", "query"] }
 urlencoding = "2"
 smol = "2"
 tracing-subscriber = { version = "0.3", features = ["env-filter"] }
-syn = "2"
 
 [features]
 default = ["cookies"]
@@ -79,3 +78,6 @@ required-features = ["standalone"]
 
 [package.metadata.docs.rs]
 all-features = true
+
+[lints.rust]
+unsafe_code = "forbid"

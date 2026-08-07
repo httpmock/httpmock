@@ -1,5 +1,3 @@
-#[cfg(feature = "record")]
-use std::net::ToSocketAddrs;
 use std::{
     collections::BTreeMap,
     sync::{Arc, Mutex},

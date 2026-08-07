@@ -526,7 +526,7 @@ impl<S, T> FunctionValueMatcher<S, T> {
             .into_iter()
             .enumerate()
             .filter(|(_idx, e)| !self.comparator.matches(&Some(e), &Some(req_value)))
-            .map(|(idx, _e)| (idx))
+            .map(|(idx, _e)| idx)
             .collect()
     }
 }
