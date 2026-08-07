@@ -1,6 +1,5 @@
 #[cfg(feature = "record")]
 use std::path::{Path, PathBuf};
-use std::{cell::Cell, rc::Rc};
 
 #[cfg(feature = "record")]
 use bytes::Bytes;
@@ -275,20 +274,18 @@ impl<'a> Recording<'a> {
     }
 }
 
-pub struct ForwardingRuleBuilder {
-    pub(crate) request_requirements: Rc<Cell<RequestRequirements>>,
-    pub(crate) headers: Rc<Cell<Vec<(String, String)>>>,
+pub struct ForwardingRuleBuilder<'a> {
+    pub(crate) request_requirements: &'a mut RequestRequirements,
+    pub(crate) headers: &'a mut Vec<(String, String)>,
 }
 
-impl ForwardingRuleBuilder {
+impl<'a> ForwardingRuleBuilder<'a> {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(
         self,
         key: Key,
         value: Value,
     ) -> Self {
-        let mut headers = self.headers.take();
-        headers.push((key.into(), value.into()));
-        self.headers.set(headers);
+        self.headers.push((key.into(), value.into()));
         self
     }
 
@@ -297,27 +294,25 @@ impl ForwardingRuleBuilder {
         WhenSpecFn: FnOnce(When),
     {
         when(When {
-            expectations: self.request_requirements.clone(),
+            expectations: self.request_requirements,
         });
         self
     }
 }
 
-pub struct ProxyRuleBuilder {
+pub struct ProxyRuleBuilder<'a> {
     // TODO: These fields are visible to the user, make them not public
-    pub(crate) request_requirements: Rc<Cell<RequestRequirements>>,
-    pub(crate) headers: Rc<Cell<Vec<(String, String)>>>,
+    pub(crate) request_requirements: &'a mut RequestRequirements,
+    pub(crate) headers: &'a mut Vec<(String, String)>,
 }
 
-impl ProxyRuleBuilder {
+impl<'a> ProxyRuleBuilder<'a> {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(
         self,
         key: Key,
         value: Value,
     ) -> Self {
-        let mut headers = self.headers.take();
-        headers.push((key.into(), value.into()));
-        self.headers.set(headers);
+        self.headers.push((key.into(), value.into()));
         self
     }
 
@@ -326,22 +321,20 @@ impl ProxyRuleBuilder {
         WhenSpecFn: FnOnce(When),
     {
         when(When {
-            expectations: self.request_requirements.clone(),
+            expectations: self.request_requirements,
         });
 
         self
     }
 }
 
-pub struct RecordingRuleBuilder {
-    pub config: Rc<Cell<RecordingRuleConfig>>,
+pub struct RecordingRuleBuilder<'a> {
+    pub config: &'a mut RecordingRuleConfig,
 }
 
-impl RecordingRuleBuilder {
+impl<'a> RecordingRuleBuilder<'a> {
     pub fn record_request_header<IntoString: Into<String>>(self, header: IntoString) -> Self {
-        let mut config = self.config.take();
-        config.record_headers.push(header.into());
-        self.config.set(config);
+        self.config.record_headers.push(header.into());
         self
     }
 
@@ -349,11 +342,9 @@ impl RecordingRuleBuilder {
         self,
         headers: Vec<IntoString>,
     ) -> Self {
-        let mut config = self.config.take();
-        config
+        self.config
             .record_headers
             .extend(headers.into_iter().map(Into::into));
-        self.config.set(config);
         self
     }
 
@@ -361,26 +352,15 @@ impl RecordingRuleBuilder {
     where
         WhenSpecFn: FnOnce(When),
     {
-        let mut config = self.config.take();
-
-        let request_requirements = Rc::new(Cell::new(config.request_requirements));
-
         when(When {
-            expectations: request_requirements.clone(),
+            expectations: &mut self.config.request_requirements,
         });
-
-        config.request_requirements = request_requirements.take();
-
-        self.config.set(config);
 
         self
     }
 
     pub fn record_response_delays(self, record: bool) -> Self {
-        let mut config = self.config.take();
-        config.record_response_delays = record;
-        self.config.set(config);
-
+        self.config.record_response_delays = record;
         self
     }
 }
