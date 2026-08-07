@@ -1,10 +1,8 @@
 #[cfg(feature = "record")]
 use std::path::PathBuf;
 use std::{
-    cell::Cell,
     future::pending,
     net::SocketAddr,
-    rc::Rc,
     sync::{Arc, LazyLock},
     thread,
 };
@@ -422,15 +420,15 @@ impl MockServer {
     where
         SpecFn: FnOnce(When, Then),
     {
-        let req = Rc::new(Cell::new(RequestRequirements::new()));
-        let res = Rc::new(Cell::new(MockServerHttpResponse::new()));
+        let mut req = RequestRequirements::new();
+        let mut res = MockServerHttpResponse::new();
 
         spec_fn(
             When {
-                expectations: req.clone(),
+                expectations: &mut req,
             },
             Then {
-                response_template: res.clone(),
+                response_template: &mut res,
             },
         );
 
@@ -439,8 +437,8 @@ impl MockServer {
             .as_ref()
             .unwrap()
             .create_mock(&MockDefinition {
-                request: req.take(),
-                response: res.take(),
+                request: req,
+                response: res,
             })
             .await
             .expect("Cannot deserialize mock server response");
@@ -635,12 +633,12 @@ impl MockServer {
         ForwardingRuleBuilderFn: FnOnce(ForwardingRuleBuilder),
         IntoString: Into<String>,
     {
-        let headers = Rc::new(Cell::new(Vec::new()));
-        let req = Rc::new(Cell::new(RequestRequirements::new()));
+        let mut headers = Vec::new();
+        let mut req = RequestRequirements::new();
 
         rule(ForwardingRuleBuilder {
-            headers: headers.clone(),
-            request_requirements: req.clone(),
+            headers: &mut headers,
+            request_requirements: &mut req,
         });
 
         let response = self
@@ -649,8 +647,8 @@ impl MockServer {
             .unwrap()
             .create_forwarding_rule(ForwardingRuleConfig {
                 target_base_url: target_base_url.into(),
-                request_requirements: req.take(),
-                request_header: headers.take(),
+                request_requirements: req,
+                request_header: headers,
             })
             .await
             .expect("Cannot deserialize mock server response");
@@ -794,12 +792,12 @@ impl MockServer {
     where
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
     {
-        let headers = Rc::new(Cell::new(Vec::new()));
-        let req = Rc::new(Cell::new(RequestRequirements::new()));
+        let mut headers = Vec::new();
+        let mut req = RequestRequirements::new();
 
         rule(ProxyRuleBuilder {
-            headers: headers.clone(),
-            request_requirements: req.clone(),
+            headers: &mut headers,
+            request_requirements: &mut req,
         });
 
         let response = self
@@ -807,8 +805,8 @@ impl MockServer {
             .as_ref()
             .unwrap()
             .create_proxy_rule(ProxyRuleConfig {
-                request_requirements: req.take(),
-                request_header: headers.take(),
+                request_requirements: req,
+                request_header: headers,
             })
             .await
             .expect("Cannot deserialize mock server response");
@@ -993,21 +991,21 @@ impl MockServer {
     where
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
     {
-        let config = Rc::new(Cell::new(RecordingRuleConfig {
+        let mut config = RecordingRuleConfig {
             request_requirements: RequestRequirements::new(),
             record_headers: Vec::new(),
             record_response_delays: false,
-        }));
+        };
 
         rule(RecordingRuleBuilder {
-            config: config.clone(),
+            config: &mut config,
         });
 
         let response = self
             .server_adapter
             .as_ref()
             .unwrap()
-            .create_recording(config.take())
+            .create_recording(config)
             .await
             .expect("Cannot deserialize mock server response");
 

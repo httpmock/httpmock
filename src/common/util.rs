@@ -1,6 +1,5 @@
 use std::{
     borrow::Cow,
-    cell::Cell,
     env,
     fs::{create_dir_all, File},
     future::Future,
@@ -18,15 +17,6 @@ use crossbeam_utils::sync::{Parker, Unparker};
 use futures_timer::Delay;
 use futures_util::{pin_mut, task::ArcWake};
 use serde::{Deserialize, Serialize};
-
-// ===============================================================================================
-// Misc
-// ===============================================================================================
-pub(crate) fn update_cell<T: Sized + Default, F: FnOnce(&mut T)>(v: &Cell<T>, f: F) {
-    let mut vv = v.take();
-    f(&mut vv);
-    v.set(vv);
-}
 
 // ===============================================================================================
 // Retry
