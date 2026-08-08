@@ -204,8 +204,8 @@ impl StateManager for HttpMockStateManager {
         let ids: Vec<usize> = state
             .mocks
             .iter()
-            .filter(|(k, v)| !v.is_static)
-            .map(|(k, v)| *k)
+            .filter(|(_k, v)| !v.is_static)
+            .map(|(k, _v)| *k)
             .collect();
 
         ids.iter().for_each(|k| {
@@ -407,7 +407,7 @@ impl StateManager for HttpMockStateManager {
 
     #[cfg(feature = "record")]
     fn export_recording(&self, id: usize) -> Result<Option<Bytes>, Error> {
-        let mut state = self.state.lock().unwrap();
+        let state = self.state.lock().unwrap();
 
         if let Some(rec) = state.recordings.get(&id) {
             return Ok(Some(
@@ -623,7 +623,7 @@ fn request_matches(
     matchers
         .iter()
         .enumerate()
-        .all(|(i, x)| x.matches(req, request_requirements))
+        .all(|(_i, x)| x.matches(req, request_requirements))
 }
 
 fn get_distances(
@@ -653,7 +653,7 @@ fn get_min_distance_requests(request_distances: &BTreeMap<usize, usize>) -> Vec<
     // Find the element with the maximum matches
     let min_elem = request_distances
         .iter()
-        .min_by(|(idx1, d1), (idx2, d2)| (**d1).cmp(d2));
+        .min_by(|(_idx1, d1), (_idx2, d2)| (**d1).cmp(d2));
 
     let max = match min_elem {
         None => return Vec::new(),
@@ -662,7 +662,7 @@ fn get_min_distance_requests(request_distances: &BTreeMap<usize, usize>) -> Vec<
 
     request_distances
         .iter()
-        .filter(|(idx, distance)| **distance == max)
+        .filter(|(_idx, distance)| **distance == max)
         .map(|(idx, _)| *idx)
         .collect()
 }

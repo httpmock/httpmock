@@ -382,7 +382,7 @@ impl MockServer {
     /// // Ensure the mock was called as expected.
     /// mock.assert();
     /// ```
-    pub fn mock<F>(&self, config_fn: F) -> Mock
+    pub fn mock<F>(&self, config_fn: F) -> Mock<'_>
     where
         F: FnOnce(When, Then),
     {
@@ -566,7 +566,7 @@ impl MockServer {
         &self,
         to_base_url: IntoString,
         rule: ForwardingRuleBuilderFn,
-    ) -> ForwardingRule
+    ) -> ForwardingRule<'_>
     where
         ForwardingRuleBuilderFn: FnOnce(ForwardingRuleBuilder),
         IntoString: Into<String>,
@@ -719,7 +719,7 @@ impl MockServer {
     /// # Feature
     /// This method is only available when the `proxy` feature is enabled.
     #[cfg(feature = "proxy")]
-    pub fn proxy<ProxyRuleBuilderFn>(&self, rule: ProxyRuleBuilderFn) -> ProxyRule
+    pub fn proxy<ProxyRuleBuilderFn>(&self, rule: ProxyRuleBuilderFn) -> ProxyRule<'_>
     where
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
     {
@@ -897,7 +897,7 @@ impl MockServer {
     ///
     /// This method is only available when the `record` feature is enabled.
     #[cfg(feature = "record")]
-    pub fn record<RecordingRuleBuilderFn>(&self, rule: RecordingRuleBuilderFn) -> Recording
+    pub fn record<RecordingRuleBuilderFn>(&self, rule: RecordingRuleBuilderFn) -> Recording<'_>
     where
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
     {
@@ -1091,7 +1091,7 @@ impl MockServer {
     ///
     /// This method is only available when the `record` feature is enabled.
     #[cfg(feature = "record")]
-    pub fn playback<IntoPathBuf: Into<PathBuf>>(&self, path: IntoPathBuf) -> MockSet {
+    pub fn playback<IntoPathBuf: Into<PathBuf>>(&self, path: IntoPathBuf) -> MockSet<'_> {
         self.playback_async(path).join()
     }
 
@@ -1173,7 +1173,7 @@ impl MockServer {
     ///
     /// This method is only available when the `record` feature is enabled.
     #[cfg(feature = "record")]
-    pub async fn playback_async<IntoPathBuf: Into<PathBuf>>(&self, path: IntoPathBuf) -> MockSet {
+    pub async fn playback_async<IntoPathBuf: Into<PathBuf>>(&self, path: IntoPathBuf) -> MockSet<'_> {
         use std::fs;
 
         let path = path.into();
@@ -1243,7 +1243,7 @@ impl MockServer {
     ///
     /// This method is only available when the `record` feature is enabled.
     #[cfg(feature = "record")]
-    pub fn playback_from_yaml<AsStrRef: AsRef<str>>(&self, content: AsStrRef) -> MockSet {
+    pub fn playback_from_yaml<AsStrRef: AsRef<str>>(&self, content: AsStrRef) -> MockSet<'_> {
         self.playback_from_yaml_async(content).join()
     }
 
@@ -1305,7 +1305,7 @@ impl MockServer {
     pub async fn playback_from_yaml_async<AsStrRef: AsRef<str>>(
         &self,
         content: AsStrRef,
-    ) -> MockSet {
+    ) -> MockSet<'_> {
         let response = self
             .server_adapter
             .as_ref()

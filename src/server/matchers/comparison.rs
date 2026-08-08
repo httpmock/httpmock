@@ -821,7 +821,7 @@ pub fn longest_common_substring(case_sensitive: bool, s1: &str, s2: &str) -> usi
     let mut current = vec![0; short_s.chars().count() + 1];
     let mut longest = 0;
 
-    for (i, long_char) in long_s.chars().enumerate() {
+    for (_i, long_char) in long_s.chars().enumerate() {
         for (j, short_char) in short_s.chars().enumerate() {
             let long_char = if case_sensitive {
                 long_char

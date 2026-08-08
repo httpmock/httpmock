@@ -181,7 +181,7 @@ impl HttpMockBytes {
     ///
     /// # Returns
     /// A `Cow<str>` which is either borrowed if the bytes are valid UTF-8 or owned if conversion was required.
-    pub fn to_maybe_lossy_str(&self) -> Cow<str> {
+    pub fn to_maybe_lossy_str(&self) -> Cow<'_, str> {
         match std::str::from_utf8(&self.0) {
             Ok(valid_str) => Cow::Borrowed(valid_str),
             Err(_) => Cow::Owned(String::from_utf8_lossy(&self.0).to_string()),

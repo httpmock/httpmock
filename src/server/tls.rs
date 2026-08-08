@@ -86,7 +86,7 @@ pub struct GeneratingCertificateResolver {
 
 impl<'a> GeneratingCertificateResolver {
     fn load_certificates(cert_pem: String) -> Result<Vec<CertificateDer<'a>>, Error> {
-        let mut cert_pem_reader = Cursor::new(cert_pem.into_bytes());
+        let cert_pem_reader = Cursor::new(cert_pem.into_bytes());
         let mut certificates = Vec::new();
         let certs_iterator = CertificateDer::pem_reader_iter(cert_pem_reader);
         for cert_result in certs_iterator {
@@ -100,7 +100,7 @@ impl<'a> GeneratingCertificateResolver {
     }
 
     fn load_private_key(key_pem: String) -> Result<PrivateKeyDer<'a>, Error> {
-        let mut cert_pem_reader = Cursor::new(key_pem.into_bytes());
+        let cert_pem_reader = Cursor::new(key_pem.into_bytes());
         let private_key = PrivateKeyDer::from_pem_reader(cert_pem_reader).map_err(|err| {
             GenerateCertificateError(format!("cannot use generated private key: {:?}", err))
         })?;
@@ -153,7 +153,7 @@ impl<'a> GeneratingCertificateResolver {
         })?;
 
         // Set up certificate parameters for the new certificate
-        let mut params = if let Ok(ip) = hostname.parse::<std::net::IpAddr>() {
+        let params = if let Ok(ip) = hostname.parse::<std::net::IpAddr>() {
             // If the hostname is an IP address, place it into IP SANs unless it's unspecified (0.0.0.0 / ::)
             let mut p = CertificateParams::default();
             if !ip.is_unspecified() {
@@ -187,7 +187,7 @@ impl<'a> GeneratingCertificateResolver {
             p
         } else {
             // Otherwise, treat it as a DNS name
-            let mut p = CertificateParams::new(vec![hostname.to_owned()]).map_err(|err| {
+            let p = CertificateParams::new(vec![hostname.to_owned()]).map_err(|err| {
                 GenerateCertificateError(format!(
                     "Cannot generate Certificate (host: {}: error: {:?})",
                     hostname, err

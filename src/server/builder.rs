@@ -135,7 +135,7 @@ impl HttpsConfigBuilder {
     ///
     /// # Returns
     /// A `MockServerHttpsConfig` instance or an error if validation fails.
-    pub fn build(mut self) -> Result<MockServerHttpsConfig, Box<dyn Error>> {
+    pub fn build(self) -> Result<MockServerHttpsConfig, Box<dyn Error>> {
         self.validate()?;
 
         let cert_resolver_factory = match (
