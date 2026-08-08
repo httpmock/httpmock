@@ -728,7 +728,7 @@ mod opt_vector_serde_base64 {
         S: Serializer,
     {
         match bytes {
-            Some(ref value) => serializer.serialize_bytes(BASE64.encode(value).as_bytes()),
+            Some(value) => serializer.serialize_bytes(BASE64.encode(value).as_bytes()),
             None => serializer.serialize_none(),
         }
     }

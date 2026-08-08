@@ -2,7 +2,7 @@
 name = "httpmock"
 version = "0.8.3"
 authors = ["Alexander Liesenfeld <alexander.liesenfeld@outlook.com>"]
-edition = "2021"
+edition = "2024"
 description = "HTTP mocking library for Rust"
 readme = "README.md"
 keywords = ["http", "mock", "test"]
