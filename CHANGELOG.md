@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- `HttpMockRequest` now exposes borrowed `http` types, including its parsed authority. `query_params()` returns an iterator, and the redundant `*_str`, `*_vec`, `*_ref`, and `*_bytes` accessors have been removed.
+- Converting an `http::Request` into `HttpMockRequest` now uses `TryFrom`. The conversions to `http::Request<String>` and `http::Request<()>` have been removed.
+- `HttpMockResponse` now has private typed fields and no longer implements Serde. Its accessors and builder use `StatusCode`, `HeaderMap`, `HeaderName`, and `HeaderValue`; `no_body()` has been removed because responses always have a body, which is empty by default.
+
 ## Version 0.8.3
 
 Minimum supported Rust version has been raised to 1.88.

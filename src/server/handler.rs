@@ -6,11 +6,14 @@ use std::{
     sync::Arc,
 };
 
+#[cfg(feature = "proxy")]
+use http::uri::Scheme;
 use http::{HeaderValue, StatusCode, Uri};
 use hyper::{Method, Request, Response, body::Bytes};
 use path_tree::{Path, PathTree};
 use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
+#[cfg(feature = "record")]
 use tokio::time::Instant;
 
 #[cfg(feature = "record")]
@@ -28,7 +31,7 @@ use crate::{
         },
         runtime,
     },
-    prelude::{HttpMockRequest, HttpMockResponse},
+    prelude::HttpMockRequest,
     server::{
         handler::Error::{
             InvalidHeader, ParamError, ParamFormatError, RequestBodyDeserializeError, RequestConversionError,
@@ -384,6 +387,9 @@ where
         #[cfg(not(feature = "proxy"))]
         let (res, is_proxied) = (self.serve_mock(&internal_request).await?, false);
 
+        #[cfg(not(feature = "record"))]
+        let _ = is_proxied;
+
         #[cfg(feature = "record")]
         self.state.record(is_proxied, start.elapsed(), internal_request, &res)?;
 
@@ -406,10 +412,7 @@ where
 
         // Record the upstream scheme (http/https) so the HttpClient can reconstruct
         // an absolute target URI after converting to origin-form.
-        let upstream_scheme: &'static str = match to_base_uri.scheme_str() {
-            Some("https") => "https",
-            _ => "http",
-        };
+        let upstream_scheme = to_base_uri.scheme().cloned().unwrap_or(Scheme::HTTP);
         req_parts
             .extensions
             .insert(crate::server::RequestMetadata::new(upstream_scheme));
@@ -471,18 +474,13 @@ where
             runtime::sleep(std::time::Duration::from_millis(duration)).await;
         }
 
-        // Resolve dynamic vs. static response into HttpMockResponse
-        let resp_def: HttpMockResponse = definition
-            .respond_with
-            .map(|f| f(req))
-            .unwrap_or_else(|| HttpMockResponse {
-                status: definition.status.or(Some(StatusCode::OK.as_u16())),
-                headers: definition.headers,
-                body: definition.body,
-            });
+        let responder = definition.respond_with.clone();
+        let response = match responder {
+            Some(responder) => responder(req),
+            None => definition.try_into().map_err(ResponseDataConversionError)?,
+        };
 
-        // Convert via your TryFrom<HttpMockResponse> impl
-        let http_resp: http::Response<bytes::Bytes> = resp_def.try_into().map_err(ResponseDataConversionError)?;
+        let http_resp: http::Response<bytes::Bytes> = response.into();
 
         Ok(http_resp)
     }

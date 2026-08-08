@@ -4917,6 +4917,7 @@ impl Then {
     /// A minimal dynamic responder that mirrors the request body value back to the client:
     ///
     /// ```rust
+    /// use http::StatusCode;
     /// use httpmock::{MockServer, HttpMockRequest, HttpMockResponse};
     /// use reqwest::blocking::Client;
     ///
@@ -4929,7 +4930,7 @@ impl Then {
     ///         let echoed_body = req.body().to_string();
     ///
     ///         HttpMockResponse::builder()
-    ///             .status(200)
+    ///             .status(StatusCode::OK)
     ///             .body(echoed_body)
     ///             .build()
     ///     });
@@ -4951,25 +4952,27 @@ impl Then {
     /// Stateful dynamic responder that increments the status code on each call:
     ///
     /// ```rust
+    /// use http::StatusCode;
     /// use httpmock::{MockServer, HttpMockRequest, HttpMockResponse};
     /// use reqwest::blocking::Client;
-    /// use std::sync::Mutex;
+    /// use std::sync::atomic::{AtomicUsize, Ordering};
     ///
     /// // Arrange
     /// let server = MockServer::start();
     ///
-    /// // Shared counter used inside the responder closure.
-    /// // Use a Mutex/RwLock/atomic because the closure runs on the server thread.
-    /// let call_count = Mutex::new(0);
+    /// let call_count = AtomicUsize::new(0);
     ///
     /// let mock = server.mock(|when, then| {
     ///     when.path("/hello");
     ///     then.respond_with(move |_req: &HttpMockRequest| {
-    ///         let mut count = call_count.lock().unwrap();
-    ///         *count += 1;
+    ///         let status = match call_count.fetch_add(1, Ordering::Relaxed) {
+    ///             0 => StatusCode::CREATED,
+    ///             1 => StatusCode::ACCEPTED,
+    ///             _ => StatusCode::NON_AUTHORITATIVE_INFORMATION,
+    ///         };
     ///
     ///         HttpMockResponse::builder()
-    ///             .status(200 + *count) // 201, 202, 203, ...
+    ///             .status(status)
     ///             .build()
     ///     });
     /// });
@@ -4995,7 +4998,8 @@ impl Then {
     /// that operate on `http::Request` and `http::Response`.
     ///
     /// ```rust
-    /// use httpmock::{MockServer, HttpMockRequest, HttpMockResponse};
+    /// use http::StatusCode;
+    /// use httpmock::{MockServer, HttpMockRequest};
     /// use reqwest::blocking::Client;
     ///
     /// let server = MockServer::start();
@@ -5003,14 +5007,16 @@ impl Then {
     /// let mock = server.mock(|when, then| {
     ///     when.method("POST").path("/echo");
     ///     then.respond_with(|req: &HttpMockRequest| {
-    ///         // Convert the HttpMockRequest to an `http` crate Request (with body)
-    ///         let http_req: http::Request<String> = req.into();
+    ///         let http_req: http::Request<bytes::Bytes> = req.into();
     ///
-    ///         // Build an `http` crate Response (auto-converted to HttpMockResponse)
     ///         http::Response::builder()
-    ///             .status(200)
-    ///             .header("content-type", "text/plain")
-    ///             .body(format!("Echo from {}: {}", http_req.uri().path(), http_req.body()))
+    ///             .status(StatusCode::OK)
+    ///             .header(http::header::CONTENT_TYPE, "text/plain")
+    ///             .body(format!(
+    ///                 "Echo from {}: {}",
+    ///                 http_req.uri().path(),
+    ///                 String::from_utf8_lossy(http_req.body())
+    ///             ))
     ///             .unwrap()
     ///             .into()
     ///     });

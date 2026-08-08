@@ -219,6 +219,18 @@ impl From<Vec<u8>> for HttpMockBytes {
     }
 }
 
+impl From<Box<[u8]>> for HttpMockBytes {
+    fn from(value: Box<[u8]>) -> Self {
+        Self(Bytes::from(value))
+    }
+}
+
+impl From<()> for HttpMockBytes {
+    fn from(_: ()) -> Self {
+        Self(Bytes::new())
+    }
+}
+
 impl From<&[u8]> for HttpMockBytes {
     fn from(value: &[u8]) -> Self {
         Self(Bytes::copy_from_slice(value))
