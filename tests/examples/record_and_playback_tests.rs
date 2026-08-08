@@ -309,7 +309,7 @@ fn record_with_forwarding_all_request_parts_test() {
     );
 
     let recording_file_path = recording
-        .save("website-via-forwarding")
+        .save("website-via-forwarding-all-request-parts")
         .expect("cannot store recording on disk");
 
     // Start a new mock server instance for playback

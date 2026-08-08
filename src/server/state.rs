@@ -452,10 +452,7 @@ impl Manager {
         Ok(mock_ids)
     }
 
-    pub(crate) fn find_forward_rule<'a>(
-        &'a self,
-        req: &'a HttpMockRequest,
-    ) -> Result<Option<ForwardingRule>, Error> {
+    pub(crate) fn find_forward_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ForwardingRule>, Error> {
         let state = self.state.lock().unwrap();
 
         let result = state
@@ -717,5 +714,35 @@ mod tests {
     fn default_history_limit_is_preserved() {
         let manager = Manager::default();
         assert_eq!(manager.state.lock().unwrap().history_limit, DEFAULT_HISTORY_LIMIT);
+    }
+
+    #[test]
+    fn static_mock_cannot_be_deleted() {
+        let manager = Manager::default();
+        let active_mock = manager
+            .add_mock(
+                MockDefinition::new(RequestRequirements::default(), MockServerHttpResponse::default()),
+                true,
+            )
+            .expect("static mock should be created");
+
+        assert!(matches!(
+            manager.delete_mock(active_mock.id),
+            Err(Error::StaticMockError)
+        ));
+    }
+
+    #[test]
+    fn get_request_with_body_is_rejected() {
+        let requirements = RequestRequirements {
+            method: Some("GET".to_string()),
+            body: Some(HttpMockBytes::from(bytes::Bytes::from_static(b"body"))),
+            ..Default::default()
+        };
+
+        assert!(matches!(
+            validate_request_requirements(&requirements),
+            Err(Error::BodyMethodInvalid)
+        ));
     }
 }

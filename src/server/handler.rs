@@ -387,7 +387,7 @@ impl Handler {
         let mut uri_parts = req_parts.uri.into_parts();
         uri_parts.authority = Some(target_authority);
         uri_parts.scheme = Some(target_scheme);
-        req_parts.uri = Uri::from_parts(uri_parts).map_err(|err| RequestConversionError(err.to_string()))?;
+        req_parts.uri = Uri::from_parts(uri_parts).map_err(|err| RequestConversion(err.to_string()))?;
 
         // The client uses this scheme when reconstructing the absolute upstream URI.
         req_parts
@@ -528,4 +528,29 @@ pub fn to_origin_form(mut req: Request<Bytes>) -> Result<Request<Bytes>, Error> 
     }
 
     Ok(req)
+}
+
+#[cfg(all(test, feature = "proxy"))]
+mod tests {
+    use super::*;
+    use crate::common::http::HttpMockHttpClient;
+
+    #[test]
+    fn valid_forwarding_rule_can_be_added() {
+        let handler = Handler::new(
+            Arc::new(state::Manager::default()),
+            Arc::new(HttpMockHttpClient::new(None)),
+        );
+        let config = ForwardingRuleConfig {
+            target_base_url: "http://example.com".to_string(),
+            ..Default::default()
+        };
+        let request = Request::post("/__httpmock__/forwarding_rules")
+            .body(Bytes::from(serde_json::to_vec(&config).unwrap()))
+            .unwrap();
+
+        let response = handler.handle_add_forwarding_rule(request).unwrap();
+
+        assert_eq!(response.status(), StatusCode::CREATED);
+    }
 }
