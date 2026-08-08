@@ -21,8 +21,8 @@ fn my_custom_request_matcher_test() {
 #[test]
 fn is_true_matcher_called_once_per_request() {
     use httpmock::prelude::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     // Arrange
     let server = MockServer::start();
@@ -49,8 +49,8 @@ fn is_true_matcher_called_once_per_request() {
 #[test]
 fn is_false_matcher_called_once_per_request() {
     use httpmock::prelude::*;
-    use std::sync::atomic::{AtomicUsize, Ordering};
     use std::sync::Arc;
+    use std::sync::atomic::{AtomicUsize, Ordering};
 
     // Arrange
     let server = MockServer::start();
@@ -90,8 +90,7 @@ fn dynamic_responder_test() {
     let call_count = Mutex::new(0);
 
     let mock = server.mock(|when, then| {
-        when.method("GET")
-            .is_true(|r| r.uri().path().ends_with("/hello"));
+        when.method("GET").is_true(|r| r.uri().path().ends_with("/hello"));
         then.respond_with(move |_req: &HttpMockRequest| {
             let mut count = call_count.lock().unwrap();
             *count += 1;

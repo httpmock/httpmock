@@ -57,8 +57,10 @@ fn forward_to_website() {
 
     // Since the request was forwarded, we should see a GitHub API response.
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response
-        .text()
-        .unwrap()
-        .contains("Simple yet powerful HTTP mocking library for Rust"));
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .contains("Simple yet powerful HTTP mocking library for Rust")
+    );
 }

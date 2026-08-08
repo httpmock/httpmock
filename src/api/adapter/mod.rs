@@ -3,8 +3,8 @@ use std::net::SocketAddr;
 use async_trait::async_trait;
 
 use crate::common::data::{
-    ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch,
-    MockDefinition, RequestRequirements,
+    ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch, MockDefinition,
+    RequestRequirements,
 };
 
 pub mod local;
@@ -44,10 +44,7 @@ pub trait MockServerAdapter {
     async fn fetch_mock(&self, mock_id: usize) -> Result<ActiveMock, ServerAdapterError>;
     async fn delete_mock(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
 
-    async fn verify(
-        &self,
-        rr: &RequestRequirements,
-    ) -> Result<Option<ClosestMatch>, ServerAdapterError>;
+    async fn verify(&self, rr: &RequestRequirements) -> Result<Option<ClosestMatch>, ServerAdapterError>;
 
     async fn create_forwarding_rule(
         &self,
@@ -55,16 +52,10 @@ pub trait MockServerAdapter {
     ) -> Result<ActiveForwardingRule, ServerAdapterError>;
     async fn delete_forwarding_rule(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
 
-    async fn create_proxy_rule(
-        &self,
-        config: ProxyRuleConfig,
-    ) -> Result<ActiveProxyRule, ServerAdapterError>;
+    async fn create_proxy_rule(&self, config: ProxyRuleConfig) -> Result<ActiveProxyRule, ServerAdapterError>;
     async fn delete_proxy_rule(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
 
-    async fn create_recording(
-        &self,
-        mock: RecordingRuleConfig,
-    ) -> Result<ActiveRecording, ServerAdapterError>;
+    async fn create_recording(&self, mock: RecordingRuleConfig) -> Result<ActiveRecording, ServerAdapterError>;
     async fn delete_recording(&self, id: usize) -> Result<(), ServerAdapterError>;
 
     #[cfg(feature = "record")]

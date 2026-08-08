@@ -7,9 +7,7 @@ fn getting_started_test() {
 
     // Create a mock on the server.
     let hello_mock = server.mock(|when, then| {
-        when.method("GET")
-            .path("/translate")
-            .query_param("word", "hello");
+        when.method("GET").path("/translate").query_param("word", "hello");
         then.status(200)
             .header("content-type", "text/html; charset=UTF-8")
             .body("hola");
@@ -35,9 +33,7 @@ async fn async_getting_started_test() {
     // Create a mock on the server.
     let mock = server
         .mock_async(|when, then| {
-            when.method(GET)
-                .path("/translate")
-                .query_param("word", "hello");
+            when.method(GET).path("/translate").query_param("word", "hello");
             then.status(200)
                 .header("content-type", "text/html; charset=UTF-8")
                 .body("hola");
@@ -46,11 +42,7 @@ async fn async_getting_started_test() {
 
     // Send an HTTP request to the mock server. This simulates your code.
     let client = reqwest::Client::new();
-    let response = client
-        .get(server.url("/translate?word=hello"))
-        .send()
-        .await
-        .unwrap();
+    let response = client.get(server.url("/translate?word=hello")).send().await.unwrap();
 
     // Ensure the specified mock was called exactly one time (or fail with a
     // detailed error description).

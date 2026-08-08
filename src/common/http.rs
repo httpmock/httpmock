@@ -7,7 +7,7 @@ use http_body_util::{BodyExt, Full};
 #[cfg(any(feature = "remote-https", feature = "https"))]
 use hyper_rustls::HttpsConnector;
 use hyper_util::{
-    client::legacy::{connect::HttpConnector, Client},
+    client::legacy::{Client, connect::HttpConnector},
     rt::TokioExecutor,
 };
 use thiserror::Error;
@@ -86,20 +86,11 @@ impl HttpClient for HttpMockHttpClient {
 
         let needs_target = uri.scheme().is_none() || uri.authority().is_none();
         if needs_target {
-            if let Some(host) = req_parts
-                .headers
-                .get(http::header::HOST)
-                .and_then(|v| v.to_str().ok())
-            {
+            if let Some(host) = req_parts.headers.get(http::header::HOST).and_then(|v| v.to_str().ok()) {
                 // Prefer scheme from the URI if present; otherwise use RequestMetadata; fallback to http
                 let scheme = uri
                     .scheme_str()
-                    .or_else(|| {
-                        req_parts
-                            .extensions
-                            .get::<RequestMetadata>()
-                            .map(|m| m.scheme)
-                    })
+                    .or_else(|| req_parts.extensions.get::<RequestMetadata>().map(|m| m.scheme))
                     .unwrap_or("http");
 
                 let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
@@ -116,8 +107,7 @@ impl HttpClient for HttpMockHttpClient {
 
         let res = if let Some(rt) = self.runtime.clone() {
             let client = self.client.clone();
-            rt.spawn(async move { client.request(hyper_req).await })
-                .await??
+            rt.spawn(async move { client.request(hyper_req).await }).await??
         } else {
             self.client.request(hyper_req).await?
         };

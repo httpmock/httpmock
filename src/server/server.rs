@@ -1,18 +1,18 @@
 use std::{
-    future::{pending, Future},
+    future::{Future, pending},
     io,
     net::SocketAddr,
     sync::Arc,
 };
 
-use futures_util::{future::BoxFuture, FutureExt};
+use futures_util::{FutureExt, future::BoxFuture};
 use http::{Request, StatusCode};
-use http_body_util::{combinators::BoxBody, BodyExt, Empty, Full};
+use http_body_util::{BodyExt, Empty, Full, combinators::BoxBody};
 use hyper::{
+    Method, Response,
     body::{Bytes, Incoming},
     http,
     service::service_fn,
-    Method, Response,
 };
 use hyper_util::{rt::tokio::TokioIo, server::conn::auto::Builder as ServerBuilder};
 #[cfg(feature = "https")]
@@ -29,9 +29,7 @@ use tokio_rustls::TlsAcceptor;
 use crate::server::{
     self,
     handler::Handler,
-    server::Error::{
-        BufferError, LocalSocketAddrError, PublishSocketAddrError, RouterError, SocketBindError,
-    },
+    server::Error::{BufferError, LocalSocketAddrError, PublishSocketAddrError, RouterError, SocketBindError},
 };
 
 #[derive(Error, Debug)]
@@ -123,16 +121,9 @@ where
     where
         F: Future<Output = ()>,
     {
-        let host = if self.config.expose {
-            "0.0.0.0"
-        } else {
-            "127.0.0.1"
-        };
-        let addr: SocketAddr =
-            format!("{}:{}", host, self.config.static_port.unwrap_or(0)).parse()?;
-        let listener = TcpListener::bind(addr)
-            .await
-            .map_err(|e| SocketBindError(addr, e))?;
+        let host = if self.config.expose { "0.0.0.0" } else { "127.0.0.1" };
+        let addr: SocketAddr = format!("{}:{}", host, self.config.static_port.unwrap_or(0)).parse()?;
+        let listener = TcpListener::bind(addr).await.map_err(|e| SocketBindError(addr, e))?;
 
         if let Some(sender) = socket_addr_sender {
             let addr = listener.local_addr().map_err(LocalSocketAddrError)?;
@@ -178,10 +169,7 @@ where
         Ok(())
     }
 
-    async fn service(
-        self: Arc<Self>,
-        req: Request<Incoming>,
-    ) -> Result<Response<BoxBody<Bytes, hyper::Error>>, Error> {
+    async fn service(self: Arc<Self>, req: Request<Incoming>) -> Result<Response<BoxBody<Bytes, hyper::Error>>, Error> {
         tracing::trace!("New HTTP request received: {}", req.uri());
 
         if req.method() == Method::CONNECT {
@@ -223,8 +211,7 @@ where
                             }
                         }
                         Err(err) => {
-                            let e =
-                                crate::server::server::Error::ServerConnectionError(Box::new(err));
+                            let e = crate::server::server::Error::ServerConnectionError(Box::new(err));
                             tracing::warn!("CONNECT upgraded handling failed: {:?}", e);
                         }
                     }
@@ -274,10 +261,10 @@ where
         };
 
         // print access log if enabled
-        if let Some((method, uri)) = access_log_req_data {
-            if let Ok(resp) = &resp {
-                tracing::info!("{} {} -> {}", method, uri, resp.status());
-            }
+        if let Some((method, uri)) = access_log_req_data
+            && let Ok(resp) = &resp
+        {
+            tracing::info!("{} {} -> {}", method, uri, resp.status());
         }
 
         resp
@@ -335,12 +322,11 @@ where
     // (e.g. reqwest) can enable rustls' `aws-lc-rs` feature alongside our `ring`
     // feature, which makes auto-detection ambiguous and panics.
     // See https://github.com/rustls/rustls/issues/1938
-    let mut server_config =
-        ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
-            .with_safe_default_protocol_versions()
-            .map_err(|e| Error::TlsError(format!("cannot build TLS server config: {:?}", e)))?
-            .with_no_client_auth()
-            .with_cert_resolver(cert_resolver);
+    let mut server_config = ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
+        .with_safe_default_protocol_versions()
+        .map_err(|e| Error::TlsError(format!("cannot build TLS server config: {:?}", e)))?
+        .with_no_client_auth()
+        .with_cert_resolver(cert_resolver);
 
     server_config.alpn_protocols = vec![
         #[cfg(feature = "http2")]
@@ -405,30 +391,19 @@ async fn buffer_request(req: Request<Incoming>) -> Result<Request<Bytes>, hyper:
 }
 
 fn full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, hyper::Error> {
-    Full::new(chunk.into())
-        .map_err(|never| match never {})
-        .boxed()
+    Full::new(chunk.into()).map_err(|never| match never {}).boxed()
 }
 
 fn empty() -> BoxBody<Bytes, hyper::Error> {
-    Empty::<Bytes>::new()
-        .map_err(|never| match never {})
-        .boxed()
+    Empty::<Bytes>::new().map_err(|never| match never {}).boxed()
 }
 
-fn error_response(
-    code: StatusCode,
-    err: Error,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>, Error> {
+fn error_response(code: StatusCode, err: Error) -> Result<Response<BoxBody<Bytes, hyper::Error>>, Error> {
     tracing::error!("failed to process request: {}", err.to_string());
-    Ok(Response::builder()
-        .status(code)
-        .body(full(err.to_string()))?)
+    Ok(Response::builder().status(code).body(full(err.to_string()))?)
 }
 
-fn to_service_response(
-    response: Response<Bytes>,
-) -> Result<Response<BoxBody<Bytes, hyper::Error>>, Error> {
+fn to_service_response(response: Response<Bytes>) -> Result<Response<BoxBody<Bytes, hyper::Error>>, Error> {
     let (parts, body) = response.into_parts();
     Ok(Response::from_parts(parts, full(body)))
 }
@@ -460,19 +435,14 @@ fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), Error> {
         .headers()
         .get(http::header::HOST)
         .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| {
-            Error::ConfigurationError("Missing Host header on origin-form request".into())
-        })?;
+        .ok_or_else(|| Error::ConfigurationError("Missing Host header on origin-form request".into()))?;
 
     let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
 
     let abs = format!("{}://{}{}", default_scheme, host, path_and_query);
-    let new_uri: http::Uri = abs.parse().map_err(|e| {
-        Error::ConfigurationError(format!(
-            "Invalid absolute URI constructed from Host+path: {}",
-            e
-        ))
-    })?;
+    let new_uri: http::Uri = abs
+        .parse()
+        .map_err(|e| Error::ConfigurationError(format!("Invalid absolute URI constructed from Host+path: {}", e)))?;
 
     *req.uri_mut() = new_uri;
     Ok(())

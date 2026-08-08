@@ -1,6 +1,6 @@
 use httpmock::prelude::*;
 use reqwest::blocking::Client;
-use serde_json::{json, Value};
+use serde_json::{Value, json};
 
 #[test]
 fn json_value_body_test() {
@@ -27,8 +27,7 @@ fn json_value_body_test() {
         .unwrap();
 
     let status = response.status().as_u16();
-    let user: Value =
-        serde_json::from_str(&response.text().unwrap()).expect("cannot deserialize JSON");
+    let user: Value = serde_json::from_str(&response.text().unwrap()).expect("cannot deserialize JSON");
 
     // Assert
     m.assert();
@@ -76,8 +75,7 @@ fn json_body_object_serde_test() {
         .unwrap();
 
     let status = response.status().as_u16();
-    let user: TestUser =
-        serde_json::from_str(&response.text().unwrap()).expect("cannot deserialize JSON");
+    let user: TestUser = serde_json::from_str(&response.text().unwrap()).expect("cannot deserialize JSON");
 
     // Assert
     m.assert();

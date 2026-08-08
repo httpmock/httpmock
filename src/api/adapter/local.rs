@@ -10,9 +10,8 @@ use crate::{
         ServerAdapterError::{MockNotFound, UpstreamError},
     },
     common::data::{
-        ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch,
-        ForwardingRuleConfig, MockDefinition, ProxyRuleConfig, RecordingRuleConfig,
-        RequestRequirements,
+        ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch, ForwardingRuleConfig,
+        MockDefinition, ProxyRuleConfig, RecordingRuleConfig, RequestRequirements,
     },
     server::state::{HttpMockStateManager, StateManager},
 };
@@ -74,10 +73,7 @@ impl MockServerAdapter for LocalMockServerAdapter {
         Ok(())
     }
 
-    async fn verify(
-        &self,
-        mock_rr: &RequestRequirements,
-    ) -> Result<Option<ClosestMatch>, ServerAdapterError> {
+    async fn verify(&self, mock_rr: &RequestRequirements) -> Result<Option<ClosestMatch>, ServerAdapterError> {
         let closest_match = self
             .state
             .verify(mock_rr)
@@ -97,10 +93,7 @@ impl MockServerAdapter for LocalMockServerAdapter {
         Ok(())
     }
 
-    async fn create_proxy_rule(
-        &self,
-        config: ProxyRuleConfig,
-    ) -> Result<ActiveProxyRule, ServerAdapterError> {
+    async fn create_proxy_rule(&self, config: ProxyRuleConfig) -> Result<ActiveProxyRule, ServerAdapterError> {
         Ok(self.state.create_proxy_rule(config))
     }
 
@@ -109,10 +102,7 @@ impl MockServerAdapter for LocalMockServerAdapter {
         Ok(())
     }
 
-    async fn create_recording(
-        &self,
-        config: RecordingRuleConfig,
-    ) -> Result<ActiveRecording, ServerAdapterError> {
+    async fn create_recording(&self, config: RecordingRuleConfig) -> Result<ActiveRecording, ServerAdapterError> {
         Ok(self.state.create_recording(config))
     }
 

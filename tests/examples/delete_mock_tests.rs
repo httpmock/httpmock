@@ -11,9 +11,7 @@ fn explicit_delete_mock_test() {
     });
 
     // Act: Send the HTTP request using reqwest
-    let response =
-        reqwest::blocking::get(format!("http://{}:{}/health", server.host(), server.port()))
-            .unwrap();
+    let response = reqwest::blocking::get(format!("http://{}:{}/health", server.host(), server.port())).unwrap();
 
     // Assert
     m.assert();

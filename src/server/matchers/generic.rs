@@ -6,13 +6,12 @@ use similar::{ChangeTag, TextDiff};
 use crate::{
     common::{
         data::{
-            Diff, DiffResult, FunctionComparison, HttpMockRequest, KeyValueComparison,
-            KeyValueComparisonAttribute, KeyValueComparisonKeyValuePair, Mismatch,
-            RequestRequirements, SingleValueComparison, Tokenizer,
+            Diff, DiffResult, FunctionComparison, HttpMockRequest, KeyValueComparison, KeyValueComparisonAttribute,
+            KeyValueComparisonKeyValuePair, Mismatch, RequestRequirements, SingleValueComparison, Tokenizer,
         },
         util::is_none_or_empty,
     },
-    server::matchers::{comparators::ValueComparator, Matcher},
+    server::matchers::{Matcher, comparators::ValueComparator},
 };
 
 // ************************************************************************************************
@@ -38,11 +37,7 @@ where
     S: Display,
     T: Display,
 {
-    fn find_unmatched<'a>(
-        &self,
-        req_value: &Option<T>,
-        mock_values: &Option<Vec<&'a S>>,
-    ) -> Vec<&'a S> {
+    fn find_unmatched<'a>(&self, req_value: &Option<T>, mock_values: &Option<Vec<&'a S>>) -> Vec<&'a S> {
         let mock_values = match mock_values {
             None => return Vec::new(),
             Some(mv) => mv.to_vec(),
@@ -167,9 +162,9 @@ where
             .iter()
             .filter(|(ek, ev)| {
                 if self.key_required {
-                    let key_present = req_values.iter().any(|(rk, _): &(RK, Option<RV>)| {
-                        self.key_comparator.matches(&Some(ek), &Some(rk))
-                    });
+                    let key_present = req_values
+                        .iter()
+                        .any(|(rk, _): &(RK, Option<RV>)| self.key_comparator.matches(&Some(ek), &Some(rk)));
 
                     if !key_present {
                         // We negate here, since we are filtering for "unmatched" expectations -> true = unmatched
@@ -215,10 +210,7 @@ where
             return None;
         }
 
-        if let Some((fk, fv)) = req_values
-            .iter()
-            .find(|(k, _)| k.to_string() == sk.to_string())
-        {
+        if let Some((fk, fv)) = req_values.iter().find(|(k, _)| k.to_string() == sk.to_string()) {
             return Some((fk, fv));
         }
 
@@ -261,10 +253,7 @@ where
         self.find_unmatched(&req_values, &mock_values)
             .iter()
             .map(|(k, v)| match self.find_best_match(k, v, &req_values) {
-                None => {
-                    self.key_comparator.distance(&Some(k), &None)
-                        + self.value_comparator.distance(v, &None)
-                }
+                None => self.key_comparator.distance(&Some(k), &None) + self.value_comparator.distance(v, &None),
                 Some((bmk, bmv)) => {
                     self.key_comparator.distance(&Some(k), &Some(bmk))
                         + self.value_comparator.distance(v, &bmv.as_ref())
@@ -300,8 +289,7 @@ where
                         value: v.map(|v| KeyValueComparisonAttribute {
                             operator: self.value_comparator.name().to_string(),
                             expected: v.to_string(),
-                            actual: best_match
-                                .and_then(|(_, bmv)| bmv.as_ref().map(|bmv| bmv.to_string())),
+                            actual: best_match.and_then(|(_, bmv)| bmv.as_ref().map(|bmv| bmv.to_string())),
                         }),
                         expected_count: None,
                         actual_count: None,
@@ -334,8 +322,7 @@ where
 {
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
-    pub expectation:
-        for<'a> fn(&'a RequestRequirements) -> Option<Vec<(Option<&'a EK>, Option<&'a EV>, usize)>>,
+    pub expectation: for<'a> fn(&'a RequestRequirements) -> Option<Vec<(Option<&'a EK>, Option<&'a EV>, usize)>>,
     pub request_value: fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>,
     pub key_comparator: Box<dyn ValueComparator<EK, RK> + Send + Sync>,
     pub value_comparator: Box<dyn ValueComparator<EV, RV> + Send + Sync>,
@@ -375,12 +362,7 @@ where
         matched_idx
     }
 
-    fn count_matching_req_values(
-        &self,
-        req_values: &[(RK, Option<RV>)],
-        ek: &Option<&EK>,
-        ev: &Option<&EV>,
-    ) -> usize {
+    fn count_matching_req_values(&self, req_values: &[(RK, Option<RV>)], ek: &Option<&EK>, ev: &Option<&EV>) -> usize {
         req_values
             .iter()
             .filter(|(rk, rv)| {
@@ -514,11 +496,7 @@ impl<S, T> FunctionValueMatcher<S, T> {
         };
         let req_value = match req_value {
             None => {
-                return mock_values
-                    .into_iter()
-                    .enumerate()
-                    .map(|(idx, _)| idx)
-                    .collect()
+                return mock_values.into_iter().enumerate().map(|(idx, _)| idx).collect();
             }
             Some(rv) => rv,
         };

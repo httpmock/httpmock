@@ -57,10 +57,7 @@ fn read_static_mocks(path: PathBuf) -> Result<Vec<StaticMockDefinition>, Error> 
             }
         }
 
-        tracing::info!(
-            "Loading static mock file from '{}'",
-            file_path.to_string_lossy()
-        );
+        tracing::info!("Loading static mock file from '{}'", file_path.to_string_lossy());
 
         let content = read_to_string(file_path).map_err(|err| FileReadError(err.to_string()))?;
 
@@ -70,14 +67,11 @@ fn read_static_mocks(path: PathBuf) -> Result<Vec<StaticMockDefinition>, Error> 
     Ok(definitions)
 }
 
-pub fn deserialize_mock_defs_from_yaml(
-    yaml_content: &str,
-) -> Result<Vec<StaticMockDefinition>, Error> {
+pub fn deserialize_mock_defs_from_yaml(yaml_content: &str) -> Result<Vec<StaticMockDefinition>, Error> {
     let mut definitions = Vec::new();
 
     for document in Deserializer::from_str(yaml_content) {
-        let value = YamlValue::deserialize(document)
-            .map_err(|err| DeserializationError(err.to_string()))?;
+        let value = YamlValue::deserialize(document).map_err(|err| DeserializationError(err.to_string()))?;
 
         let definition: StaticMockDefinition =
             serde_yaml::from_value(value).map_err(|err| DeserializationError(err.to_string()))?;
@@ -96,10 +90,9 @@ pub fn serialize_mock_defs_to_yaml(mocks: &Vec<MockDefinition>) -> Result<Bytes,
             buffer.put_slice(b"---\n");
         }
 
-        let static_mock: StaticMockDefinition = StaticMockDefinition::try_from(mock)
-            .map_err(|err| DataConversionError(err.to_string()))?;
-        let yaml = serde_yaml::to_string(&static_mock)
-            .map_err(|err| DataConversionError(err.to_string()))?;
+        let static_mock: StaticMockDefinition =
+            StaticMockDefinition::try_from(mock).map_err(|err| DataConversionError(err.to_string()))?;
+        let yaml = serde_yaml::to_string(&static_mock).map_err(|err| DataConversionError(err.to_string()))?;
         buffer.put_slice(yaml.as_bytes());
     }
 

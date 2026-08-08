@@ -85,10 +85,12 @@ fn record_with_proxy_example_test() {
 
     // Since the request was forwarded, we should see a GitHub API response.
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response
-        .text()
-        .unwrap()
-        .contains("Simple yet powerful HTTP mocking library for Rust"));
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .contains("Simple yet powerful HTTP mocking library for Rust")
+    );
 
     // Save the recording to
     // "target/httpmock/recordings/website-via-proxy_<timestamp>.yaml".
@@ -116,10 +118,12 @@ fn record_with_proxy_example_test() {
     // matches the recorded data
     let response = client.get("https://httpmock.rs").send().unwrap();
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response
-        .text()
-        .unwrap()
-        .contains("Simple yet powerful HTTP mocking library for Rust"));
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .contains("Simple yet powerful HTTP mocking library for Rust")
+    );
 }
 // @example-end
 
@@ -154,10 +158,12 @@ fn record_with_forwarding_example_test() {
 
     // Since the request was forwarded, we should see a GitHub API response.
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response
-        .text()
-        .unwrap()
-        .contains("Simple yet powerful HTTP mocking library for Rust"));
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .contains("Simple yet powerful HTTP mocking library for Rust")
+    );
 
     // Save the recording to
     // "target/httpmock/recordings/website-via-forwarding_<timestamp>.yaml".
@@ -175,10 +181,12 @@ fn record_with_forwarding_example_test() {
     // matches the recorded data
     let response = client.get(playback_server.base_url()).send().unwrap();
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response
-        .text()
-        .unwrap()
-        .contains("Simple yet powerful HTTP mocking library for Rust"));
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .contains("Simple yet powerful HTTP mocking library for Rust")
+    );
 }
 // @example-end
 
@@ -213,10 +221,12 @@ fn playback_github_api() {
 
     // Assert that the response from the forwarded request is as expected
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response
-        .text()
-        .unwrap()
-        .contains("Simple yet powerful HTTP mocking library for Rust"));
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .contains("Simple yet powerful HTTP mocking library for Rust")
+    );
 
     // Save the recorded interactions to a file
     let target_path = recording
@@ -234,10 +244,12 @@ fn playback_github_api() {
     // matches the recorded data
     let response = client.get(playback_server.base_url()).send().unwrap();
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response
-        .text()
-        .unwrap()
-        .contains("Simple yet powerful HTTP mocking library for Rust"));
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .contains("Simple yet powerful HTTP mocking library for Rust")
+    );
 }
 // @example-end
 
@@ -253,13 +265,10 @@ fn record_with_forwarding_all_request_parts_test() {
     });
 
     let recording = server.record(|rule| {
-        rule.record_request_headers(vec![
-            String::from("X-Auth-Token"),
-            String::from("Accept-Language"),
-        ])
-        .filter(|when| {
-            when.any_request(); // Ensure all requests are recorded.
-        });
+        rule.record_request_headers(vec![String::from("X-Auth-Token"), String::from("Accept-Language")])
+            .filter(|when| {
+                when.any_request(); // Ensure all requests are recorded.
+            });
     });
 
     let client = Client::new();
@@ -284,10 +293,12 @@ fn record_with_forwarding_all_request_parts_test() {
 
     // Send "original" request
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response
-        .text()
-        .unwrap()
-        .contains("Simple yet powerful HTTP mocking library for Rust"));
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .contains("Simple yet powerful HTTP mocking library for Rust")
+    );
 
     let recording_file_path = recording
         .save("website-via-forwarding")
@@ -306,8 +317,10 @@ fn record_with_forwarding_all_request_parts_test() {
         .unwrap();
 
     assert_eq!(response.status().as_u16(), 200);
-    assert!(response
-        .text()
-        .unwrap()
-        .contains("Simple yet powerful HTTP mocking library for Rust"));
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .contains("Simple yet powerful HTTP mocking library for Rust")
+    );
 }

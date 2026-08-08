@@ -19,14 +19,8 @@ where
 }
 
 pub(crate) fn new(worker_threads: usize, blocking_threads: usize) -> std::io::Result<Runtime> {
-    assert!(
-        worker_threads > 0,
-        "Parameter worker_threads must be larger than 0"
-    );
-    assert!(
-        blocking_threads > 0,
-        "Parameter blocking_threads must be larger than 0"
-    );
+    assert!(worker_threads > 0, "Parameter worker_threads must be larger than 0");
+    assert!(blocking_threads > 0, "Parameter blocking_threads must be larger than 0");
 
     tokio::runtime::Builder::new_multi_thread()
         .worker_threads(worker_threads)

@@ -8,12 +8,12 @@ use bytes::Bytes;
 #[cfg(feature = "record")]
 use crate::common::util::write_file;
 use crate::{
+    When,
     api::server::MockServer,
     common::{
         data::{RecordingRuleConfig, RequestRequirements},
         util::Join,
     },
-    When,
 };
 
 /// Represents a forwarding rule on a [MockServer](struct.MockServer.html), allowing HTTP requests
@@ -281,11 +281,7 @@ pub struct ForwardingRuleBuilder {
 }
 
 impl ForwardingRuleBuilder {
-    pub fn add_request_header<Key: Into<String>, Value: Into<String>>(
-        self,
-        key: Key,
-        value: Value,
-    ) -> Self {
+    pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
         let mut headers = self.headers.take();
         headers.push((key.into(), value.into()));
         self.headers.set(headers);
@@ -310,11 +306,7 @@ pub struct ProxyRuleBuilder {
 }
 
 impl ProxyRuleBuilder {
-    pub fn add_request_header<Key: Into<String>, Value: Into<String>>(
-        self,
-        key: Key,
-        value: Value,
-    ) -> Self {
+    pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
         let mut headers = self.headers.take();
         headers.push((key.into(), value.into()));
         self.headers.set(headers);
@@ -345,14 +337,9 @@ impl RecordingRuleBuilder {
         self
     }
 
-    pub fn record_request_headers<IntoString: Into<String>>(
-        self,
-        headers: Vec<IntoString>,
-    ) -> Self {
+    pub fn record_request_headers<IntoString: Into<String>>(self, headers: Vec<IntoString>) -> Self {
         let mut config = self.config.take();
-        config
-            .record_headers
-            .extend(headers.into_iter().map(Into::into));
+        config.record_headers.extend(headers.into_iter().map(Into::into));
         self.config.set(config);
         self
     }

@@ -29,10 +29,7 @@ fn showcase_test() {
         then.status(200);
     });
 
-    let uri = format!(
-        "http://{}/test?myQueryParam=%C3%BCberschall",
-        server.address()
-    );
+    let uri = format!("http://{}/test?myQueryParam=%C3%BCberschall", server.address());
     let client = Client::new();
     let response = client
         .post(&uri)

@@ -146,81 +146,63 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn query_param_exists(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn query_param_exists(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.query_param_exists
             .as_ref()
             .map(|v| v.iter().map(|v| (v, None)).collect())
     }
 
     #[inline]
-    pub fn query_param_missing(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn query_param_missing(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.query_param_missing
             .as_ref()
             .map(|v| v.iter().map(|v| (v, None)).collect())
     }
 
     #[inline]
-    pub fn query_param_includes(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn query_param_includes(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.query_param_includes
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn query_param_excludes(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn query_param_excludes(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.query_param_excludes
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn query_param_prefix(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn query_param_prefix(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.query_param_prefix
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn query_param_prefix_not(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn query_param_prefix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.query_param_prefix_not
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn query_param_suffix(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn query_param_suffix(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.query_param_suffix
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn query_param_suffix_not(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn query_param_suffix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.query_param_suffix_not
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn query_param_matches(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&HttpMockRegex, Option<&HttpMockRegex>)>> {
+    pub fn query_param_matches(mock: &RequestRequirements) -> Option<Vec<(&HttpMockRegex, Option<&HttpMockRegex>)>> {
         mock.query_param_matches
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
@@ -285,9 +267,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn header_prefix_not(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn header_prefix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.header_prefix_not
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
@@ -301,18 +281,14 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn header_suffix_not(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn header_suffix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.header_suffix_not
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn header_matches(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&HttpMockRegex, Option<&HttpMockRegex>)>> {
+    pub fn header_matches(mock: &RequestRequirements) -> Option<Vec<(&HttpMockRegex, Option<&HttpMockRegex>)>> {
         mock.header_matches
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
@@ -377,9 +353,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn cookie_prefix_not(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn cookie_prefix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_prefix_not
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
@@ -393,18 +367,14 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn cookie_suffix_not(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn cookie_suffix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_suffix_not
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn cookie_matches(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&HttpMockRegex, Option<&HttpMockRegex>)>> {
+    pub fn cookie_matches(mock: &RequestRequirements) -> Option<Vec<(&HttpMockRegex, Option<&HttpMockRegex>)>> {
         mock.cookie_matches
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
@@ -493,87 +463,67 @@ pub mod expectations {
         mock.is_false.as_ref().map(|b| b.iter().collect())
     }
 
-    pub fn form_urlencoded_tuple(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_tuple(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
-    pub fn form_urlencoded_tuple_not(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_tuple_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple_not
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
-    pub fn form_urlencoded_key_exists(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_key_exists(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple_exists
             .as_ref()
             .map(|v| v.iter().map(|v| (v, None)).collect())
     }
 
-    pub fn form_urlencoded_key_missing(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_key_missing(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple_missing
             .as_ref()
             .map(|v| v.iter().map(|v| (v, None)).collect())
     }
 
     #[inline]
-    pub fn form_urlencoded_includes(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_includes(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple_includes
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn form_urlencoded_excludes(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_excludes(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple_excludes
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn form_urlencoded_prefix(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_prefix(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple_prefix
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn form_urlencoded_prefix_not(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_prefix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple_prefix_not
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn form_urlencoded_suffix(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_suffix(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple_suffix
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
     }
 
     #[inline]
-    pub fn form_urlencoded_suffix_not(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn form_urlencoded_suffix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.form_urlencoded_tuple_suffix_not
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())

@@ -24,15 +24,7 @@ fn headers_test() {
     // Assert
     m.assert();
     assert_eq!(response.status(), 201);
-    assert_eq!(
-        response
-            .headers()
-            .get("Content-Length")
-            .unwrap()
-            .to_str()
-            .unwrap(),
-        "0"
-    );
+    assert_eq!(response.headers().get("Content-Length").unwrap().to_str().unwrap(), "0");
 }
 
 #[test]

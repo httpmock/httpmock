@@ -6,8 +6,7 @@ fn file_body_test() {
     let server = MockServer::start();
     let m = server.mock(|when, then| {
         when.path("/hello");
-        then.status(200)
-            .body_from_file("tests/resources/simple_body.txt");
+        then.status(200).body_from_file("tests/resources/simple_body.txt");
     });
 
     // Act

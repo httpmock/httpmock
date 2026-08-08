@@ -7,9 +7,9 @@ use std::{
 };
 
 use http::{HeaderValue, StatusCode, Uri};
-use hyper::{body::Bytes, Method, Request, Response};
+use hyper::{Method, Request, Response, body::Bytes};
 use path_tree::{Path, PathTree};
-use serde::{de::DeserializeOwned, Serialize};
+use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
 use tokio::time::Instant;
 
@@ -23,17 +23,16 @@ use crate::{
     common::{
         data,
         data::{
-            Error as DataError, ErrorResponse, ForwardingRuleConfig, MockDefinition,
-            ProxyRuleConfig, RequestRequirements,
+            Error as DataError, ErrorResponse, ForwardingRuleConfig, MockDefinition, ProxyRuleConfig,
+            RequestRequirements,
         },
         runtime,
     },
     prelude::{HttpMockRequest, HttpMockResponse},
     server::{
         handler::Error::{
-            InvalidHeader, ParamError, ParamFormatError, RequestBodyDeserializeError,
-            RequestConversionError, ResponseBodyConversionError, ResponseBodySerializeError,
-            ResponseDataConversionError,
+            InvalidHeader, ParamError, ParamFormatError, RequestBodyDeserializeError, RequestConversionError,
+            ResponseBodyConversionError, ResponseBodySerializeError, ResponseDataConversionError,
         },
         state,
         state::StateManager,
@@ -95,10 +94,7 @@ enum RoutePath {
 }
 
 pub(crate) trait Handler {
-    fn handle(
-        &self,
-        req: Request<Bytes>,
-    ) -> impl Future<Output = Result<Response<Bytes>, Error>> + Send;
+    fn handle(&self, req: Request<Bytes>) -> impl Future<Output = Result<Response<Bytes>, Error>> + Send;
 }
 
 pub struct HttpMockHandler<S>
@@ -217,14 +213,8 @@ where
 
             #[cfg(feature = "proxy")]
             {
-                path_tree.insert(
-                    "/__httpmock__/forwarding_rules",
-                    RoutePath::ForwardingRuleCollection,
-                );
-                path_tree.insert(
-                    "/__httpmock__/forwarding_rules/:id",
-                    RoutePath::SingleForwardingRule,
-                );
+                path_tree.insert("/__httpmock__/forwarding_rules", RoutePath::ForwardingRuleCollection);
+                path_tree.insert("/__httpmock__/forwarding_rules/:id", RoutePath::SingleForwardingRule);
                 path_tree.insert("/__httpmock__/proxy_rules", RoutePath::ProxyRuleCollection);
                 path_tree.insert("/__httpmock__/proxy_rules/:id", RoutePath::SingleProxyRule);
             }
@@ -261,9 +251,7 @@ where
 
     fn handle_read_mock(&self, params: Path) -> Result<Response<Bytes>, Error> {
         let active_mock = self.state.read_mock(param("id", params)?)?;
-        let status_code = active_mock
-            .as_ref()
-            .map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
+        let status_code = active_mock.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, active_mock)
     }
 
@@ -290,9 +278,7 @@ where
     fn handle_verify(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let requirements: RequestRequirements = parse_json_body(req)?;
         let closest_match = self.state.verify(&requirements)?;
-        let status_code = closest_match
-            .as_ref()
-            .map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
+        let status_code = closest_match.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, closest_match)
     }
 
@@ -365,20 +351,16 @@ where
     #[cfg(feature = "record")]
     fn handle_read_recording(&self, params: Path) -> Result<Response<Bytes>, Error> {
         let rec = self.state.export_recording(param("id", params)?)?;
-        let status_code = rec
-            .as_ref()
-            .map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
+        let status_code = rec.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, rec)
     }
 
     #[cfg(feature = "record")]
     fn handle_load_recording(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
-        let recording_file_content = std::str::from_utf8(req.body())
-            .map_err(|err| RequestConversionError(err.to_string()))?;
+        let recording_file_content =
+            std::str::from_utf8(req.body()).map_err(|err| RequestConversionError(err.to_string()))?;
 
-        let rec = self
-            .state
-            .load_mocks_from_recording(recording_file_content)?;
+        let rec = self.state.load_mocks_from_recording(recording_file_content)?;
         response(StatusCode::OK, Some(rec))
     }
 
@@ -387,34 +369,29 @@ where
             .try_into()
             .map_err(|err: DataError| RequestConversionError(err.to_string()))?;
 
+        #[cfg(feature = "record")]
         let start = Instant::now();
 
         #[cfg(feature = "proxy")]
-        let (res, is_proxied) =
-            if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
-                (self.forward(rule, req).await?, false)
-            } else if let Some(rule) = self.state.find_proxy_rule(&internal_request)? {
-                (self.proxy(rule, req).await?, true)
-            } else {
-                (self.serve_mock(&internal_request).await?, false)
-            };
+        let (res, is_proxied) = if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
+            (self.forward(rule, req).await?, false)
+        } else if let Some(rule) = self.state.find_proxy_rule(&internal_request)? {
+            (self.proxy(rule, req).await?, true)
+        } else {
+            (self.serve_mock(&internal_request).await?, false)
+        };
 
         #[cfg(not(feature = "proxy"))]
         let (res, is_proxied) = (self.serve_mock(&internal_request).await?, false);
 
         #[cfg(feature = "record")]
-        self.state
-            .record(is_proxied, start.elapsed(), internal_request, &res)?;
+        self.state.record(is_proxied, start.elapsed(), internal_request, &res)?;
 
         Ok(res)
     }
 
     #[cfg(feature = "proxy")]
-    async fn forward(
-        &self,
-        rule: ActiveForwardingRule,
-        req: Request<Bytes>,
-    ) -> Result<Response<Bytes>, Error> {
+    async fn forward(&self, rule: ActiveForwardingRule, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let to_base_uri: Uri = rule.config.target_base_url.parse().unwrap();
 
         let (mut req_parts, body) = req.into_parts();
@@ -459,11 +436,7 @@ where
     }
 
     #[cfg(feature = "proxy")]
-    async fn proxy(
-        &self,
-        rule: ActiveProxyRule,
-        mut req: Request<Bytes>,
-    ) -> Result<Response<Bytes>, Error> {
+    async fn proxy(&self, rule: ActiveProxyRule, mut req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         if !rule.config.request_header.is_empty() {
             let headers = req.headers_mut();
 
@@ -486,16 +459,11 @@ where
         Ok(self.http_client.send(req).await?)
     }
 
-    async fn serve_mock(
-        &self,
-        req: &HttpMockRequest,
-    ) -> Result<http::Response<bytes::Bytes>, Error> {
+    async fn serve_mock(&self, req: &HttpMockRequest) -> Result<http::Response<bytes::Bytes>, Error> {
         let Some(definition) = self.state.serve_mock(req)? else {
             return response(
                 http::StatusCode::NOT_FOUND,
-                Some(ErrorResponse::new(
-                    &"Request did not match any route or mock",
-                )),
+                Some(ErrorResponse::new(&"Request did not match any route or mock")),
             );
         };
 
@@ -504,19 +472,17 @@ where
         }
 
         // Resolve dynamic vs. static response into HttpMockResponse
-        let resp_def: HttpMockResponse =
-            definition
-                .respond_with
-                .map(|f| f(req))
-                .unwrap_or_else(|| HttpMockResponse {
-                    status: definition.status.or(Some(StatusCode::OK.as_u16())),
-                    headers: definition.headers,
-                    body: definition.body,
-                });
+        let resp_def: HttpMockResponse = definition
+            .respond_with
+            .map(|f| f(req))
+            .unwrap_or_else(|| HttpMockResponse {
+                status: definition.status.or(Some(StatusCode::OK.as_u16())),
+                headers: definition.headers,
+                body: definition.body,
+            });
 
         // Convert via your TryFrom<HttpMockResponse> impl
-        let http_resp: http::Response<bytes::Bytes> =
-            resp_def.try_into().map_err(ResponseDataConversionError)?;
+        let http_resp: http::Response<bytes::Bytes> = resp_def.try_into().map_err(ResponseDataConversionError)?;
 
         Ok(http_resp)
     }
@@ -554,17 +520,14 @@ where
             .map_err(ResponseBodyConversionError);
     }
 
-    builder
-        .body(Bytes::new())
-        .map_err(ResponseBodyConversionError)
+    builder.body(Bytes::new()).map_err(ResponseBodyConversionError)
 }
 
 fn parse_json_body<T>(req: Request<Bytes>) -> Result<T, Error>
 where
     T: DeserializeOwned,
 {
-    let body: T =
-        serde_json::from_slice(req.body().as_ref()).map_err(RequestBodyDeserializeError)?;
+    let body: T = serde_json::from_slice(req.body().as_ref()).map_err(RequestBodyDeserializeError)?;
     Ok(body)
 }
 

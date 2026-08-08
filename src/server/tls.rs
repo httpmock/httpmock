@@ -54,10 +54,7 @@ pub struct GeneratingCertificateResolverFactory {
 }
 
 impl<'a> GeneratingCertificateResolverFactory {
-    pub fn new<IntoString: Into<String>>(
-        ca_cert: IntoString,
-        ca_key: IntoString,
-    ) -> Result<Self, Error> {
+    pub fn new<IntoString: Into<String>>(ca_cert: IntoString, ca_key: IntoString) -> Result<Self, Error> {
         Ok(Self {
             state: Arc::new(SharedState {
                 certificates: RwLock::new(HashMap::new()),
@@ -90,9 +87,8 @@ impl<'a> GeneratingCertificateResolver {
         let mut certificates = Vec::new();
         let certs_iterator = CertificateDer::pem_reader_iter(cert_pem_reader);
         for cert_result in certs_iterator {
-            let cert = cert_result.map_err(|err| {
-                GenerateCertificateError(format!("cannot use generated certificate: {:?}", err))
-            })?; // Propagate error if any
+            let cert = cert_result
+                .map_err(|err| GenerateCertificateError(format!("cannot use generated certificate: {:?}", err)))?; // Propagate error if any
             certificates.push(cert);
         }
 
@@ -101,9 +97,8 @@ impl<'a> GeneratingCertificateResolver {
 
     fn load_private_key(key_pem: String) -> Result<PrivateKeyDer<'a>, Error> {
         let cert_pem_reader = Cursor::new(key_pem.into_bytes());
-        let private_key = PrivateKeyDer::from_pem_reader(cert_pem_reader).map_err(|err| {
-            GenerateCertificateError(format!("cannot use generated private key: {:?}", err))
-        })?;
+        let private_key = PrivateKeyDer::from_pem_reader(cert_pem_reader)
+            .map_err(|err| GenerateCertificateError(format!("cannot use generated private key: {:?}", err)))?;
         Ok(private_key)
     }
 
@@ -149,7 +144,10 @@ impl<'a> GeneratingCertificateResolver {
     pub fn generate_host_certificate(&'a self, hostname: &str) -> Result<Arc<CertifiedKey>, Error> {
         // Create a key pair for the CA from the provided PEM
         let ca_key = KeyPair::from_pem(&self.state.ca_key_str).map_err(|err| {
-            CaCertificateError(format!("Expected CA key to be provided in PEM format but failed to parse it (host: {}: error: {:?})", hostname, err))
+            CaCertificateError(format!(
+                "Expected CA key to be provided in PEM format but failed to parse it (host: {}: error: {:?})",
+                hostname, err
+            ))
         })?;
 
         // Set up certificate parameters for the new certificate
@@ -236,7 +234,10 @@ impl<'a> GeneratingCertificateResolver {
         })?;
 
         let certificates = Self::load_certificates(cert_pem).map_err(|err| {
-            GenerateCertificateError(format!("Cannot convert generated generated cert PEN to list of certificates (host: {}: error: {:?})", hostname, err))
+            GenerateCertificateError(format!(
+                "Cannot convert generated generated cert PEN to list of certificates (host: {}: error: {:?})",
+                hostname, err
+            ))
         })?;
 
         let signing_key = any_supported_type(&private_key).map_err(|err| {
@@ -294,9 +295,7 @@ fn parse_extra_sans_from_env() -> Vec<SanType> {
     for item in raw.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()) {
         if let Ok(ip) = item.parse::<std::net::IpAddr>() {
             out.push(SanType::IpAddress(ip));
-        } else if let Ok(dns) =
-            <rcgen::string::Ia5String as std::convert::TryFrom<&str>>::try_from(item)
-        {
+        } else if let Ok(dns) = <rcgen::string::Ia5String as std::convert::TryFrom<&str>>::try_from(item) {
             out.push(SanType::DnsName(dns));
         }
     }
@@ -330,9 +329,8 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
             tracing::info!("have hostname: {}", hostname);
 
             return Some(
-                self.generate(hostname).unwrap_or_else(|_| {
-                    panic!("Cannot generate certificate for host {}", hostname)
-                }),
+                self.generate(hostname)
+                    .unwrap_or_else(|_| panic!("Cannot generate certificate for host {}", hostname)),
             );
         }
 
@@ -402,11 +400,7 @@ impl<'a> tls_detect::Read<'a> for TcpStreamPeekBuffer<'a> {
         Ok(self.buffer[from_offset])
     }
 
-    async fn read_bytes(
-        &mut self,
-        from_offset: usize,
-        to_offset: usize,
-    ) -> std::io::Result<Vec<u8>> {
+    async fn read_bytes(&mut self, from_offset: usize, to_offset: usize) -> std::io::Result<Vec<u8>> {
         self.advance(to_offset).await?;
         Ok(self.buffer[from_offset..to_offset].to_vec())
     }

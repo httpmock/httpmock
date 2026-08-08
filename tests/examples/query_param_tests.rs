@@ -6,8 +6,7 @@ fn url_param_matching_test() {
     let server = MockServer::start();
 
     let m = server.mock(|when, then| {
-        when.query_param("query", "Metallica")
-            .query_param_exists("query");
+        when.query_param("query", "Metallica").query_param_exists("query");
         then.status(200);
     });
 
@@ -24,8 +23,7 @@ fn url_param_urlencoded_matching_test() {
     let server = MockServer::start();
 
     let m = server.mock(|when, then| {
-        when.query_param("query", "Motörhead")
-            .query_param_exists("query");
+        when.query_param("query", "Motörhead").query_param_exists("query");
         then.status(200);
     });
 
@@ -42,8 +40,7 @@ fn url_param_unencoded_matching_test() {
     let server = MockServer::start();
 
     let m = server.mock(|when, then| {
-        when.query_param("query", "Motörhead")
-            .query_param_exists("query");
+        when.query_param("query", "Motörhead").query_param_exists("query");
         then.status(200);
     });
 

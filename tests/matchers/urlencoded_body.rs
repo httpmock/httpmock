@@ -1,6 +1,6 @@
 use httpmock::{MockServer, When};
 
-use crate::matchers::{expect_fails_with2, MultiValueMatcherTestSet};
+use crate::matchers::{MultiValueMatcherTestSet, expect_fails_with2};
 
 #[test]
 fn form_urlencoded_tuple() {

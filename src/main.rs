@@ -6,10 +6,7 @@ use tracing_subscriber::EnvFilter;
 
 /// Holds command line parameters provided by the user.
 #[derive(Parser, Debug)]
-#[clap(
-    version = "0.6",
-    author = "Alexander Liesenfeld <alexander.liesenfeld@outlook.com>"
-)]
+#[clap(version = "0.6", author = "Alexander Liesenfeld <alexander.liesenfeld@outlook.com>")]
 struct ExecutionParameters {
     #[clap(short, long, env = "HTTPMOCK_PORT", default_value = "5050")]
     pub port: u16,
@@ -19,21 +16,14 @@ struct ExecutionParameters {
     pub mock_files_dir: Option<PathBuf>,
     #[clap(short, long, env = "HTTPMOCK_DISABLE_ACCESS_LOG")]
     pub disable_access_log: bool,
-    #[clap(
-        short,
-        long,
-        env = "HTTPMOCK_REQUEST_HISTORY_LIMIT",
-        default_value = "100"
-    )]
+    #[clap(short, long, env = "HTTPMOCK_REQUEST_HISTORY_LIMIT", default_value = "100")]
     pub request_history_limit: usize,
 }
 
 #[tokio::main]
 async fn main() {
     tracing_subscriber::fmt()
-        .with_env_filter(
-            EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("httpmock=info")),
-        )
+        .with_env_filter(EnvFilter::try_from_default_env().unwrap_or_else(|_| EnvFilter::new("httpmock=info")))
         .init();
 
     let params: ExecutionParameters = ExecutionParameters::parse();
@@ -72,12 +62,10 @@ async fn main() {
 async fn shutdown_signal() {
     let mut hangup_stream = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::hangup())
         .expect("Cannot install SIGINT signal handler");
-    let mut sigint_stream =
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
-            .expect("Cannot install SIGINT signal handler");
-    let mut sigterm_stream =
-        tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-            .expect("Cannot install SIGINT signal handler");
+    let mut sigint_stream = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
+        .expect("Cannot install SIGINT signal handler");
+    let mut sigterm_stream = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
+        .expect("Cannot install SIGINT signal handler");
 
     tokio::select! {
         _val = hangup_stream.recv() => tracing::trace!("Received SIGINT"),

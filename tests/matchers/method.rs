@@ -41,13 +41,7 @@ fn failure_method() {
 
             m.assert()
         },
-        vec![
-            "Method Mismatch",
-            "Expected method equals",
-            "POST",
-            "Received",
-            "GET",
-        ],
+        vec!["Method Mismatch", "Expected method equals", "POST", "Received", "GET"],
     )
 }
 

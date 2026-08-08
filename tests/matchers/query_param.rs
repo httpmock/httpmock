@@ -1,6 +1,6 @@
 use httpmock::{MockServer, When};
 
-use crate::matchers::{expect_fails_with2, to_urlencoded_query_string, MultiValueMatcherTestSet};
+use crate::matchers::{MultiValueMatcherTestSet, expect_fails_with2, to_urlencoded_query_string};
 
 #[test]
 fn query_param() {

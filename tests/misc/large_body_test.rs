@@ -14,8 +14,7 @@ fn large_body_test() {
     let server = MockServer::connect("localhost:5050");
 
     let search_mock = server.mock(|when, then| {
-        when.path("/search")
-            .body("wow so large".repeat(1024 * 1024 * 10)); // 10 MB body
+        when.path("/search").body("wow so large".repeat(1024 * 1024 * 10)); // 10 MB body
         then.status(202);
     });
 

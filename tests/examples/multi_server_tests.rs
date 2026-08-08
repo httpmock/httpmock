@@ -18,10 +18,7 @@ fn multi_server_test() {
         then.status(200);
     });
 
-    let client = Client::builder()
-        .redirect(Policy::limited(10))
-        .build()
-        .unwrap();
+    let client = Client::builder().redirect(Policy::limited(10)).build().unwrap();
 
     let response = client.get(server1.url("/redirectTest")).send().unwrap();
 

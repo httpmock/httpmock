@@ -52,8 +52,7 @@ async fn async_standalone_test() {
 
     let search_mock = server
         .mock_async(|when, then| {
-            when.path_includes("/search")
-                .query_param("query", "metallica");
+            when.path_includes("/search").query_param("query", "metallica");
             then.status(202);
         })
         .await;
@@ -61,10 +60,7 @@ async fn async_standalone_test() {
     // Act: Send the HTTP request
     let client = Client::new();
     let response = client
-        .get(format!(
-            "http://{}/search?query=metallica",
-            server.address()
-        ))
+        .get(format!("http://{}/search?query=metallica", server.address()))
         .send()
         .await
         .unwrap();

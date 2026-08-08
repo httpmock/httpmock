@@ -61,11 +61,7 @@ where
     S: ToString,
 {
     // Convert expected texts into a Vec<String>
-    let expected_texts: Vec<String> = expected_texts
-        .into()
-        .into_iter()
-        .map(|s| s.to_string())
-        .collect();
+    let expected_texts: Vec<String> = expected_texts.into().into_iter().map(|s| s.to_string()).collect();
 
     // Suppress panic output for this invocation
     let default_hook = panic::take_hook();
@@ -755,13 +751,7 @@ impl SingleValueMatcherDataSet<&'static str, &'static str> {
 fn to_urlencoded_query_string(params: Vec<(&str, &str)>) -> String {
     params
         .into_iter()
-        .map(|(key, value)| {
-            format!(
-                "{}={}",
-                urlencoding::encode(key),
-                urlencoding::encode(value)
-            )
-        })
+        .map(|(key, value)| format!("{}={}", urlencoding::encode(key), urlencoding::encode(value)))
         .collect::<Vec<String>>()
         .join("&")
 }

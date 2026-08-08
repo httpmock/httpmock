@@ -26,7 +26,7 @@ async fn https_test_reqwest() {
     use std::{fs::read, path::PathBuf};
 
     use httpmock::MockServer;
-    use reqwest::{tls::Certificate, Client};
+    use reqwest::{Client, tls::Certificate};
 
     // This starts up a standalone server in the background running on port 5050
     crate::with_standalone_server();
@@ -49,17 +49,11 @@ async fn https_test_reqwest() {
     let cert = Certificate::from_pem(&read(cert_path).unwrap()).unwrap();
 
     // Build the client with the CA certificate
-    let client = Client::builder()
-        .add_root_certificate(cert)
-        .build()
-        .unwrap();
+    let client = Client::builder().add_root_certificate(cert).build().unwrap();
 
     let res = client.get(&base_url).send().await.unwrap();
 
     assert_eq!(res.status(), 200);
-    assert_eq!(
-        res.headers().get("X-Hello").unwrap().to_str().unwrap(),
-        "test"
-    );
+    assert_eq!(res.headers().get("X-Hello").unwrap().to_str().unwrap(), "test");
     assert!(base_url.starts_with("https://"));
 }

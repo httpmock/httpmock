@@ -9,7 +9,7 @@ use std::{
     sync::Arc,
 };
 
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;
 #[cfg(feature = "cookies")]
 use headers::{Cookie, HeaderMapExt};
@@ -18,12 +18,10 @@ use serde_json::Value;
 
 use crate::{
     common::{
-        data::Error::{
-            HeaderDeserializationError, RequestConversionError, StaticMockConversionError,
-        },
+        data::Error::{HeaderDeserializationError, RequestConversionError, StaticMockConversionError},
         util::HttpMockBytes,
     },
-    server::{matchers::generic::MatchingStrategy, RequestMetadata},
+    server::{RequestMetadata, matchers::generic::MatchingStrategy},
 };
 
 #[derive(thiserror::Error, Debug)]
@@ -150,11 +148,7 @@ impl HttpMockRequest {
     /// `None` if neither is found.
     pub fn host(&self) -> Option<String> {
         // Check the Host header first (HTTP 1.1)
-        if let Some((_, host)) = self
-            .headers
-            .iter()
-            .find(|(k, _)| k.eq_ignore_ascii_case("host"))
-        {
+        if let Some((_, host)) = self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("host")) {
             return Some(host.split(':').next().unwrap().to_string());
         }
 
@@ -182,26 +176,20 @@ impl HttpMockRequest {
     /// or 443 (https) or 80 (http) based on the used scheme otherwise.
     pub fn port(&self) -> u16 {
         // Check the Host header first (HTTP 1.1)
-        if let Some((_, host)) = self
-            .headers
-            .iter()
-            .find(|(k, _)| k.eq_ignore_ascii_case("host"))
+        if let Some((_, host)) = self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("host"))
+            && let Some(port_str) = host.split(':').nth(1)
+            && let Ok(port) = port_str.parse::<u16>()
         {
-            if let Some(port_str) = host.split(':').nth(1) {
-                if let Ok(port) = port_str.parse::<u16>() {
-                    return port;
-                }
-            }
+            return port;
         }
 
         // If Host header is not found, check the URI authority (HTTP/2 and HTTP/3)
         let uri = self.uri();
-        if let Some(authority) = uri.authority() {
-            if let Some(port_str) = authority.as_str().split(':').nth(1) {
-                if let Ok(port) = port_str.parse::<u16>() {
-                    return port;
-                }
-            }
+        if let Some(authority) = uri.authority()
+            && let Some(port_str) = authority.as_str().split(':').nth(1)
+            && let Ok(port) = port_str.parse::<u16>()
+        {
+            return port;
         }
 
         if self.scheme().eq("https") {
@@ -302,9 +290,7 @@ fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)
         .iter()
         .map(|(name, value)| {
             // Attempt to convert the HeaderValue to a &str, returning an error if it fails.
-            let value_str = value
-                .to_str()
-                .map_err(|e| RequestConversionError(e.to_string()))?;
+            let value_str = value.to_str().map_err(|e| RequestConversionError(e.to_string()))?;
             Ok((name.as_str().to_string(), value_str.to_string()))
         })
         .collect()
@@ -345,9 +331,8 @@ where
 {
     fn from(req: http::Request<B>) -> Self {
         // Use by-ref conversion; we still have access to extensions while owning `req`.
-        <HttpMockRequest as TryFrom<&http::Request<B>>>::try_from(&req).expect(
-            "invalid http::Request for HttpMockRequest: missing metadata or invalid headers/body",
-        )
+        <HttpMockRequest as TryFrom<&http::Request<B>>>::try_from(&req)
+            .expect("invalid http::Request for HttpMockRequest: missing metadata or invalid headers/body")
     }
 }
 
@@ -435,35 +420,25 @@ impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
             .status
             .ok_or_else(|| Error::ResponseConversionError("missing status".into()))?;
 
-        let status = http::StatusCode::from_u16(raw_status).map_err(|_| {
-            Error::ResponseConversionError(format!("invalid status: {}", raw_status))
-        })?;
+        let status = http::StatusCode::from_u16(raw_status)
+            .map_err(|_| Error::ResponseConversionError(format!("invalid status: {}", raw_status)))?;
 
         let mut builder = http::Response::builder().status(status);
 
         if let Some(headers) = &res.headers {
             for (name, value) in headers {
-                let header_name =
-                    http::header::HeaderName::try_from(name.clone()).map_err(|_| {
-                        Error::ResponseConversionError(format!("invalid header name: {}", name))
-                    })?;
+                let header_name = http::header::HeaderName::try_from(name.clone())
+                    .map_err(|_| Error::ResponseConversionError(format!("invalid header name: {}", name)))?;
 
-                let header_value =
-                    http::header::HeaderValue::try_from(value.clone()).map_err(|_| {
-                        Error::ResponseConversionError(format!(
-                            "invalid header value for '{}': {}",
-                            name, value
-                        ))
-                    })?;
+                let header_value = http::header::HeaderValue::try_from(value.clone()).map_err(|_| {
+                    Error::ResponseConversionError(format!("invalid header value for '{}': {}", name, value))
+                })?;
 
                 builder = builder.header(header_name, header_value);
             }
         }
 
-        let body = res
-            .body
-            .as_ref()
-            .map_or(bytes::Bytes::new(), |b| b.0.clone());
+        let body = res.body.as_ref().map_or(bytes::Bytes::new(), |b| b.0.clone());
 
         builder
             .body(body)
@@ -546,9 +521,9 @@ where
         let mut headers = Vec::with_capacity(resp.headers().len());
         for (name, value) in resp.headers() {
             let name = name.as_str().to_string();
-            let val = value.to_str().map_err(|_| {
-                Error::ResponseConversionError(format!("non-utf8 header value for '{}'", name))
-            })?;
+            let val = value
+                .to_str()
+                .map_err(|_| Error::ResponseConversionError(format!("non-utf8 header value for '{}'", name)))?;
             headers.push((name, val.to_string()));
         }
 
@@ -612,10 +587,7 @@ impl HttpMockResponseBuilder {
         K: Into<String>,
         V: Into<String>,
     {
-        self.headers = headers
-            .into_iter()
-            .map(|(k, v)| (k.into(), v.into()))
-            .collect();
+        self.headers = headers.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
         self
     }
 
@@ -657,8 +629,7 @@ pub struct MockServerHttpResponse {
     pub body: Option<HttpMockBytes>,
     pub delay: Option<u64>,
     #[serde(skip)]
-    pub respond_with:
-        Option<std::sync::Arc<dyn Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync>>,
+    pub respond_with: Option<std::sync::Arc<dyn Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync>>,
 }
 
 impl MockServerHttpResponse {
@@ -695,11 +666,7 @@ impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
 
         Ok(Self {
             status: Some(value.status().as_u16()),
-            headers: if !headers.is_empty() {
-                Some(headers)
-            } else {
-                None
-            },
+            headers: if !headers.is_empty() { Some(headers) } else { None },
             body: if !value.body().is_empty() {
                 Some(HttpMockBytes::from(value.body().clone()))
             } else {
@@ -713,7 +680,7 @@ impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
 
 /// Serializes and deserializes the response body to/from a Base64 string.
 mod opt_vector_serde_base64 {
-    use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+    use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
     use bytes::Bytes;
     use serde::{Deserialize, Deserializer, Serializer};
 
@@ -853,38 +820,38 @@ pub struct RequestRequirements {
     pub query_param: Option<Vec<(String, String)>>,
     pub query_param_not: Option<Vec<(String, String)>>, // NEW
     pub query_param_exists: Option<Vec<String>>,
-    pub query_param_missing: Option<Vec<String>>, // NEW
-    pub query_param_includes: Option<Vec<(String, String)>>, // NEW
-    pub query_param_excludes: Option<Vec<(String, String)>>, // NEW
-    pub query_param_prefix: Option<Vec<(String, String)>>, // NEW
-    pub query_param_suffix: Option<Vec<(String, String)>>, // NEW
+    pub query_param_missing: Option<Vec<String>>,              // NEW
+    pub query_param_includes: Option<Vec<(String, String)>>,   // NEW
+    pub query_param_excludes: Option<Vec<(String, String)>>,   // NEW
+    pub query_param_prefix: Option<Vec<(String, String)>>,     // NEW
+    pub query_param_suffix: Option<Vec<(String, String)>>,     // NEW
     pub query_param_prefix_not: Option<Vec<(String, String)>>, // NEW
     pub query_param_suffix_not: Option<Vec<(String, String)>>, // NEW
     pub query_param_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>, // NEW
     pub query_param_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>, // NEW
-    pub header: Option<Vec<(String, String)>>,    // CHANGED from headers to header
-    pub header_not: Option<Vec<(String, String)>>, // NEW
+    pub header: Option<Vec<(String, String)>>,                 // CHANGED from headers to header
+    pub header_not: Option<Vec<(String, String)>>,             // NEW
     pub header_exists: Option<Vec<String>>,
-    pub header_missing: Option<Vec<String>>,            // NEW
-    pub header_includes: Option<Vec<(String, String)>>, // NEW
-    pub header_excludes: Option<Vec<(String, String)>>, // NEW
-    pub header_prefix: Option<Vec<(String, String)>>,   // NEW
-    pub header_suffix: Option<Vec<(String, String)>>,   // NEW
-    pub header_prefix_not: Option<Vec<(String, String)>>, // NEW
-    pub header_suffix_not: Option<Vec<(String, String)>>, // NEW
-    pub header_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>, // NEW
+    pub header_missing: Option<Vec<String>>,                              // NEW
+    pub header_includes: Option<Vec<(String, String)>>,                   // NEW
+    pub header_excludes: Option<Vec<(String, String)>>,                   // NEW
+    pub header_prefix: Option<Vec<(String, String)>>,                     // NEW
+    pub header_suffix: Option<Vec<(String, String)>>,                     // NEW
+    pub header_prefix_not: Option<Vec<(String, String)>>,                 // NEW
+    pub header_suffix_not: Option<Vec<(String, String)>>,                 // NEW
+    pub header_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>,      // NEW
     pub header_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>, // NEW
-    pub cookie: Option<Vec<(String, String)>>,          // CHANGED from cookies to cookie
-    pub cookie_not: Option<Vec<(String, String)>>,      // NEW
+    pub cookie: Option<Vec<(String, String)>>,                            // CHANGED from cookies to cookie
+    pub cookie_not: Option<Vec<(String, String)>>,                        // NEW
     pub cookie_exists: Option<Vec<String>>,
-    pub cookie_missing: Option<Vec<String>>,            // NEW
-    pub cookie_includes: Option<Vec<(String, String)>>, // NEW
-    pub cookie_excludes: Option<Vec<(String, String)>>, // NEW
-    pub cookie_prefix: Option<Vec<(String, String)>>,   // NEW
-    pub cookie_suffix: Option<Vec<(String, String)>>,   // NEW
-    pub cookie_prefix_not: Option<Vec<(String, String)>>, // NEW
-    pub cookie_suffix_not: Option<Vec<(String, String)>>, // NEW
-    pub cookie_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>, // NEW
+    pub cookie_missing: Option<Vec<String>>,                              // NEW
+    pub cookie_includes: Option<Vec<(String, String)>>,                   // NEW
+    pub cookie_excludes: Option<Vec<(String, String)>>,                   // NEW
+    pub cookie_prefix: Option<Vec<(String, String)>>,                     // NEW
+    pub cookie_suffix: Option<Vec<(String, String)>>,                     // NEW
+    pub cookie_prefix_not: Option<Vec<(String, String)>>,                 // NEW
+    pub cookie_suffix_not: Option<Vec<(String, String)>>,                 // NEW
+    pub cookie_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>,      // NEW
     pub cookie_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>, // NEW          // NEW
     pub body: Option<HttpMockBytes>,
     pub body_not: Option<Vec<HttpMockBytes>>,        // NEW
@@ -948,12 +915,7 @@ pub struct ActiveMock {
 }
 
 impl ActiveMock {
-    pub fn new(
-        id: usize,
-        definition: MockDefinition,
-        call_counter: usize,
-        is_static: bool,
-    ) -> Self {
+    pub fn new(id: usize, definition: MockDefinition, call_counter: usize, is_static: bool) -> Self {
         ActiveMock {
             id,
             definition,
@@ -1416,26 +1378,14 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
                 query_param_not: from_name_value_string_pair_vec(self.when.query_param_not),
                 query_param_exists: self.when.query_param_exists,
                 query_param_missing: self.when.query_param_missing,
-                query_param_includes: from_name_value_string_pair_vec(
-                    self.when.query_param_contains,
-                ),
-                query_param_excludes: from_name_value_string_pair_vec(
-                    self.when.query_param_excludes,
-                ),
+                query_param_includes: from_name_value_string_pair_vec(self.when.query_param_contains),
+                query_param_excludes: from_name_value_string_pair_vec(self.when.query_param_excludes),
                 query_param_prefix: from_name_value_string_pair_vec(self.when.query_param_prefix),
                 query_param_suffix: from_name_value_string_pair_vec(self.when.query_param_suffix),
-                query_param_prefix_not: from_name_value_string_pair_vec(
-                    self.when.query_param_prefix_not,
-                ),
-                query_param_suffix_not: from_name_value_string_pair_vec(
-                    self.when.query_param_suffix_not,
-                ),
-                query_param_matches: from_name_value_pattern_pair_vec(
-                    self.when.query_param_matches,
-                ),
-                query_param_count: from_key_value_pattern_count_triple_vec(
-                    self.when.query_param_count,
-                ),
+                query_param_prefix_not: from_name_value_string_pair_vec(self.when.query_param_prefix_not),
+                query_param_suffix_not: from_name_value_string_pair_vec(self.when.query_param_suffix_not),
+                query_param_matches: from_name_value_pattern_pair_vec(self.when.query_param_matches),
+                query_param_count: from_key_value_pattern_count_triple_vec(self.when.query_param_count),
 
                 // Header-related fields
                 header: from_name_value_string_pair_vec(self.when.header),
@@ -1467,24 +1417,12 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
                 // Body-related fields
                 body: from_string_to_bytes_choose(self.when.body, self.when.body_base64),
                 body_not: to_bytes_vec(self.when.body_not, self.when.body_not_base64),
-                body_includes: to_bytes_vec(
-                    self.when.body_contains,
-                    self.when.body_contains_base64,
-                ),
-                body_excludes: to_bytes_vec(
-                    self.when.body_excludes,
-                    self.when.body_excludes_base64,
-                ),
+                body_includes: to_bytes_vec(self.when.body_contains, self.when.body_contains_base64),
+                body_excludes: to_bytes_vec(self.when.body_excludes, self.when.body_excludes_base64),
                 body_prefix: to_bytes_vec(self.when.body_prefix, self.when.body_prefix_base64),
                 body_suffix: to_bytes_vec(self.when.body_suffix, self.when.body_suffix_base64),
-                body_prefix_not: to_bytes_vec(
-                    self.when.body_prefix_not,
-                    self.when.body_prefix_not_base64,
-                ),
-                body_suffix_not: to_bytes_vec(
-                    self.when.body_suffix_not,
-                    self.when.body_suffix_not_base64,
-                ),
+                body_prefix_not: to_bytes_vec(self.when.body_prefix_not, self.when.body_prefix_not_base64),
+                body_suffix_not: to_bytes_vec(self.when.body_suffix_not, self.when.body_suffix_not_base64),
                 body_matches: self.when.body_matches,
 
                 // JSON Body-related fields
@@ -1494,39 +1432,19 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
                 json_body_excludes: self.when.json_body_excludes,
 
                 // x-www-form-urlencoded fields
-                form_urlencoded_tuple: from_name_value_string_pair_vec(
-                    self.when.form_urlencoded_tuple,
-                ),
-                form_urlencoded_tuple_not: from_name_value_string_pair_vec(
-                    self.when.form_urlencoded_tuple_not,
-                ),
+                form_urlencoded_tuple: from_name_value_string_pair_vec(self.when.form_urlencoded_tuple),
+                form_urlencoded_tuple_not: from_name_value_string_pair_vec(self.when.form_urlencoded_tuple_not),
                 form_urlencoded_tuple_exists: self.when.form_urlencoded_key_exists,
                 form_urlencoded_tuple_missing: self.when.form_urlencoded_key_missing,
-                form_urlencoded_tuple_includes: from_name_value_string_pair_vec(
-                    self.when.form_urlencoded_contains,
-                ),
-                form_urlencoded_tuple_excludes: from_name_value_string_pair_vec(
-                    self.when.form_urlencoded_excludes,
-                ),
-                form_urlencoded_tuple_prefix: from_name_value_string_pair_vec(
-                    self.when.form_urlencoded_prefix,
-                ),
-                form_urlencoded_tuple_suffix: from_name_value_string_pair_vec(
-                    self.when.form_urlencoded_suffix,
-                ),
-                form_urlencoded_tuple_prefix_not: from_name_value_string_pair_vec(
-                    self.when.form_urlencoded_prefix_not,
-                ),
-                form_urlencoded_tuple_suffix_not: from_name_value_string_pair_vec(
-                    self.when.form_urlencoded_suffix_not,
-                ),
-                form_urlencoded_tuple_matches: from_name_value_pattern_pair_vec(
-                    self.when.form_urlencoded_matches,
-                ),
+                form_urlencoded_tuple_includes: from_name_value_string_pair_vec(self.when.form_urlencoded_contains),
+                form_urlencoded_tuple_excludes: from_name_value_string_pair_vec(self.when.form_urlencoded_excludes),
+                form_urlencoded_tuple_prefix: from_name_value_string_pair_vec(self.when.form_urlencoded_prefix),
+                form_urlencoded_tuple_suffix: from_name_value_string_pair_vec(self.when.form_urlencoded_suffix),
+                form_urlencoded_tuple_prefix_not: from_name_value_string_pair_vec(self.when.form_urlencoded_prefix_not),
+                form_urlencoded_tuple_suffix_not: from_name_value_string_pair_vec(self.when.form_urlencoded_suffix_not),
+                form_urlencoded_tuple_matches: from_name_value_pattern_pair_vec(self.when.form_urlencoded_matches),
 
-                form_urlencoded_tuple_count: from_key_value_pattern_count_triple_vec(
-                    self.when.form_urlencoded_count,
-                ),
+                form_urlencoded_tuple_count: from_key_value_pattern_count_triple_vec(self.when.form_urlencoded_count),
 
                 // Boolean dynamic checks
                 is_true: None,
@@ -1551,20 +1469,14 @@ fn from_method_vec(value: Option<Vec<Method>>) -> Option<Vec<String>> {
     value.map(|vec| vec.iter().map(|m| m.to_string()).collect())
 }
 
-fn from_name_value_string_pair_vec(
-    kvp: Option<Vec<NameValueStringPair>>,
-) -> Option<Vec<(String, String)>> {
+fn from_name_value_string_pair_vec(kvp: Option<Vec<NameValueStringPair>>) -> Option<Vec<(String, String)>> {
     kvp.map(|vec| vec.into_iter().map(|nvp| (nvp.name, nvp.value)).collect())
 }
 
 fn from_name_value_pattern_pair_vec(
     kvp: Option<Vec<NameValuePatternPair>>,
 ) -> Option<Vec<(HttpMockRegex, HttpMockRegex)>> {
-    kvp.map(|vec| {
-        vec.into_iter()
-            .map(|pair| (pair.name, pair.value))
-            .collect()
-    })
+    kvp.map(|vec| vec.into_iter().map(|pair| (pair.name, pair.value)).collect())
 }
 
 fn from_key_value_pattern_count_triple_vec(
@@ -1577,9 +1489,7 @@ fn from_key_value_pattern_count_triple_vec(
     })
 }
 
-fn to_name_value_string_pair_vec(
-    vec: Option<Vec<(String, String)>>,
-) -> Option<Vec<NameValueStringPair>> {
+fn to_name_value_string_pair_vec(vec: Option<Vec<(String, String)>>) -> Option<Vec<NameValueStringPair>> {
     vec.map(|vec| {
         vec.into_iter()
             .map(|(name, value)| NameValueStringPair { name, value })
@@ -1622,9 +1532,7 @@ fn from_bytes_to_string(data: Option<HttpMockBytes>) -> (Option<String>, Option<
     (text_representation, base64_representation)
 }
 
-fn bytes_to_string_vec(
-    data: Option<Vec<HttpMockBytes>>,
-) -> (Option<Vec<String>>, Option<Vec<String>>) {
+fn bytes_to_string_vec(data: Option<Vec<HttpMockBytes>>) -> (Option<Vec<String>>, Option<Vec<String>>) {
     let mut text_representations = Vec::new();
     let mut base64_representations = Vec::new();
 
@@ -1654,18 +1562,11 @@ fn bytes_to_string_vec(
     (text_opt_vec, base64_opt_vec)
 }
 
-fn to_bytes_vec(
-    option_string: Option<Vec<String>>,
-    option_base64: Option<Vec<String>>,
-) -> Option<Vec<HttpMockBytes>> {
+fn to_bytes_vec(option_string: Option<Vec<String>>, option_base64: Option<Vec<String>>) -> Option<Vec<HttpMockBytes>> {
     let mut result = Vec::new();
 
     if let Some(strings) = option_string {
-        result.extend(
-            strings
-                .into_iter()
-                .map(|s| HttpMockBytes::from(Bytes::from(s))),
-        );
+        result.extend(strings.into_iter().map(|s| HttpMockBytes::from(Bytes::from(s))));
     }
 
     if let Some(base64_strings) = option_base64 {
@@ -1677,17 +1578,10 @@ fn to_bytes_vec(
         }));
     }
 
-    if result.is_empty() {
-        None
-    } else {
-        Some(result)
-    }
+    if result.is_empty() { None } else { Some(result) }
 }
 
-fn from_string_to_bytes_choose(
-    option_string: Option<String>,
-    option_base64: Option<String>,
-) -> Option<HttpMockBytes> {
+fn from_string_to_bytes_choose(option_string: Option<String>, option_base64: Option<String>) -> Option<HttpMockBytes> {
     let request_body = match (option_string, option_base64) {
         (Some(body), None) => Some(body.into_bytes()),
         (None, Some(base64_body)) => BASE64.decode(base64_body).ok(),
@@ -1706,16 +1600,11 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
         let (response_body, response_body_base64) = from_bytes_to_string(value.response.body);
 
         let (request_body, request_body_base64) = from_bytes_to_string(value.request.body);
-        let (request_body_not, request_body_not_base64) =
-            bytes_to_string_vec(value.request.body_not);
-        let (request_body_includes, request_body_includes_base64) =
-            bytes_to_string_vec(value.request.body_includes);
-        let (request_body_excludes, request_body_excludes_base64) =
-            bytes_to_string_vec(value.request.body_excludes);
-        let (request_body_prefix, request_body_prefix_base64) =
-            bytes_to_string_vec(value.request.body_prefix);
-        let (request_body_suffix, request_body_suffix_base64) =
-            bytes_to_string_vec(value.request.body_suffix);
+        let (request_body_not, request_body_not_base64) = bytes_to_string_vec(value.request.body_not);
+        let (request_body_includes, request_body_includes_base64) = bytes_to_string_vec(value.request.body_includes);
+        let (request_body_excludes, request_body_excludes_base64) = bytes_to_string_vec(value.request.body_excludes);
+        let (request_body_prefix, request_body_prefix_base64) = bytes_to_string_vec(value.request.body_prefix);
+        let (request_body_suffix, request_body_suffix_base64) = bytes_to_string_vec(value.request.body_suffix);
         let (request_body_prefix_not, request_body_prefix_not_base64) =
             bytes_to_string_vec(value.request.body_prefix_not);
         let (request_body_suffix_not, request_body_suffix_not_base64) =
@@ -1723,10 +1612,7 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
 
         let mut method = None;
         if let Some(method_str) = value.request.method {
-            method = Some(
-                Method::from_str(&method_str)
-                    .map_err(|err| StaticMockConversionError(err.to_string()))?,
-            );
+            method = Some(Method::from_str(&method_str).map_err(|err| StaticMockConversionError(err.to_string()))?);
         }
 
         Ok(StaticMockDefinition {
@@ -1798,26 +1684,14 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 query_param_not: to_name_value_string_pair_vec(value.request.query_param_not),
                 query_param_exists: value.request.query_param_exists,
                 query_param_missing: value.request.query_param_missing,
-                query_param_contains: to_name_value_string_pair_vec(
-                    value.request.query_param_includes,
-                ),
-                query_param_excludes: to_name_value_string_pair_vec(
-                    value.request.query_param_excludes,
-                ),
+                query_param_contains: to_name_value_string_pair_vec(value.request.query_param_includes),
+                query_param_excludes: to_name_value_string_pair_vec(value.request.query_param_excludes),
                 query_param_prefix: to_name_value_string_pair_vec(value.request.query_param_prefix),
                 query_param_suffix: to_name_value_string_pair_vec(value.request.query_param_suffix),
-                query_param_prefix_not: to_name_value_string_pair_vec(
-                    value.request.query_param_prefix_not,
-                ),
-                query_param_suffix_not: to_name_value_string_pair_vec(
-                    value.request.query_param_suffix_not,
-                ),
-                query_param_matches: to_name_value_pattern_pair_vec(
-                    value.request.query_param_matches,
-                ),
-                query_param_count: to_key_value_pattern_count_triple_vec(
-                    value.request.query_param_count,
-                ),
+                query_param_prefix_not: to_name_value_string_pair_vec(value.request.query_param_prefix_not),
+                query_param_suffix_not: to_name_value_string_pair_vec(value.request.query_param_suffix_not),
+                query_param_matches: to_name_value_pattern_pair_vec(value.request.query_param_matches),
+                query_param_count: to_key_value_pattern_count_triple_vec(value.request.query_param_count),
 
                 // Body-related fields
                 body: request_body,
@@ -1845,39 +1719,23 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 json_body_excludes: value.request.json_body_excludes,
 
                 // Form URL-encoded fields
-                form_urlencoded_tuple: to_name_value_string_pair_vec(
-                    value.request.form_urlencoded_tuple,
-                ),
-                form_urlencoded_tuple_not: to_name_value_string_pair_vec(
-                    value.request.form_urlencoded_tuple_not,
-                ),
+                form_urlencoded_tuple: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple),
+                form_urlencoded_tuple_not: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_not),
                 form_urlencoded_key_exists: value.request.form_urlencoded_tuple_exists,
                 form_urlencoded_key_missing: value.request.form_urlencoded_tuple_missing,
-                form_urlencoded_contains: to_name_value_string_pair_vec(
-                    value.request.form_urlencoded_tuple_includes,
-                ),
-                form_urlencoded_excludes: to_name_value_string_pair_vec(
-                    value.request.form_urlencoded_tuple_excludes,
-                ),
-                form_urlencoded_prefix: to_name_value_string_pair_vec(
-                    value.request.form_urlencoded_tuple_prefix,
-                ),
-                form_urlencoded_suffix: to_name_value_string_pair_vec(
-                    value.request.form_urlencoded_tuple_suffix,
-                ),
+                form_urlencoded_contains: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_includes),
+                form_urlencoded_excludes: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_excludes),
+                form_urlencoded_prefix: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_prefix),
+                form_urlencoded_suffix: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_suffix),
                 form_urlencoded_prefix_not: to_name_value_string_pair_vec(
                     value.request.form_urlencoded_tuple_prefix_not,
                 ),
                 form_urlencoded_suffix_not: to_name_value_string_pair_vec(
                     value.request.form_urlencoded_tuple_suffix_not,
                 ),
-                form_urlencoded_matches: to_name_value_pattern_pair_vec(
-                    value.request.form_urlencoded_tuple_matches,
-                ),
+                form_urlencoded_matches: to_name_value_pattern_pair_vec(value.request.form_urlencoded_tuple_matches),
 
-                form_urlencoded_count: to_key_value_pattern_count_triple_vec(
-                    value.request.form_urlencoded_tuple_count,
-                ),
+                form_urlencoded_count: to_key_value_pattern_count_triple_vec(value.request.form_urlencoded_tuple_count),
             },
             then: StaticHTTPResponse {
                 status: value.response.status,

@@ -1,6 +1,6 @@
 use httpmock::{MockServer, When};
 
-use crate::matchers::{expect_fails_with2, SingleValueMatcherDataSet};
+use crate::matchers::{SingleValueMatcherDataSet, expect_fails_with2};
 
 #[test]
 fn path() {
@@ -114,12 +114,8 @@ fn generate_data() -> SingleValueMatcherDataSet<&'static str, &'static str> {
     SingleValueMatcherDataSet::generate("path", "Path Mismatch")
 }
 
-fn run_test<F, S>(
-    name: S,
-    set_expectation: F,
-    actual: &'static str,
-    error_msg: Option<Vec<&'static str>>,
-) where
+fn run_test<F, S>(name: S, set_expectation: F, actual: &'static str, error_msg: Option<Vec<&'static str>>)
+where
     F: Fn(When) -> When + std::panic::UnwindSafe + std::panic::RefUnwindSafe,
     S: Into<String>,
 {

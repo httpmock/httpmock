@@ -7,10 +7,10 @@ use crate::common::http::{HttpClient, HttpMockHttpClient};
 #[cfg(feature = "record")]
 use crate::server::persistence::read_static_mock_definitions;
 use crate::server::{
+    HttpMockServer,
     handler::HttpMockHandler,
     server::{MockServer, MockServerConfig},
-    state::{HttpMockStateManager, StateManager, DEFAULT_HISTORY_LIMIT},
-    HttpMockServer,
+    state::{DEFAULT_HISTORY_LIMIT, HttpMockStateManager, StateManager},
 };
 #[cfg(feature = "https")]
 use crate::server::{
@@ -52,11 +52,17 @@ impl HttpsConfigBuilder {
         let has_cert_generator = self.cert_resolver_factory.is_some();
 
         if has_ca_cert && has_ca_cert_path {
-            return Err("A CA certificate and a CA certificate path have both been configured. Please choose only one method.".into());
+            return Err(
+                "A CA certificate and a CA certificate path have both been configured. Please choose only one method."
+                    .into(),
+            );
         }
 
         if (has_ca_cert || has_ca_cert_path) && has_cert_generator {
-            return Err("Both a CA certificate and a certificate generator were configured. Please use only one of them.".into());
+            return Err(
+                "Both a CA certificate and a certificate generator were configured. Please use only one of them."
+                    .into(),
+            );
         }
 
         Ok(())
@@ -155,9 +161,10 @@ impl HttpsConfigBuilder {
                 Arc::new(GeneratingCertificateResolverFactory::new(ca_cert, ca_key)?)
             }
             // If certificate data is directly provided, use it to create the resolver.
-            (_, _, _, Some(ca_cert), Some(ca_key)) => Arc::new(
-                GeneratingCertificateResolverFactory::new(ca_cert.clone(), ca_key.clone())?,
-            ),
+            (_, _, _, Some(ca_cert), Some(ca_key)) => Arc::new(GeneratingCertificateResolverFactory::new(
+                ca_cert.clone(),
+                ca_key.clone(),
+            )?),
             // If no CA certificate information was configured, use the default.
             _ => Arc::new(GeneratingCertificateResolverFactory::new(
                 DEFAULT_CA_CERTIFICATE,
@@ -165,9 +172,7 @@ impl HttpsConfigBuilder {
             )?),
         };
 
-        Ok(MockServerHttpsConfig {
-            cert_resolver_factory,
-        })
+        Ok(MockServerHttpsConfig { cert_resolver_factory })
     }
 }
 
@@ -336,10 +341,7 @@ impl HttpMockServerBuilder {
     /// # Returns
     /// A modified `HttpMockServerBuilder` instance for method chaining.
     #[cfg(feature = "https")]
-    pub fn server_config_factory(
-        mut self,
-        factory: Arc<GeneratingCertificateResolverFactory>,
-    ) -> Self {
+    pub fn server_config_factory(mut self, factory: Arc<GeneratingCertificateResolverFactory>) -> Self {
         self.https_config_builder = self.https_config_builder.cert_resolver(Some(factory));
         self
     }
@@ -352,10 +354,7 @@ impl HttpMockServerBuilder {
     /// # Returns
     /// A modified `HttpMockServerBuilder` instance for method chaining.
     #[cfg(feature = "https")]
-    pub fn cert_resolver_option(
-        mut self,
-        factory: Option<Arc<dyn CertificateResolverFactory + Send + Sync>>,
-    ) -> Self {
+    pub fn cert_resolver_option(mut self, factory: Option<Arc<dyn CertificateResolverFactory + Send + Sync>>) -> Self {
         self.https_config_builder = self.https_config_builder.cert_resolver(factory);
         self
     }
@@ -369,11 +368,7 @@ impl HttpMockServerBuilder {
     /// # Returns
     /// A modified `HttpMockServerBuilder` instance for method chaining.
     #[cfg(feature = "https")]
-    pub fn https_ca_key_pair<IntoString: Into<String>>(
-        mut self,
-        cert: IntoString,
-        private_key: IntoString,
-    ) -> Self {
+    pub fn https_ca_key_pair<IntoString: Into<String>>(mut self, cert: IntoString, private_key: IntoString) -> Self {
         self.https_config_builder = self.https_config_builder.ca_cert(Some(cert));
         self.https_config_builder = self.https_config_builder.ca_key(Some(private_key));
         self
@@ -407,17 +402,9 @@ impl HttpMockServerBuilder {
     /// # Returns
     /// A modified `HttpMockServerBuilder` instance for method chaining.
     #[cfg(feature = "https")]
-    pub fn https_ca_key_pair_files<Path: Into<PathBuf>>(
-        mut self,
-        cert_path: Path,
-        private_key_path: Path,
-    ) -> Self {
-        self.https_config_builder = self
-            .https_config_builder
-            .ca_cert_path(Some(cert_path.into()));
-        self.https_config_builder = self
-            .https_config_builder
-            .ca_key_path(Some(private_key_path.into()));
+    pub fn https_ca_key_pair_files<Path: Into<PathBuf>>(mut self, cert_path: Path, private_key_path: Path) -> Self {
+        self.https_config_builder = self.https_config_builder.ca_cert_path(Some(cert_path.into()));
+        self.https_config_builder = self.https_config_builder.ca_key_path(Some(private_key_path.into()));
         self
     }
 
@@ -459,10 +446,7 @@ impl HttpMockServerBuilder {
     ///
     /// # Returns
     /// A `MockServer` instance or an error if the build process fails.
-    pub(crate) fn build_with_state<S>(
-        self,
-        state: Arc<S>,
-    ) -> Result<MockServer<HttpMockHandler<S>>, Box<dyn Error>>
+    pub(crate) fn build_with_state<S>(self, state: Arc<S>) -> Result<MockServer<HttpMockHandler<S>>, Box<dyn Error>>
     where
         S: StateManager + Send + Sync + 'static,
     {

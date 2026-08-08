@@ -22,23 +22,23 @@ use crate::api::{
 };
 #[cfg(feature = "remote")]
 use crate::common::http::HttpMockHttpClient;
-#[cfg(feature = "proxy")]
 use crate::{
-    api::proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder},
-    common::data::{ForwardingRuleConfig, ProxyRuleConfig},
-};
-use crate::{
+    Mock,
     api::{
-        spec::{Then, When},
         LocalMockServerAdapter, MockServerAdapter,
+        spec::{Then, When},
     },
     common::{
         data::{MockDefinition, MockServerHttpResponse, RequestRequirements},
         runtime,
-        util::{read_env, with_retry, Join},
+        util::{Join, read_env, with_retry},
     },
-    server::{state::HttpMockStateManager, HttpMockServerBuilder},
-    Mock,
+    server::{HttpMockServerBuilder, state::HttpMockStateManager},
+};
+#[cfg(feature = "proxy")]
+use crate::{
+    api::proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder},
+    common::data::{ForwardingRuleConfig, ProxyRuleConfig},
 };
 
 /// Represents a mock server designed to simulate HTTP server behaviors for testing purposes.
@@ -94,12 +94,7 @@ impl MockServer {
             .expect("Not able to resolve the provided host name to an IPv4 address");
 
         let adapter = REMOTE_SERVER_POOL_REF
-            .take_or_create(|| {
-                Arc::new(RemoteMockServerAdapter::new(
-                    addr,
-                    REMOTE_SERVER_CLIENT.clone(),
-                ))
-            })
+            .take_or_create(|| Arc::new(RemoteMockServerAdapter::new(addr, REMOTE_SERVER_CLIENT.clone())))
             .await;
         Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await
     }
@@ -787,10 +782,7 @@ impl MockServer {
     /// # Feature
     /// This method is only available when the `proxy` feature is enabled.
     #[cfg(feature = "proxy")]
-    pub async fn proxy_async<'a, ProxyRuleBuilderFn>(
-        &'a self,
-        rule: ProxyRuleBuilderFn,
-    ) -> ProxyRule<'a>
+    pub async fn proxy_async<'a, ProxyRuleBuilderFn>(&'a self, rule: ProxyRuleBuilderFn) -> ProxyRule<'a>
     where
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
     {
@@ -986,10 +978,7 @@ impl MockServer {
     ///
     /// This method is only available when the `record` feature is enabled.
     #[cfg(feature = "record")]
-    pub async fn record_async<'a, RecordingRuleBuilderFn>(
-        &'a self,
-        rule: RecordingRuleBuilderFn,
-    ) -> Recording<'a>
+    pub async fn record_async<'a, RecordingRuleBuilderFn>(&'a self, rule: RecordingRuleBuilderFn) -> Recording<'a>
     where
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
     {
@@ -999,9 +988,7 @@ impl MockServer {
             record_response_delays: false,
         }));
 
-        rule(RecordingRuleBuilder {
-            config: config.clone(),
-        });
+        rule(RecordingRuleBuilder { config: config.clone() });
 
         let response = self
             .server_adapter
@@ -1180,9 +1167,7 @@ impl MockServer {
         let content = fs::read_to_string(&path).unwrap_or_else(|_| {
             panic!(
                 "could not read from file {}",
-                path.as_os_str()
-                    .to_str()
-                    .map_or(String::new(), |p| p.to_string())
+                path.as_os_str().to_str().map_or(String::new(), |p| p.to_string())
             )
         });
 
@@ -1302,10 +1287,7 @@ impl MockServer {
     ///
     /// This method is only available when the `record` feature is enabled.
     #[cfg(feature = "record")]
-    pub async fn playback_from_yaml_async<AsStrRef: AsRef<str>>(
-        &self,
-        content: AsStrRef,
-    ) -> MockSet<'_> {
+    pub async fn playback_from_yaml_async<AsStrRef: AsRef<str>>(&self, content: AsStrRef) -> MockSet<'_> {
         let response = self
             .server_adapter
             .as_ref()
@@ -1359,13 +1341,12 @@ const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn MockServerAdapter + Send +
     Arc::new(LocalMockServerAdapter::new(addr, state_manager))
 };
 
-static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>> =
-    LazyLock::new(|| {
-        let max_servers = read_env("HTTPMOCK_MAX_SERVERS", "25")
-            .parse::<usize>()
-            .expect("Cannot parse environment variable HTTPMOCK_MAX_SERVERS as an integer");
-        Arc::new(Pool::new(max_servers))
-    });
+static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>> = LazyLock::new(|| {
+    let max_servers = read_env("HTTPMOCK_MAX_SERVERS", "25")
+        .parse::<usize>()
+        .expect("Cannot parse environment variable HTTPMOCK_MAX_SERVERS as an integer");
+    Arc::new(Pool::new(max_servers))
+});
 
 static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>> =
     LazyLock::new(|| Arc::new(Pool::new(1)));
@@ -1379,9 +1360,7 @@ static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Sen
 static REMOTE_SERVER_CLIENT: LazyLock<Arc<HttpMockHttpClient>> = LazyLock::new(|| {
     let max_workers = read_env("HTTPMOCK_HTTP_CLIENT_WORKER_THREADS", "1")
         .parse::<usize>()
-        .expect(
-            "Cannot parse environment variable HTTPMOCK_HTTP_CLIENT_WORKER_THREADS as an integer",
-        );
+        .expect("Cannot parse environment variable HTTPMOCK_HTTP_CLIENT_WORKER_THREADS as an integer");
     let max_blocking_threads = read_env("HTTPMOCK_HTTP_CLIENT_MAX_BLOCKING_THREADS", "10")
         .parse::<usize>()
         .expect("Cannot parse environment variable HTTPMOCK_HTTP_CLIENT_MAX_BLOCKING_THREADS to an integer");

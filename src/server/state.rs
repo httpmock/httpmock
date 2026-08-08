@@ -187,11 +187,10 @@ impl StateManager for HttpMockStateManager {
     fn delete_mock(&self, id: usize) -> Result<bool, Error> {
         let mut state = self.state.lock().unwrap();
 
-        if let Some(m) = state.mocks.get(&id) {
-            if m.is_static {
+        if let Some(m) = state.mocks.get(&id)
+            && m.is_static {
                 return Err(StaticMockError);
             }
-        }
 
         tracing::debug!("Deleting mock with id={}", id);
 
@@ -524,14 +523,13 @@ fn build_mock_definition(
     for header_name in &config.record_headers {
         let header_name_lowercase = header_name.to_lowercase();
         for (key, value) in request.headers() {
-            if let Some(key) = key {
-                if header_name_lowercase == key.to_string().to_lowercase() {
+            if let Some(key) = key
+                && header_name_lowercase == key.to_string().to_lowercase() {
                     let value = value
                         .to_str()
                         .map_err(|err| DataConversionError(err.to_string()))?;
                     headers.push((header_name.to_string(), value.to_string()))
                 }
-            }
         }
     }
 
@@ -604,13 +602,11 @@ fn build_mock_definition(
 fn validate_request_requirements(req: &RequestRequirements) -> Result<(), Error> {
     const NON_BODY_METHODS: &[&str] = &["GET", "HEAD"];
 
-    if let Some(_body) = &req.body {
-        if let Some(method) = &req.method {
-            if NON_BODY_METHODS.contains(&method.as_str()) {
+    if let Some(_body) = &req.body
+        && let Some(method) = &req.method
+            && NON_BODY_METHODS.contains(&method.as_str()) {
                 return Err(BodyMethodInvalid);
             }
-        }
-    }
     Ok(())
 }
 
@@ -622,8 +618,7 @@ fn request_matches(
     tracing::trace!("Matching incoming HTTP request");
     matchers
         .iter()
-        .enumerate()
-        .all(|(_i, x)| x.matches(req, request_requirements))
+        .all(|x| x.matches(req, request_requirements))
 }
 
 fn get_distances(

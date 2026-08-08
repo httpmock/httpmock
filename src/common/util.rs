@@ -2,7 +2,7 @@ use std::{
     borrow::Cow,
     cell::Cell,
     env,
-    fs::{create_dir_all, File},
+    fs::{File, create_dir_all},
     future::Future,
     io::{Read, Write},
     path::{Path, PathBuf},
@@ -11,7 +11,7 @@ use std::{
     time::Duration,
 };
 
-use base64::{engine::general_purpose::STANDARD as BASE64, Engine};
+use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;
 /// Extension trait for efficiently blocking on a future.
 use crossbeam_utils::sync::{Parker, Unparker};
@@ -116,10 +116,8 @@ pub async fn write_file<P: AsRef<Path>>(
         path = current_dir.join(path);
     }
 
-    if create_dir {
-        if let Some(parent) = path.parent() {
-            create_dir_all(parent)?;
-        }
+    if create_dir && let Some(parent) = path.parent() {
+        create_dir_all(parent)?;
     }
 
     let mut file = File::create(&path)?;
@@ -133,7 +131,7 @@ pub async fn write_file<P: AsRef<Path>>(
 
 #[cfg(test)]
 mod test {
-    use crate::common::util::{with_retry, Join};
+    use crate::common::util::{Join, with_retry};
 
     #[test]
     fn with_retry_error_test() {
@@ -327,11 +325,7 @@ impl std::fmt::Debug for HttpMockBytes {
             Ok(s) => f.debug_tuple("HttpMockBytes").field(&s).finish(),
             Err(_) => f
                 .debug_tuple("HttpMockBytes")
-                .field(&format!(
-                    "<{} bytes, b64:{}>",
-                    self.0.len(),
-                    BASE64.encode(&self.0)
-                ))
+                .field(&format!("<{} bytes, b64:{}>", self.0.len(), BASE64.encode(&self.0)))
                 .finish(),
         }
     }

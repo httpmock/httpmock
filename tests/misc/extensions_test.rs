@@ -2,7 +2,7 @@ extern crate httpmock;
 
 use std::cell::RefCell;
 
-use self::httpmock::{prelude::*, Mock};
+use self::httpmock::{Mock, prelude::*};
 
 // Test for issue https://github.com/httpmock/httpmock/issues/26
 #[test]

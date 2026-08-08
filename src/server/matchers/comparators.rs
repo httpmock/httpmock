@@ -1,6 +1,6 @@
 use std::{borrow::Cow, sync::Arc};
 
-use assert_json_diff::{assert_json_matches_no_panic, CompareMode, Config};
+use assert_json_diff::{CompareMode, Config, assert_json_matches_no_panic};
 use serde_json::Value;
 
 use crate::{
@@ -11,9 +11,9 @@ use crate::{
     server::matchers::{
         comparison,
         comparison::{
-            distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix,
-            equal_weight_distance_for, hostname_equals, regex_unmatched_length, string_contains,
-            string_distance, string_equals, string_has_prefix, string_has_suffix,
+            distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix, equal_weight_distance_for,
+            hostname_equals, regex_unmatched_length, string_contains, string_distance, string_equals,
+            string_has_prefix, string_has_suffix,
         },
     },
 };
@@ -79,21 +79,13 @@ impl ValueComparator<Value, Value> for JSONContainsMatchComparator {
             (Some(mv), Some(rv)) => {
                 let config = Config::new(CompareMode::Inclusive);
                 let matches = assert_json_matches_no_panic(rv, mv, config).is_ok();
-                if self.negated {
-                    !matches
-                } else {
-                    matches
-                }
+                if self.negated { !matches } else { matches }
             }
         }
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "excludes"
-        } else {
-            "includes"
-        }
+        if self.negated { "excludes" } else { "includes" }
     }
 
     fn distance(&self, mock_value: &Option<&Value>, req_value: &Option<&Value>) -> usize {
@@ -128,11 +120,7 @@ impl ValueComparator<String, String> for HostEqualsComparator {
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "not equal to"
-        } else {
-            "equals"
-        }
+        if self.negated { "not equal to" } else { "equals" }
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -168,11 +156,7 @@ impl ValueComparator<String, String> for StringEqualsComparator {
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "not equal to"
-        } else {
-            "equals"
-        }
+        if self.negated { "not equal to" } else { "equals" }
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -203,11 +187,7 @@ impl ValueComparator<String, String> for StringContainsComparator {
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "excludes"
-        } else {
-            "includes"
-        }
+        if self.negated { "excludes" } else { "includes" }
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -288,11 +268,7 @@ impl ValueComparator<String, String> for StringPrefixMatchComparator {
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "prefix not"
-        } else {
-            "has prefix"
-        }
+        if self.negated { "prefix not" } else { "has prefix" }
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -323,11 +299,7 @@ impl ValueComparator<String, String> for StringSuffixMatchComparator {
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "suffix not"
-        } else {
-            "has suffix"
-        }
+        if self.negated { "suffix not" } else { "has suffix" }
     }
 
     fn distance(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> usize {
@@ -382,11 +354,7 @@ impl HttpMockBytesPatternComparator {
 }
 
 impl ValueComparator<HttpMockRegex, HttpMockBytes> for HttpMockBytesPatternComparator {
-    fn matches(
-        &self,
-        mock_value: &Option<&HttpMockRegex>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> bool {
+    fn matches(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&HttpMockBytes>) -> bool {
         match (mock_value, req_value) {
             (None, Some(_)) => true,
             (Some(_), None) => false,
@@ -399,11 +367,7 @@ impl ValueComparator<HttpMockRegex, HttpMockBytes> for HttpMockBytesPatternCompa
         "matches regex"
     }
 
-    fn distance(
-        &self,
-        mock_value: &Option<&HttpMockRegex>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> usize {
+    fn distance(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&HttpMockBytes>) -> usize {
         let rv = match req_value {
             Some(s) => s.to_maybe_lossy_str(),
             None => Cow::Borrowed(""),
@@ -471,11 +435,7 @@ impl ValueComparator<u16, u16> for U16ExactMatchComparator {
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "not equal to"
-        } else {
-            "equals"
-        }
+        if self.negated { "not equal to" } else { "equals" }
     }
 
     fn distance(&self, mock_value: &Option<&u16>, req_value: &Option<&u16>) -> usize {
@@ -497,36 +457,18 @@ impl BytesExactMatchComparator {
 }
 
 impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesExactMatchComparator {
-    fn matches(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> bool {
+    fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
         comparison::bytes_equal(self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "not equal to"
-        } else {
-            "equals"
-        }
+        if self.negated { "not equal to" } else { "equals" }
     }
 
-    fn distance(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> usize {
-        let mock_slice = mock_value
-            .as_ref()
-            .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_default();
+    fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
+        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes().clone()).unwrap_or_default();
 
-        let req_slice = req_value
-            .as_ref()
-            .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_default();
+        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes().clone()).unwrap_or_default();
 
         distance_for(mock_slice.as_ref(), req_slice.as_ref())
     }
@@ -546,36 +488,18 @@ impl BytesIncludesComparator {
 }
 
 impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesIncludesComparator {
-    fn matches(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> bool {
+    fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
         comparison::bytes_includes(self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "excludes"
-        } else {
-            "includes"
-        }
+        if self.negated { "excludes" } else { "includes" }
     }
 
-    fn distance(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> usize {
-        let mock_slice = mock_value
-            .as_ref()
-            .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_default();
+    fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
+        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes().clone()).unwrap_or_default();
 
-        let req_slice = req_value
-            .as_ref()
-            .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_default();
+        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes().clone()).unwrap_or_default();
 
         distance_for(mock_slice.as_ref(), req_slice.as_ref())
     }
@@ -595,11 +519,7 @@ impl BytesPrefixComparator {
 }
 
 impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
-    fn matches(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> bool {
+    fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
         comparison::bytes_prefix(self.negated, mock_value, req_value)
     }
 
@@ -611,20 +531,10 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
         "has prefix"
     }
 
-    fn distance(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> usize {
-        let mock_slice = mock_value
-            .as_ref()
-            .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_default();
+    fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
+        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes().clone()).unwrap_or_default();
 
-        let req_slice = req_value
-            .as_ref()
-            .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_default();
+        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes().clone()).unwrap_or_default();
 
         // If mock has no requirement, distance is always 0
         if mock_value.is_none() || mock_slice.is_empty() {
@@ -638,10 +548,7 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
 
         // Compare only up to the length of the mock_slice
         let compared_window = std::cmp::min(mock_slice.len(), req_slice.len());
-        let distance = equal_weight_distance_for(
-            &mock_slice[..compared_window],
-            &req_slice[..compared_window],
-        );
+        let distance = equal_weight_distance_for(&mock_slice[..compared_window], &req_slice[..compared_window]);
 
         // if negated, we want to find out how many
         if self.negated {
@@ -668,36 +575,18 @@ impl BytesSuffixComparator {
 }
 
 impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
-    fn matches(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> bool {
+    fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
         comparison::bytes_suffix(self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
-        if self.negated {
-            "suffix not"
-        } else {
-            "has suffix"
-        }
+        if self.negated { "suffix not" } else { "has suffix" }
     }
 
-    fn distance(
-        &self,
-        mock_value: &Option<&HttpMockBytes>,
-        req_value: &Option<&HttpMockBytes>,
-    ) -> usize {
-        let mock_slice = mock_value
-            .as_ref()
-            .map(|mv| mv.to_bytes().clone())
-            .unwrap_or_default();
+    fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
+        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes().clone()).unwrap_or_default();
 
-        let req_slice = req_value
-            .as_ref()
-            .map(|rv| rv.to_bytes().clone())
-            .unwrap_or_default();
+        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes().clone()).unwrap_or_default();
 
         // If mock has no requirement, distance is always 0
         if mock_value.is_none() || mock_slice.is_empty() {
@@ -778,11 +667,7 @@ impl ValueComparator<Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Sen
             (Some(mv), Some(rv)) => mv(rv),
         };
 
-        if self.negated {
-            !result
-        } else {
-            result
-        }
+        if self.negated { !result } else { result }
     }
 
     fn name(&self) -> &str {
@@ -818,9 +703,8 @@ mod test {
     use crate::{
         common::data::HttpMockRegex,
         server::matchers::comparators::{
-            AnyValueComparator, JSONContainsMatchComparator, JSONExactMatchComparator,
-            StringContainsComparator, StringEqualsComparator, StringRegexMatchComparator,
-            ValueComparator,
+            AnyValueComparator, JSONContainsMatchComparator, JSONExactMatchComparator, StringContainsComparator,
+            StringEqualsComparator, StringRegexMatchComparator, ValueComparator,
         },
     };
 

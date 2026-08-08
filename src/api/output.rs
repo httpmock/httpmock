@@ -7,8 +7,8 @@ use tabwriter::TabWriter;
 use crate::{
     common::{
         data::{
-            ClosestMatch, Diff, DiffResult, FunctionComparison, KeyValueComparison,
-            KeyValueComparisonKeyValuePair, Mismatch, SingleValueComparison,
+            ClosestMatch, Diff, DiffResult, FunctionComparison, KeyValueComparison, KeyValueComparisonKeyValuePair,
+            Mismatch, SingleValueComparison,
         },
         util::title_case,
     },
@@ -34,10 +34,10 @@ pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option
     for (idx, mm) in closest_match.mismatches.iter().enumerate() {
         let (mm_output, fail_text_pair) = create_mismatch_output(idx, mm);
 
-        if fail_text.is_none() {
-            if let Some(text) = fail_text_pair {
-                fail_text = Some(text)
-            }
+        if fail_text.is_none()
+            && let Some(text) = fail_text_pair
+        {
+            fail_text = Some(text)
         }
 
         output.push_str(&mm_output);
@@ -50,10 +50,7 @@ pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option
     panic!("{}", output)
 }
 
-pub fn create_mismatch_output(
-    idx: usize,
-    mismatch: &Mismatch,
-) -> (String, Option<(String, String)>) {
+pub fn create_mismatch_output(idx: usize, mismatch: &Mismatch) -> (String, Option<(String, String)>) {
     let mut tw = TabWriter::new(vec![]);
     let mut ide_diff_left = String::new();
     let mut ide_diff_right = String::new();
@@ -112,10 +109,7 @@ fn handle_single_value_comparison(
 
     writeln!(tw, "\nReceived:\n{}", comparison.actual).unwrap();
 
-    (
-        comparison.expected.to_string(),
-        comparison.actual.to_string(),
-    )
+    (comparison.expected.to_string(), comparison.actual.to_string())
 }
 
 fn handle_key_value_comparison(
@@ -146,9 +140,7 @@ fn handle_key_value_comparison(
         writeln!(tw, "\tvalue\t[{}]\t{}", value.operator, expected).unwrap();
     }
 
-    if let (Some(expected_count), Some(actual_count)) =
-        (comparison.expected_count, comparison.actual_count)
-    {
+    if let (Some(expected_count), Some(actual_count)) = (comparison.expected_count, comparison.actual_count) {
         if comparison.key.is_none() && comparison.value.is_none() {
             writeln!(
                 tw,
@@ -182,33 +174,19 @@ fn handle_key_value_comparison(
                 (format!("{}\n{}", key, value), format!("{}\n{}", key, value))
             }
             (None, Some(value)) => {
-                writeln!(
-                    tw,
-                    "\nbut{}{} value was\n\t{}",
-                    most_similar, mismatch.entity, value
-                )
-                .unwrap();
+                writeln!(tw, "\nbut{}{} value was\n\t{}", most_similar, mismatch.entity, value).unwrap();
                 (value.to_string(), value.to_string())
             }
             (Some(key), None) => {
-                writeln!(
-                    tw,
-                    "\nbut{}{} key was\n\t{}",
-                    most_similar, mismatch.entity, key
-                )
-                .unwrap();
+                writeln!(tw, "\nbut{}{} key was\n\t{}", most_similar, mismatch.entity, key).unwrap();
                 (key.to_string(), key.to_string())
             }
             (None, None) => {
                 let msg = match &mismatch.matching_strategy {
                     None => "but none was provided",
                     Some(v) => match v {
-                        MatchingStrategy::Presence => {
-                            "to be in the request, but none was provided."
-                        }
-                        MatchingStrategy::Absence => {
-                            "not to be present, but the request contained it."
-                        }
+                        MatchingStrategy::Presence => "to be in the request, but none was provided.",
+                        MatchingStrategy::Absence => "not to be present, but the request contained it.",
                     },
                 };
 
@@ -229,11 +207,7 @@ fn handle_key_value_comparison(
     (String::new(), String::new())
 }
 
-fn print_all_request_values(
-    tw: &mut TabWriter<Vec<u8>>,
-    entity: &str,
-    all: &[KeyValueComparisonKeyValuePair],
-) {
+fn print_all_request_values(tw: &mut TabWriter<Vec<u8>>, entity: &str, all: &[KeyValueComparisonKeyValuePair]) {
     if all.is_empty() {
         return;
     }
@@ -252,10 +226,7 @@ fn print_all_request_values(
     }
 }
 
-fn print_value_not_in_request(
-    tw: &mut TabWriter<Vec<u8>>,
-    matching_strategy: &Option<MatchingStrategy>,
-) {
+fn print_value_not_in_request(tw: &mut TabWriter<Vec<u8>>, matching_strategy: &Option<MatchingStrategy>) {
     writeln!(
         tw,
         "\n{}",
@@ -270,11 +241,7 @@ fn print_value_not_in_request(
     .unwrap();
 }
 
-fn handle_function_comparison(
-    tw: &mut TabWriter<Vec<u8>>,
-    mismatch: &Mismatch,
-    comparison: &FunctionComparison,
-) {
+fn handle_function_comparison(tw: &mut TabWriter<Vec<u8>>, mismatch: &Mismatch, comparison: &FunctionComparison) {
     writeln!(
         tw,
         "Custom matcher function {} with index {} did not match the request",
@@ -348,11 +315,7 @@ fn create_diff_result_output(dd: &DiffResult) -> String {
 
 #[inline]
 fn times_str<'a>(v: usize) -> &'a str {
-    if v == 1 {
-        "time"
-    } else {
-        "times"
-    }
+    if v == 1 { "time" } else { "times" }
 }
 
 fn quote_if_whitespace(s: &str) -> (String, bool) {

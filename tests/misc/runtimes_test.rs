@@ -5,10 +5,7 @@ fn all_runtimes_test() {
     with_standalone_server();
 
     // Tokio
-    assert_eq!(
-        tokio::runtime::Runtime::new().unwrap().block_on(test_fn()),
-        202
-    );
+    assert_eq!(tokio::runtime::Runtime::new().unwrap().block_on(test_fn()), 202);
 
     // Actix
     assert_eq!(actix_rt::Runtime::new().unwrap().block_on(test_fn()), 202);
@@ -43,13 +40,9 @@ async fn test_fn() -> u16 {
         .await;
 
     // Through proxy to server2
-    let (status_code, body) = get_request(
-        &server2.url("/get"),
-        None,
-        Some(server1.base_url().as_str()),
-    )
-    .await
-    .expect("proxy to server2 failed");
+    let (status_code, body) = get_request(&server2.url("/get"), None, Some(server1.base_url().as_str()))
+        .await
+        .expect("proxy to server2 failed");
 
     assert_eq!("Hi from fake GitHub!", body);
     assert_eq!(202, status_code);
@@ -87,11 +80,7 @@ async fn test_fn() -> u16 {
     let (status_code, body) = get_request(
         &server2.url("/get"),
         // httpbingo requires a User-Agent header
-        Some(
-            [("User-Agent".into(), "MyTestClient/1.0".into())]
-                .into_iter()
-                .collect(),
-        ),
+        Some([("User-Agent".into(), "MyTestClient/1.0".into())].into_iter().collect()),
         Some(server1.base_url().as_str()),
     )
     .await
@@ -129,13 +118,9 @@ async fn test_fn() -> u16 {
         .await;
 
     // Through proxy to server2
-    let (status_code, body) = get_request(
-        &target_server.url("/get"),
-        None,
-        Some(proxy_server.base_url().as_str()),
-    )
-    .await
-    .expect("proxy to server2 failed");
+    let (status_code, body) = get_request(&target_server.url("/get"), None, Some(proxy_server.base_url().as_str()))
+        .await
+        .expect("proxy to server2 failed");
 
     assert_eq!("Hi from fake GitHub!", body);
     assert_eq!(202, status_code);
