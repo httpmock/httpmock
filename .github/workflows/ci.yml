@@ -40,6 +40,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - uses: taiki-e/install-action@v2.85.5
         with:
           tool: cargo-hack
@@ -65,6 +67,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - uses: taiki-e/install-action@v2.85.5
         with:
           tool: cargo-hack
@@ -113,6 +117,7 @@ jobs:
           # Each matrix row compiles a different feature set, so each caches
           # separately.
           cache-key: ${{ matrix.name }}
+          rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - run: cargo test ${{ matrix.args }}
 
   coverage:
@@ -124,6 +129,8 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - uses: taiki-e/install-action@v2.85.5
         with:
           tool: cargo-llvm-cov
