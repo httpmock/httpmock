@@ -1,11 +1,13 @@
 use std::{
     collections::BTreeMap,
+    str::FromStr,
     sync::{Arc, Mutex},
     time::Duration,
 };
 
 #[cfg(feature = "record")]
 use bytes::Bytes;
+use http::{HeaderMap, HeaderName, HeaderValue, Uri, uri::Authority};
 use thiserror::Error;
 
 #[cfg(feature = "record")]
@@ -58,9 +60,66 @@ pub(crate) struct Inner {
     pub mocks: BTreeMap<usize, ActiveMock>,
     pub history: Vec<Arc<HttpMockRequest>>,
     pub matchers: Vec<Box<dyn Matcher + Sync + Send>>,
-    pub forwarding_rules: BTreeMap<usize, ActiveForwardingRule>,
+    pub(crate) forwarding_rules: BTreeMap<usize, ForwardingRule>,
     pub proxy_rules: BTreeMap<usize, ActiveProxyRule>,
     pub recordings: BTreeMap<usize, ActiveRecording>,
+}
+
+#[derive(Clone)]
+pub(crate) struct ForwardingRule {
+    pub active: ActiveForwardingRule,
+    pub target: ForwardTarget,
+    pub request_headers: HeaderMap,
+}
+
+#[derive(Clone)]
+pub(crate) struct ForwardTarget {
+    scheme: ForwardScheme,
+    authority: Authority,
+}
+
+#[derive(Clone, Copy)]
+enum ForwardScheme {
+    Http,
+    Https,
+}
+
+impl TryFrom<&str> for ForwardTarget {
+    type Error = Error;
+
+    fn try_from(value: &str) -> Result<Self, Self::Error> {
+        let uri =
+            Uri::from_str(value).map_err(|err| Error::ValidationError(format!("invalid forwarding target: {err}")))?;
+        let parts = uri.into_parts();
+
+        let scheme = match parts.scheme.as_ref().map(|scheme| scheme.as_str()) {
+            Some("http") => ForwardScheme::Http,
+            Some("https") => ForwardScheme::Https,
+            Some(scheme) => {
+                return Err(Error::ValidationError(format!(
+                    "invalid forwarding target scheme '{scheme}': expected http or https"
+                )));
+            }
+            None => return Err(Error::ValidationError("forwarding target has no scheme".to_string())),
+        };
+
+        let authority = parts
+            .authority
+            .ok_or_else(|| Error::ValidationError("forwarding target has no authority".to_string()))?;
+
+        Ok(Self { scheme, authority })
+    }
+}
+
+impl ForwardTarget {
+    pub fn into_parts(self) -> (&'static str, http::uri::Scheme, Authority) {
+        let (name, scheme) = match self.scheme {
+            ForwardScheme::Http => ("http", http::uri::Scheme::HTTP),
+            ForwardScheme::Https => ("https", http::uri::Scheme::HTTPS),
+        };
+
+        (name, scheme, self.authority)
+    }
 }
 
 impl Inner {
@@ -223,25 +282,39 @@ impl Manager {
         Ok(None)
     }
 
-    pub(crate) fn create_forwarding_rule(&self, config: ForwardingRuleConfig) -> ActiveForwardingRule {
+    pub(crate) fn create_forwarding_rule(&self, config: ForwardingRuleConfig) -> Result<ActiveForwardingRule, Error> {
+        let target = ForwardTarget::try_from(config.target_base_url.as_str())?;
+        let mut request_headers = HeaderMap::with_capacity(config.request_header.len());
+        for (name, value) in &config.request_header {
+            let name = HeaderName::from_str(name)
+                .map_err(|err| Error::ValidationError(format!("invalid forwarding header name: {err}")))?;
+            let value = HeaderValue::from_str(value)
+                .map_err(|err| Error::ValidationError(format!("invalid forwarding header value: {err}")))?;
+            request_headers.append(name, value);
+        }
         let mut state = self.state.lock().unwrap();
 
-        let rule = ActiveForwardingRule {
+        let active = ActiveForwardingRule {
             id: state.next_forwarding_rule_id,
             config,
         };
+        let rule = ForwardingRule {
+            active: active.clone(),
+            target,
+            request_headers,
+        };
 
-        state.forwarding_rules.insert(rule.id, rule.clone());
+        state.forwarding_rules.insert(active.id, rule);
 
         state.next_forwarding_rule_id += 1;
 
-        rule
+        Ok(active)
     }
 
     pub(crate) fn delete_forwarding_rule(&self, id: usize) -> Option<ActiveForwardingRule> {
         let mut state = self.state.lock().unwrap();
 
-        let result = state.forwarding_rules.remove(&id);
+        let result = state.forwarding_rules.remove(&id).map(|rule| rule.active);
 
         if result.is_some() {
             tracing::debug!("Deleting proxy rule with id={}", id);
@@ -382,13 +455,13 @@ impl Manager {
     pub(crate) fn find_forward_rule<'a>(
         &'a self,
         req: &'a HttpMockRequest,
-    ) -> Result<Option<ActiveForwardingRule>, Error> {
+    ) -> Result<Option<ForwardingRule>, Error> {
         let state = self.state.lock().unwrap();
 
         let result = state
             .forwarding_rules
             .values()
-            .find(|&rule| request_matches(&state.matchers, req, &rule.config.request_requirements))
+            .find(|&rule| request_matches(&state.matchers, req, &rule.active.config.request_requirements))
             .cloned();
 
         Ok(result)

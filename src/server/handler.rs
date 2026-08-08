@@ -15,12 +15,12 @@ use tokio::time::Instant;
 
 #[cfg(feature = "record")]
 use crate::common::data::RecordingRuleConfig;
-#[cfg(feature = "proxy")]
-use crate::common::data::{ActiveForwardingRule, ActiveProxyRule};
 #[cfg(any(feature = "remote", feature = "proxy"))]
 use crate::common::http::Error as HttpClientError;
 #[cfg(feature = "proxy")]
 use crate::common::http::HttpClient;
+#[cfg(feature = "proxy")]
+use crate::{common::data::ActiveProxyRule, server::state::ForwardingRule};
 use crate::{
     common::{
         data,
@@ -264,7 +264,7 @@ impl Handler {
 
     fn handle_add_forwarding_rule(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let config: ForwardingRuleConfig = parse_json_body(req)?;
-        let active_forwarding_rule = self.state.create_forwarding_rule(config);
+        let active_forwarding_rule = self.state.create_forwarding_rule(config)?;
         response(StatusCode::CREATED, Some(active_forwarding_rule))
     }
 
@@ -371,46 +371,33 @@ impl Handler {
     }
 
     #[cfg(feature = "proxy")]
-    async fn forward(&self, rule: ActiveForwardingRule, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
-        let to_base_uri: Uri = rule.config.target_base_url.parse().unwrap();
+    async fn forward(&self, rule: ForwardingRule, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
+        let state::ForwardingRule {
+            active: _,
+            target,
+            request_headers,
+        } = rule;
+        let (target_scheme_name, target_scheme, target_authority) = target.into_parts();
 
         let (mut req_parts, body) = req.into_parts();
 
-        // We need to remove the host header, because it contains the host of this mock server.
+        // The forwarding target replaces the mock server host.
         req_parts.headers.remove(http::header::HOST);
 
         let mut uri_parts = req_parts.uri.into_parts();
-        uri_parts.authority = Some(to_base_uri.authority().unwrap().clone());
-        uri_parts.scheme = to_base_uri.scheme().cloned().or(uri_parts.scheme);
-        req_parts.uri = Uri::from_parts(uri_parts).unwrap();
+        uri_parts.authority = Some(target_authority);
+        uri_parts.scheme = Some(target_scheme);
+        req_parts.uri = Uri::from_parts(uri_parts).map_err(|err| RequestConversionError(err.to_string()))?;
 
-        // Record the upstream scheme (http/https) so the HttpClient can reconstruct
-        // an absolute target URI after converting to origin-form.
-        let upstream_scheme: &'static str = match to_base_uri.scheme_str() {
-            Some("https") => "https",
-            _ => "http",
-        };
+        // The client uses this scheme when reconstructing the absolute upstream URI.
         req_parts
             .extensions
-            .insert(crate::server::RequestMetadata::new(upstream_scheme));
+            .insert(crate::server::RequestMetadata::new(target_scheme_name));
 
-        if !rule.config.request_header.is_empty() {
-            for (key, value) in &rule.config.request_header {
-                let key = http::HeaderName::from_str(key)
-                    .map_err(|err| InvalidHeader(format!("invalid header key: {}", err)))?;
-
-                let value = HeaderValue::from_str(value)
-                    .map_err(|err| InvalidHeader(format!("invalid header value: {}", err)))?;
-
-                req_parts.headers.append(key, value);
-            }
-        }
+        req_parts.headers.extend(request_headers);
 
         let req = Request::from_parts(req_parts, body);
-        // Requests are normalized to absolute-form inside this server for internal uniformity
-        // (matchers/recorders can read scheme/host/port from req.uri()). Before talking to an
-        // upstream origin server we MUST convert to origin-form (path + query only) and provide
-        // the authority via the Host header, as expected by HTTP/1.1 and HTTP/2 origin servers.
+        // Origin servers receive the path and query in the request target and the authority in `Host`.
         let req = to_origin_form(req)?;
         Ok(self.http_client.send(req).await?)
     }

@@ -85,7 +85,9 @@ impl MockServerAdapter for LocalMockServerAdapter {
         &self,
         config: ForwardingRuleConfig,
     ) -> Result<ActiveForwardingRule, ServerAdapterError> {
-        Ok(self.state.create_forwarding_rule(config))
+        self.state
+            .create_forwarding_rule(config)
+            .map_err(|err| UpstreamError(err.to_string()))
     }
 
     async fn delete_forwarding_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
