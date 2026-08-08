@@ -87,7 +87,9 @@ impl MockServerAdapter for LocalMockServerAdapter {
         &self,
         config: ForwardingRuleConfig,
     ) -> Result<ActiveForwardingRule, ServerAdapterError> {
-        Ok(self.state.create_forwarding_rule(config))
+        self.state
+            .create_forwarding_rule(config)
+            .map_err(|err| UpstreamError(err.to_string()))
     }
 
     #[cfg(feature = "proxy")]

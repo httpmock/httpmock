@@ -1,5 +1,7 @@
 #[cfg(feature = "proxy")]
 mod proxy;
+#[cfg(feature = "proxy")]
+pub(crate) use proxy::ForwardingRule;
 #[cfg(feature = "record")]
 mod record;
 
