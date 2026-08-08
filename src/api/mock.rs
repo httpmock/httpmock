@@ -104,7 +104,6 @@ impl<'a> Mock<'a> {
     /// ```rust
     /// use httpmock::prelude::*;
     /// use reqwest::get;
-    /// use syn::token;
     ///
     /// let rt = tokio::runtime::Runtime::new().unwrap();
     /// rt.block_on(async {
