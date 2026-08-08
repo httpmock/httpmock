@@ -720,4 +720,37 @@ mod tests {
         let manager = Manager::default();
         assert_eq!(manager.state.lock().unwrap().history_limit, DEFAULT_HISTORY_LIMIT);
     }
+
+    #[test]
+    fn static_mock_cannot_be_deleted() {
+        let manager = Manager::default();
+        let active_mock = manager
+            .add_mock(
+                MockDefinition {
+                    request: RequestRequirements::default(),
+                    response: MockServerHttpResponse::default(),
+                },
+                true,
+            )
+            .expect("static mock should be created");
+
+        assert!(matches!(
+            manager.delete_mock(active_mock.id),
+            Err(Error::StaticMockError)
+        ));
+    }
+
+    #[test]
+    fn get_request_with_body_is_rejected() {
+        let requirements = RequestRequirements {
+            method: Some("GET".to_string()),
+            body: Some(HttpMockBytes::from(bytes::Bytes::from_static(b"body"))),
+            ..Default::default()
+        };
+
+        assert!(matches!(
+            validate_request_requirements(&requirements),
+            Err(Error::BodyMethodInvalid)
+        ));
+    }
 }
