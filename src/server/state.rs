@@ -18,9 +18,8 @@ use crate::{
 };
 use crate::{
     common::data::{
-        ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch,
-        ForwardingRuleConfig, Mismatch, MockDefinition, MockServerHttpResponse, ProxyRuleConfig,
-        RecordingRuleConfig, RequestRequirements,
+        ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch, ForwardingRuleConfig,
+        Mismatch, MockDefinition, MockServerHttpResponse, ProxyRuleConfig, RecordingRuleConfig, RequestRequirements,
     },
     prelude::HttpMockRequest,
     server::{
@@ -111,14 +110,8 @@ pub(crate) trait StateManager {
     #[cfg(feature = "record")]
     fn load_mocks_from_recording(&self, recording_file_content: &str) -> Result<Vec<usize>, Error>;
 
-    fn find_forward_rule<'a>(
-        &'a self,
-        req: &'a HttpMockRequest,
-    ) -> Result<Option<ActiveForwardingRule>, Error>;
-    fn find_proxy_rule<'a>(
-        &'a self,
-        req: &'a HttpMockRequest,
-    ) -> Result<Option<ActiveProxyRule>, Error>;
+    fn find_forward_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveForwardingRule>, Error>;
+    fn find_proxy_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveProxyRule>, Error>;
     fn record<
         IntoResponse: TryInto<MockServerHttpResponse, Error = impl std::fmt::Display + std::fmt::Debug + 'static>,
     >(
@@ -188,9 +181,10 @@ impl StateManager for HttpMockStateManager {
         let mut state = self.state.lock().unwrap();
 
         if let Some(m) = state.mocks.get(&id)
-            && m.is_static {
-                return Err(StaticMockError);
-            }
+            && m.is_static
+        {
+            return Err(StaticMockError);
+        }
 
         tracing::debug!("Deleting mock with id={}", id);
 
@@ -229,8 +223,7 @@ impl StateManager for HttpMockStateManager {
             .filter(|req| !request_matches(&state.matchers, req, requirements))
             .collect();
 
-        let request_distances =
-            get_distances(&non_matching_requests, &state.matchers, requirements);
+        let request_distances = get_distances(&non_matching_requests, &state.matchers, requirements);
         let best_matches = get_min_distance_requests(&request_distances);
 
         let closes_match_request_idx = match best_matches.first() {
@@ -266,11 +259,7 @@ impl StateManager for HttpMockStateManager {
         let found_mock_id = result.map(|mock| mock.id);
 
         if let Some(found_id) = found_mock_id {
-            tracing::debug!(
-                "Matched mock with id={} to the following request: {:#?}",
-                found_id,
-                req
-            );
+            tracing::debug!("Matched mock with id={} to the following request: {:#?}", found_id, req);
 
             let mock = state.mocks.get_mut(&found_id).unwrap();
             mock.call_counter += 1;
@@ -278,10 +267,7 @@ impl StateManager for HttpMockStateManager {
             return Ok(Some(mock.definition.response.clone()));
         }
 
-        tracing::debug!(
-            "Could not match any mock to the following request: {:#?}",
-            req
-        );
+        tracing::debug!("Could not match any mock to the following request: {:#?}", req);
 
         Ok(None)
     }
@@ -410,8 +396,7 @@ impl StateManager for HttpMockStateManager {
 
         if let Some(rec) = state.recordings.get(&id) {
             return Ok(Some(
-                serialize_mock_defs_to_yaml(&rec.mocks)
-                    .map_err(|err| DataConversionError(err.to_string()))?,
+                serialize_mock_defs_to_yaml(&rec.mocks).map_err(|err| DataConversionError(err.to_string()))?,
             ));
         }
 
@@ -443,10 +428,7 @@ impl StateManager for HttpMockStateManager {
         Ok(mock_ids)
     }
 
-    fn find_forward_rule<'a>(
-        &'a self,
-        req: &'a HttpMockRequest,
-    ) -> Result<Option<ActiveForwardingRule>, Error> {
+    fn find_forward_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveForwardingRule>, Error> {
         let state = self.state.lock().unwrap();
 
         let result = state
@@ -458,10 +440,7 @@ impl StateManager for HttpMockStateManager {
         Ok(result)
     }
 
-    fn find_proxy_rule<'a>(
-        &'a self,
-        req: &'a HttpMockRequest,
-    ) -> Result<Option<ActiveProxyRule>, Error> {
+    fn find_proxy_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveProxyRule>, Error> {
         let state = self.state.lock().unwrap();
 
         let result = state
@@ -495,14 +474,11 @@ impl StateManager for HttpMockStateManager {
             return Ok(());
         }
 
-        let res = res
-            .try_into()
-            .map_err(|err| DataConversionError(err.to_string()))?;
+        let res = res.try_into().map_err(|err| DataConversionError(err.to_string()))?;
 
         for id in recording_ids {
             let rec = state.recordings.get_mut(&id).unwrap();
-            let definition =
-                build_mock_definition(is_proxied, time_taken, &req, &res, &rec.config)?;
+            let definition = build_mock_definition(is_proxied, time_taken, &req, &res, &rec.config)?;
             rec.mocks.push(definition);
         }
 
@@ -524,12 +500,11 @@ fn build_mock_definition(
         let header_name_lowercase = header_name.to_lowercase();
         for (key, value) in request.headers() {
             if let Some(key) = key
-                && header_name_lowercase == key.to_string().to_lowercase() {
-                    let value = value
-                        .to_str()
-                        .map_err(|err| DataConversionError(err.to_string()))?;
-                    headers.push((header_name.to_string(), value.to_string()))
-                }
+                && header_name_lowercase == key.to_string().to_lowercase()
+            {
+                let value = value.to_str().map_err(|err| DataConversionError(err.to_string()))?;
+                headers.push((header_name.to_string(), value.to_string()))
+            }
         }
     }
 
@@ -570,11 +545,7 @@ fn build_mock_definition(
         },
         path: Some(request.uri().path().to_string()),
         method: Some(request.method().to_string()),
-        header: if !headers.is_empty() {
-            Some(headers)
-        } else {
-            None
-        },
+        header: if !headers.is_empty() { Some(headers) } else { None },
         body: if request.body().is_empty() {
             None
         } else {
@@ -604,9 +575,10 @@ fn validate_request_requirements(req: &RequestRequirements) -> Result<(), Error>
 
     if let Some(_body) = &req.body
         && let Some(method) = &req.method
-            && NON_BODY_METHODS.contains(&method.as_str()) {
-                return Err(BodyMethodInvalid);
-            }
+        && NON_BODY_METHODS.contains(&method.as_str())
+    {
+        return Err(BodyMethodInvalid);
+    }
     Ok(())
 }
 
@@ -616,9 +588,7 @@ fn request_matches(
     request_requirements: &RequestRequirements,
 ) -> bool {
     tracing::trace!("Matching incoming HTTP request");
-    matchers
-        .iter()
-        .all(|x| x.matches(req, request_requirements))
+    matchers.iter().all(|x| x.matches(req, request_requirements))
 }
 
 fn get_distances(
@@ -667,10 +637,7 @@ fn get_request_mismatches(
     mock_rr: &RequestRequirements,
     matchers: &Vec<Box<dyn Matcher + Sync + Send>>,
 ) -> Vec<Mismatch> {
-    matchers
-        .iter()
-        .flat_map(|mat| mat.mismatches(req, mock_rr))
-        .collect()
+    matchers.iter().flat_map(|mat| mat.mismatches(req, mock_rr)).collect()
 }
 
 #[cfg(test)]
@@ -716,9 +683,6 @@ mod tests {
     #[test]
     fn default_history_limit_is_preserved() {
         let manager = HttpMockStateManager::default();
-        assert_eq!(
-            manager.state.lock().unwrap().history_limit,
-            DEFAULT_HISTORY_LIMIT
-        );
+        assert_eq!(manager.state.lock().unwrap().history_limit, DEFAULT_HISTORY_LIMIT);
     }
 }
