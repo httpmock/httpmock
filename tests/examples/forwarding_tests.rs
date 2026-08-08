@@ -88,10 +88,7 @@ fn delete_forwarding_rule_on_remote_server_test() {
 
     // Deleting an unknown rule id must return 404.
     let response = Client::new()
-        .delete(format!(
-            "{}/__httpmock__/forwarding_rules/4242",
-            server.base_url()
-        ))
+        .delete(format!("{}/__httpmock__/forwarding_rules/4242", server.base_url()))
         .send()
         .unwrap();
     assert_eq!(response.status().as_u16(), 404);

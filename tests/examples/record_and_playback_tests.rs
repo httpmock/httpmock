@@ -352,11 +352,7 @@ fn delete_recording_on_remote_server_test() {
 
     // Deleting it again must return 404 — the recording no longer exists.
     let response = Client::new()
-        .delete(format!(
-            "{}/__httpmock__/recordings/{}",
-            server.base_url(),
-            id
-        ))
+        .delete(format!("{}/__httpmock__/recordings/{}", server.base_url(), id))
         .send()
         .unwrap();
     assert_eq!(response.status().as_u16(), 404);
