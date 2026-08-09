@@ -1,5 +1,13 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- `HttpMockResponse` now has private typed fields and no longer implements Serde. Its accessors and builder use `StatusCode`, `HeaderMap`, `HeaderName`, and `HeaderValue`; `no_body()` has been removed because responses always have a body, which is empty by default.
+- `HttpMockResponse::body()` now returns `&[u8]`. Conversions now consume the wrapper or source response and use infallible `From`; the borrowed `TryFrom` conversions have been removed.
+- `http::Response<Box<[u8]>>` no longer converts directly into `HttpMockResponse`. Map the body with `bytes::Bytes::from` or `Vec::from` first; both reuse the boxed allocation.
+
 ## Version 0.8.3
 
 Minimum supported Rust version has been raised to 1.88.

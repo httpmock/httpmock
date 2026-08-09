@@ -4888,7 +4888,8 @@ impl Then {
 
     /// Sets a **dynamic responder** that is invoked for every request matching the `when`
     /// conditions. The provided closure receives the full `HttpMockRequest` and must
-    /// **fully determine** the `HttpMockResponse` (status, headers, and body).
+    /// **fully determine** a response (status, headers, and body). It may return an
+    /// `HttpMockResponse` or any type that converts into one, such as `http::Response`.
     ///
     /// This is ideal when the reply depends on request details (path, headers, body),
     /// or when you need stateful behavior across calls (e.g., counters, cycling codes).
@@ -4899,7 +4900,7 @@ impl Then {
     ///
     /// # Parameters
     /// - `f`: A response generator closure that is executed on the mock server’s request
-    ///   handling thread for each match.
+    ///   handling thread for each match. Its result must implement `Into<HttpMockResponse>`.
     ///
     /// # Behavior
     /// - When set, this responder **overrides** any static configuration on `Then`
@@ -4917,6 +4918,7 @@ impl Then {
     /// A minimal dynamic responder that mirrors the request body value back to the client:
     ///
     /// ```rust
+    /// use http::StatusCode;
     /// use httpmock::{MockServer, HttpMockRequest, HttpMockResponse};
     /// use reqwest::blocking::Client;
     ///
@@ -4926,10 +4928,10 @@ impl Then {
     ///     when.path("/echo");
     ///     then.respond_with(|req: &HttpMockRequest| {
     ///         // Echo the received request body back in the response body.
-    ///         let echoed_body = req.body().to_string();
+    ///         let echoed_body = req.body().to_bytes();
     ///
     ///         HttpMockResponse::builder()
-    ///             .status(200)
+    ///             .status(StatusCode::OK)
     ///             .body(echoed_body)
     ///             .build()
     ///     });
@@ -4951,6 +4953,7 @@ impl Then {
     /// Stateful dynamic responder that increments the status code on each call:
     ///
     /// ```rust
+    /// use http::StatusCode;
     /// use httpmock::{MockServer, HttpMockRequest, HttpMockResponse};
     /// use reqwest::blocking::Client;
     /// use std::sync::Mutex;
@@ -4968,8 +4971,9 @@ impl Then {
     ///         let mut count = call_count.lock().unwrap();
     ///         *count += 1;
     ///
+    ///         let status = StatusCode::from_u16(200 + *count).unwrap();
     ///         HttpMockResponse::builder()
-    ///             .status(200 + *count) // 201, 202, 203, ...
+    ///             .status(status) // 201, 202, 203, ...
     ///             .build()
     ///     });
     /// });
@@ -5012,7 +5016,6 @@ impl Then {
     ///             .header("content-type", "text/plain")
     ///             .body(format!("Echo from {}: {}", http_req.uri().path(), http_req.body()))
     ///             .unwrap()
-    ///             .into()
     ///     });
     /// });
     ///
@@ -5032,12 +5035,13 @@ impl Then {
     ///   handling path and will delay responses.
     /// - If you need to combine static defaults with dynamic tweaks, compute them inside
     ///   the closure (e.g., start from `HttpMockResponse::builder()` and adjust as needed).
-    pub fn respond_with<F>(self, f: F) -> Self
+    pub fn respond_with<F, R>(self, f: F) -> Self
     where
-        F: Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync + 'static,
+        F: Fn(&HttpMockRequest) -> R + Send + Sync + 'static,
+        R: Into<HttpMockResponse>,
     {
         update_cell(&self.response_template, |r| {
-            r.respond_with = Some(std::sync::Arc::new(f));
+            r.respond_with = Some(std::sync::Arc::new(move |request| f(request).into()));
         });
         self
     }
