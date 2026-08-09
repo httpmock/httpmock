@@ -457,14 +457,12 @@ fn build_mock_definition(
     // Request
     let mut headers = Vec::with_capacity(config.record_headers.len());
     for header_name in &config.record_headers {
-        let header_name_lowercase = header_name.to_lowercase();
-        for (key, value) in request.headers() {
-            if let Some(key) = key
-                && header_name_lowercase == key.to_string().to_lowercase()
-            {
-                let value = value.to_str().map_err(|err| DataConversionError(err.to_string()))?;
-                headers.push((header_name.to_string(), value.to_string()))
-            }
+        let Ok(name) = http::HeaderName::from_bytes(header_name.as_bytes()) else {
+            continue;
+        };
+        for value in request.headers().get_all(name) {
+            let value = value.to_str().map_err(|err| DataConversionError(err.to_string()))?;
+            headers.push((header_name.to_string(), value.to_string()))
         }
     }
 
@@ -511,10 +509,12 @@ fn build_mock_definition(
         } else {
             Some(request.body().clone())
         },
-        query_param: if request.query_param_length() == 0 {
-            None
-        } else {
-            Some(request.query_params())
+        query_param: {
+            let query_params: Vec<_> = request
+                .query_params()
+                .map(|(key, value)| (key.into_owned(), value.into_owned()))
+                .collect();
+            (!query_params.is_empty()).then_some(query_params)
         },
         ..Default::default()
     };
@@ -603,17 +603,14 @@ fn get_request_mismatches(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::util::HttpMockBytes;
 
     fn dummy_request() -> HttpMockRequest {
-        HttpMockRequest::new(
-            "http".to_string(),
-            "/test".to_string(),
-            "GET".to_string(),
-            Vec::new(),
-            "HTTP/1.1".to_string(),
-            HttpMockBytes::from(bytes::Bytes::new()),
-        )
+        http::Request::builder()
+            .uri("http://localhost/test")
+            .body(bytes::Bytes::new())
+            .unwrap()
+            .try_into()
+            .unwrap()
     }
 
     #[test]

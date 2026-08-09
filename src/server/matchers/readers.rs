@@ -546,7 +546,7 @@ pub mod request_value {
 
     #[inline]
     pub fn scheme(req: &HttpMockRequest) -> Option<String> {
-        Some(req.scheme())
+        Some(req.scheme().to_string())
     }
 
     #[inline]
@@ -556,7 +556,7 @@ pub mod request_value {
 
     #[inline]
     pub fn host(req: &HttpMockRequest) -> Option<String> {
-        req.host().map(|h| h.to_string())
+        req.host().map(str::to_owned)
     }
 
     #[inline]
@@ -573,8 +573,7 @@ pub mod request_value {
     pub fn query_params(req: &HttpMockRequest) -> Option<Vec<(String, Option<String>)>> {
         Some(
             req.query_params()
-                .iter()
-                .map(|(k, v)| (k.into(), Some(v.into())))
+                .map(|(k, v)| (k.into_owned(), Some(v.into_owned())))
                 .collect(),
         )
     }
@@ -582,9 +581,14 @@ pub mod request_value {
     #[inline]
     pub fn headers(req: &HttpMockRequest) -> Option<Vec<(String, Option<String>)>> {
         Some(
-            req.headers_vec()
+            req.headers()
                 .iter()
-                .map(|(k, v)| (k.into(), Some(v.into())))
+                .map(|(k, v)| {
+                    (
+                        k.as_str().to_string(),
+                        v.to_str().ok().map(std::string::ToString::to_string),
+                    )
+                })
                 .collect(),
         )
     }
@@ -592,13 +596,7 @@ pub mod request_value {
     #[cfg(feature = "cookies")]
     #[inline]
     pub fn cookies(req: &HttpMockRequest) -> Option<Vec<(String, Option<String>)>> {
-        Some(
-            req.cookies()
-                .expect("cannot parse cookies")
-                .iter()
-                .map(|(k, v)| (k.into(), Some(v.into())))
-                .collect(),
-        )
+        Some(req.cookies().iter().map(|(k, v)| (k.into(), Some(v.into()))).collect())
     }
 
     #[inline]
@@ -608,7 +606,7 @@ pub mod request_value {
 
     #[inline]
     pub fn json_body(req: &HttpMockRequest) -> Option<serde_json::Value> {
-        let body = req.body_ref();
+        let body = req.body().as_ref();
         match serde_json::from_slice(body) {
             Err(e) => {
                 tracing::trace!("Cannot parse json value: {}", e);
@@ -620,7 +618,7 @@ pub mod request_value {
 
     pub fn form_urlencoded_body(req: &HttpMockRequest) -> Option<Vec<(String, Option<String>)>> {
         Some(
-            form_urlencoded::parse(req.body_ref())
+            form_urlencoded::parse(req.body().as_ref())
                 .into_owned()
                 .map(|(k, v)| (k, Some(v)))
                 .collect(),

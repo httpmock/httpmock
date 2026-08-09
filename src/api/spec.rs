@@ -5004,13 +5004,17 @@ impl Then {
     ///     when.method("POST").path("/echo");
     ///     then.respond_with(|req: &HttpMockRequest| {
     ///         // Convert the HttpMockRequest to an `http` crate Request (with body)
-    ///         let http_req: http::Request<String> = req.into();
+    ///         let http_req: http::Request<bytes::Bytes> = req.into();
     ///
     ///         // Build an `http` crate Response (auto-converted to HttpMockResponse)
     ///         http::Response::builder()
     ///             .status(200)
     ///             .header("content-type", "text/plain")
-    ///             .body(format!("Echo from {}: {}", http_req.uri().path(), http_req.body()))
+    ///             .body(format!(
+    ///                 "Echo from {}: {}",
+    ///                 http_req.uri().path(),
+    ///                 String::from_utf8_lossy(http_req.body())
+    ///             ))
     ///             .unwrap()
     ///             .into()
     ///     });
