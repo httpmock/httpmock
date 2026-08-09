@@ -104,11 +104,11 @@ pub fn get_test_resource_file_path(relative_resource_path: &str) -> Result<PathB
     }
 }
 
-pub async fn write_file<P: AsRef<Path>>(
+pub async fn write_file_new<P: AsRef<Path>>(
     resource_path: P,
     content: &Bytes,
     create_dir: bool,
-) -> Result<PathBuf, Box<dyn std::error::Error>> {
+) -> std::io::Result<PathBuf> {
     let mut path = resource_path.as_ref().to_path_buf();
 
     if path.is_relative() {
@@ -120,7 +120,7 @@ pub async fn write_file<P: AsRef<Path>>(
         create_dir_all(parent)?;
     }
 
-    let mut file = File::create(&path)?;
+    let mut file = File::options().write(true).create_new(true).open(&path)?;
     file.write_all(content)?;
     file.flush()?;
 

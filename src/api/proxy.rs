@@ -6,7 +6,7 @@ use std::{cell::Cell, rc::Rc};
 use bytes::Bytes;
 
 #[cfg(feature = "record")]
-use crate::common::util::write_file;
+use crate::common::util::write_file_new;
 use crate::{
     When,
     api::server::MockServer,
@@ -116,6 +116,34 @@ impl<'a> ProxyRule<'a> {
 pub struct Recording<'a> {
     pub id: usize,
     pub(crate) server: &'a MockServer,
+}
+
+#[cfg(feature = "record")]
+async fn write_recording(
+    dir: &Path,
+    scenario: &str,
+    timestamp: u64,
+    content: &Bytes,
+) -> Result<PathBuf, Box<dyn std::error::Error>> {
+    let mut collision_index = 0_u64;
+
+    loop {
+        let filename = if collision_index == 0 {
+            format!("{}_{}.yaml", scenario, timestamp)
+        } else {
+            format!("{}_{}_{}.yaml", scenario, timestamp, collision_index)
+        };
+
+        match write_file_new(dir.join(filename), content, true).await {
+            Ok(path) => return Ok(path),
+            Err(error) if error.kind() == std::io::ErrorKind::AlreadyExists => {
+                collision_index = collision_index
+                    .checked_add(1)
+                    .ok_or("could not find an available recording filename")?;
+            }
+            Err(error) => return Err(error.into()),
+        }
+    }
 }
 
 /// Represents a reference to a recording of HTTP interactions on a mock server.
@@ -230,11 +258,8 @@ impl<'a> Recording<'a> {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_secs();
-        let filename = format!("{}_{}.yaml", scenario, timestamp);
-        let filepath = dir.join(filename);
-
         if let Some(bytes) = rec {
-            return write_file(&filepath, &bytes, true).await;
+            return write_recording(dir, &scenario, timestamp, &bytes).await;
         }
 
         Err("No recording data available".into())
@@ -369,5 +394,41 @@ impl RecordingRuleBuilder {
         self.config.set(config);
 
         self
+    }
+}
+
+#[cfg(all(test, feature = "record"))]
+mod tests {
+    use std::{fs, time::SystemTime};
+
+    use bytes::Bytes;
+
+    use super::write_recording;
+    use crate::common::util::Join;
+
+    #[test]
+    fn recording_filenames_are_unique_within_the_same_second() {
+        let unique = SystemTime::now()
+            .duration_since(SystemTime::UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        let dir = std::env::temp_dir().join(format!(
+            "httpmock-recording-filename-test-{}-{unique}",
+            std::process::id()
+        ));
+
+        let first = write_recording(&dir, "scenario", 1, &Bytes::from_static(b"first"))
+            .join()
+            .unwrap();
+        let second = write_recording(&dir, "scenario", 1, &Bytes::from_static(b"second"))
+            .join()
+            .unwrap();
+
+        assert_eq!(first.file_name().unwrap(), "scenario_1.yaml");
+        assert_eq!(second.file_name().unwrap(), "scenario_1_1.yaml");
+        assert_eq!(fs::read(&first).unwrap(), b"first");
+        assert_eq!(fs::read(&second).unwrap(), b"second");
+
+        fs::remove_dir_all(dir).unwrap();
     }
 }
