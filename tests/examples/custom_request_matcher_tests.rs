@@ -78,6 +78,7 @@ fn is_false_matcher_called_once_per_request() {
 fn dynamic_responder_test() {
     use std::sync::Mutex;
 
+    use http::StatusCode;
     use httpmock::prelude::*;
     use reqwest::blocking::Client;
 
@@ -95,7 +96,9 @@ fn dynamic_responder_test() {
             let mut count = call_count.lock().unwrap();
             *count += 1;
 
-            HttpMockResponse::builder().status(200 + *count).build()
+            HttpMockResponse::builder()
+                .status(StatusCode::from_u16(200 + *count).unwrap())
+                .build()
         });
     });
 
@@ -112,6 +115,30 @@ fn dynamic_responder_test() {
     assert_eq!(response1.status(), 201);
     assert_eq!(response2.status(), 202);
     assert_eq!(response3.status(), 203);
+}
+
+#[test]
+fn dynamic_responder_preserves_binary_body() {
+    use httpmock::prelude::*;
+    use reqwest::blocking::Client;
+
+    let server = MockServer::start();
+    let mock = server.mock(|when, then| {
+        when.method("POST").path("/echo");
+        then.respond_with(|request: &HttpMockRequest| {
+            HttpMockResponse::builder().body(request.body().to_bytes()).build()
+        });
+    });
+
+    let body = vec![0, 159, 146, 150, 255];
+    let response = Client::new()
+        .post(server.url("/echo"))
+        .body(body.clone())
+        .send()
+        .unwrap();
+
+    mock.assert();
+    assert_eq!(response.bytes().unwrap().as_ref(), body);
 }
 
 #[test]
@@ -144,7 +171,6 @@ fn dynamic_responder_http_crate_test() {
                 .status(200 + *count)
                 .body(req.uri().path().to_string())
                 .unwrap()
-                .into()
         });
     });
 
