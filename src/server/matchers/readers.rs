@@ -3,6 +3,9 @@ pub mod expectations {
 
     use serde_json::Value;
 
+    pub type KeyValue<'a> = (&'a String, Option<&'a String>);
+    pub type RegexKeyValue<'a> = (&'a HttpMockRegex, Option<&'a HttpMockRegex>);
+
     use crate::{
         common::{
             data::{HttpMockRegex, RequestRequirements},
@@ -188,7 +191,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn query_param_suffix(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn query_param_suffix(mock: &RequestRequirements) -> Option<Vec<KeyValue<'_>>> {
         mock.query_param_suffix
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
@@ -246,7 +249,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn header_includes(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn header_includes(mock: &RequestRequirements) -> Option<Vec<KeyValue<'_>>> {
         mock.header_includes
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
@@ -304,7 +307,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn cookie(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
+    pub fn cookie(mock: &RequestRequirements) -> Option<Vec<KeyValue<'_>>> {
         mock.cookie
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())
@@ -374,7 +377,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn cookie_matches(mock: &RequestRequirements) -> Option<Vec<(&HttpMockRegex, Option<&HttpMockRegex>)>> {
+    pub fn cookie_matches(mock: &RequestRequirements) -> Option<Vec<RegexKeyValue<'_>>> {
         mock.cookie_matches
             .as_ref()
             .map(|v| v.iter().map(|(k, v)| (k, Some(v))).collect())

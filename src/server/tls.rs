@@ -53,7 +53,7 @@ pub struct GeneratingCertificateResolverFactory {
     state: Arc<SharedState>,
 }
 
-impl<'a> GeneratingCertificateResolverFactory {
+impl GeneratingCertificateResolverFactory {
     pub fn new<IntoString: Into<String>>(ca_cert: IntoString, ca_key: IntoString) -> Result<Self, Error> {
         Ok(Self {
             state: Arc::new(SharedState {
@@ -111,17 +111,17 @@ impl<'a> GeneratingCertificateResolver {
         }
 
         // 2) Bracketed IPv6 without port: "[::1]"
-        if let Some(inner) = auth.strip_prefix('[').and_then(|s| s.strip_suffix(']')) {
-            if let Ok(ip) = inner.parse::<std::net::IpAddr>() {
-                return Some(ip);
-            }
+        if let Some(inner) = auth.strip_prefix('[').and_then(|s| s.strip_suffix(']'))
+            && let Ok(ip) = inner.parse::<std::net::IpAddr>()
+        {
+            return Some(ip);
         }
 
         // 3) Parse as HTTP authority and take the host (handles bracketed IPv6 and ports)
-        if let Ok(a) = auth.parse::<http::uri::Authority>() {
-            if let Ok(ip) = a.host().parse::<std::net::IpAddr>() {
-                return Some(ip);
-            }
+        if let Ok(a) = auth.parse::<http::uri::Authority>()
+            && let Ok(ip) = a.host().parse::<std::net::IpAddr>()
+        {
+            return Some(ip);
         }
 
         // 4) Plain IP literal (v4 or v6)
@@ -130,12 +130,11 @@ impl<'a> GeneratingCertificateResolver {
         }
 
         // 5) Conservative host:port split only if there's exactly one ':' (avoids mangling IPv6)
-        if auth.matches(':').count() == 1 {
-            if let Some((host, _)) = auth.rsplit_once(':') {
-                if let Ok(ip) = host.parse::<std::net::IpAddr>() {
-                    return Some(ip);
-                }
-            }
+        if auth.matches(':').count() == 1
+            && let Some((host, _)) = auth.rsplit_once(':')
+            && let Ok(ip) = host.parse::<std::net::IpAddr>()
+        {
+            return Some(ip);
         }
 
         None
@@ -343,10 +342,7 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
             .map(|ip| ip.to_string())
             .unwrap_or_else(|| "0.0.0.0".to_string());
         tracing::debug!("no hostname using: {}", hostname);
-        return Some(
-            self.generate(&hostname)
-                .expect(&"Cannot generate fallback certificate".to_string()),
-        );
+        Some(self.generate(&hostname).expect("Cannot generate fallback certificate"))
     }
 }
 

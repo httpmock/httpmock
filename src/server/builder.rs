@@ -191,6 +191,12 @@ pub struct HttpMockServerBuilder {
     http_client: Option<Arc<dyn HttpClient + Send + Sync + 'static>>,
 }
 
+impl Default for HttpMockServerBuilder {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 impl HttpMockServerBuilder {
     /// Creates a new instance of `HttpMockServerBuilder` with default settings.
     ///

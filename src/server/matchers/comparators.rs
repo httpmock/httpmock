@@ -27,11 +27,12 @@ pub trait ValueComparator<S: ?Sized, T: ?Sized> {
 // ************************************************************************************************
 // JSONExactMatchComparator
 // ************************************************************************************************
+#[derive(Default)]
 pub struct JSONExactMatchComparator {}
 
 impl JSONExactMatchComparator {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }
 
@@ -345,11 +346,12 @@ impl ValueComparator<HttpMockRegex, String> for StringPatternMatchComparator {
 // ************************************************************************************************
 // StringExactMatchComparator
 // ************************************************************************************************
+#[derive(Default)]
 pub struct HttpMockBytesPatternComparator {}
 
 impl HttpMockBytesPatternComparator {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }
 
@@ -384,11 +386,12 @@ impl ValueComparator<HttpMockRegex, HttpMockBytes> for HttpMockBytesPatternCompa
 // ************************************************************************************************
 // StringExactMatchComparator
 // ************************************************************************************************
+#[derive(Default)]
 pub struct StringRegexMatchComparator {}
 
 impl StringRegexMatchComparator {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }
 
@@ -619,11 +622,12 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
 // ************************************************************************************************
 // AnyValueComparator
 // ************************************************************************************************
+#[derive(Default)]
 pub struct AnyValueComparator {}
 
 impl AnyValueComparator {
     pub fn new() -> Self {
-        Self {}
+        Self::default()
     }
 }
 

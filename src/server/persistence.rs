@@ -2,7 +2,6 @@ use std::{
     convert::{TryFrom, TryInto},
     fs::{read_dir, read_to_string},
     path::PathBuf,
-    str::FromStr,
 };
 
 use bytes::{BufMut, Bytes, BytesMut};
@@ -51,10 +50,11 @@ fn read_static_mocks(path: PathBuf) -> Result<Vec<StaticMockDefinition>, Error> 
     let paths = read_dir(path).expect("cannot list files in directory");
     for file_path in paths {
         let file_path = file_path.unwrap().path();
-        if let Some(ext) = file_path.extension() {
-            if !"yaml".eq(ext) && !"yml".eq(ext) {
-                continue;
-            }
+        if let Some(ext) = file_path.extension()
+            && !"yaml".eq(ext)
+            && !"yml".eq(ext)
+        {
+            continue;
         }
 
         tracing::info!("Loading static mock file from '{}'", file_path.to_string_lossy());
@@ -82,7 +82,7 @@ pub fn deserialize_mock_defs_from_yaml(yaml_content: &str) -> Result<Vec<StaticM
     Ok(definitions)
 }
 
-pub fn serialize_mock_defs_to_yaml(mocks: &Vec<MockDefinition>) -> Result<Bytes, Error> {
+pub fn serialize_mock_defs_to_yaml(mocks: &[MockDefinition]) -> Result<Bytes, Error> {
     let mut buffer = BytesMut::new();
 
     for (idx, mock) in mocks.iter().enumerate() {

@@ -16,6 +16,9 @@ use headers::{Cookie, HeaderMapExt};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+pub type ResponseCallback = Arc<dyn Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync>;
+pub type RequestPredicate = Arc<dyn Fn(&HttpMockRequest) -> bool + Send + Sync>;
+
 use crate::{
     common::{
         data::Error::{HeaderDeserializationError, RequestConversionError, StaticMockConversionError},
@@ -629,7 +632,7 @@ pub struct MockServerHttpResponse {
     pub body: Option<HttpMockBytes>,
     pub delay: Option<u64>,
     #[serde(skip)]
-    pub respond_with: Option<std::sync::Arc<dyn Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync>>,
+    pub respond_with: Option<ResponseCallback>,
 }
 
 impl MockServerHttpResponse {
@@ -879,9 +882,9 @@ pub struct RequestRequirements {
     pub form_urlencoded_tuple_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>, // NEW
     pub form_urlencoded_tuple_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>, // NEW
     #[serde(skip)]
-    pub is_true: Option<Vec<Arc<dyn Fn(&HttpMockRequest) -> bool + Sync + Send>>>, // NEW + DEPRECATE matches() -> point to using "is_true" instead
+    pub is_true: Option<Vec<RequestPredicate>>, // NEW + DEPRECATE matches() -> point to using "is_true" instead
     #[serde(skip)]
-    pub is_false: Option<Vec<Arc<dyn Fn(&HttpMockRequest) -> bool + Sync + Send>>>, // NEW
+    pub is_false: Option<Vec<RequestPredicate>>, // NEW
 }
 
 impl RequestRequirements {

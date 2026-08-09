@@ -86,12 +86,7 @@ pub fn create_mismatch_output(idx: usize, mismatch: &Mismatch) -> (String, Optio
 
 fn write_header(tw: &mut TabWriter<Vec<u8>>, idx: usize, mismatch: &Mismatch) {
     writeln!(tw, "{}", "-".repeat(60)).unwrap();
-    writeln!(
-        tw,
-        "{}",
-        &format!("{} : {} Mismatch ", idx + 1, title_case(&mismatch.entity),)
-    )
-    .unwrap();
+    writeln!(tw, "{} : {} Mismatch ", idx + 1, title_case(&mismatch.entity)).unwrap();
     writeln!(tw, "{}", "-".repeat(60)).unwrap();
 }
 

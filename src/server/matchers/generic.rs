@@ -17,6 +17,11 @@ use crate::{
 // ************************************************************************************************
 // SingleValueMatcher
 // ************************************************************************************************
+type SingleValueExpectation<S> = for<'a> fn(&'a RequestRequirements) -> Option<Vec<&'a S>>;
+
+type MultiValueExpectation<EK, EV> = for<'a> fn(&'a RequestRequirements) -> Option<Vec<(&'a EK, Option<&'a EV>)>>;
+type MultiValueRequest<RK, RV> = fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>;
+
 pub(crate) struct SingleValueMatcher<S, T>
 where
     S: Display,
@@ -25,7 +30,7 @@ where
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
     pub matching_strategy: MatchingStrategy,
-    pub expectation: for<'a> fn(&'a RequestRequirements) -> Option<Vec<&'a S>>,
+    pub expectation: SingleValueExpectation<S>,
     pub request_value: fn(&HttpMockRequest) -> Option<T>,
     pub comparator: Box<dyn ValueComparator<S, T> + Send + Sync>,
     pub diff_with: Option<Tokenizer>,
@@ -137,8 +142,8 @@ where
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
     pub operator: KeyValueOperator,
-    pub expectation: for<'a> fn(&'a RequestRequirements) -> Option<Vec<(&'a EK, Option<&'a EV>)>>,
-    pub request_value: fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>,
+    pub expectation: MultiValueExpectation<EK, EV>,
+    pub request_value: MultiValueRequest<RK, RV>,
     pub matching_strategy: MatchingStrategy,
     pub key_required: bool,
     pub key_comparator: Box<dyn ValueComparator<EK, RK> + Send + Sync>,
@@ -323,7 +328,7 @@ where
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
     pub expectation: for<'a> fn(&'a RequestRequirements) -> Option<Vec<(Option<&'a EK>, Option<&'a EV>, usize)>>,
-    pub request_value: fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>,
+    pub request_value: MultiValueRequest<RK, RV>,
     pub key_comparator: Box<dyn ValueComparator<EK, RK> + Send + Sync>,
     pub value_comparator: Box<dyn ValueComparator<EV, RV> + Send + Sync>,
     pub weight: usize,
@@ -482,7 +487,7 @@ where
 pub(crate) struct FunctionValueMatcher<S, T> {
     pub entity_name: &'static str,
     pub matcher_function: &'static str,
-    pub expectation: for<'a> fn(&'a RequestRequirements) -> Option<Vec<&'a S>>,
+    pub expectation: SingleValueExpectation<S>,
     pub request_value: for<'a> fn(&'a HttpMockRequest) -> Option<&'a T>,
     pub comparator: Box<dyn ValueComparator<S, T> + Send + Sync>,
     pub weight: usize,

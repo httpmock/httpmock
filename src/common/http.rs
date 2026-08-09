@@ -40,7 +40,7 @@ pub struct HttpMockHttpClient {
     client: Arc<Client<HttpConnector, Full<Bytes>>>,
 }
 
-impl<'a> HttpMockHttpClient {
+impl HttpMockHttpClient {
     #[cfg(any(feature = "remote-https", feature = "https"))]
     pub fn new(runtime: Option<Arc<Runtime>>) -> Self {
         // see https://github.com/rustls/rustls/issues/1938
@@ -85,19 +85,17 @@ impl HttpClient for HttpMockHttpClient {
         let uri = req_parts.uri.clone();
 
         let needs_target = uri.scheme().is_none() || uri.authority().is_none();
-        if needs_target {
-            if let Some(host) = req_parts.headers.get(http::header::HOST).and_then(|v| v.to_str().ok()) {
-                // Prefer scheme from the URI if present; otherwise use RequestMetadata; fallback to http
-                let scheme = uri
-                    .scheme_str()
-                    .or_else(|| req_parts.extensions.get::<RequestMetadata>().map(|m| m.scheme))
-                    .unwrap_or("http");
+        if needs_target && let Some(host) = req_parts.headers.get(http::header::HOST).and_then(|v| v.to_str().ok()) {
+            // Prefer scheme from the URI if present; otherwise use RequestMetadata; fallback to http
+            let scheme = uri
+                .scheme_str()
+                .or_else(|| req_parts.extensions.get::<RequestMetadata>().map(|m| m.scheme))
+                .unwrap_or("http");
 
-                let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
+            let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
 
-                if let Ok(new_uri) = format!("{}://{}{}", scheme, host, path_and_query).parse() {
-                    req_parts.uri = new_uri;
-                }
+            if let Ok(new_uri) = format!("{}://{}{}", scheme, host, path_and_query).parse() {
+                req_parts.uri = new_uri;
             }
         }
 
