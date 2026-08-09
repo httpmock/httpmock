@@ -46,7 +46,6 @@ new_ret_no_self = "allow"
 module_inception = "allow"
 unnecessary_to_owned = "allow"
 ptr_arg = "allow"
-useless_format = "allow"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
