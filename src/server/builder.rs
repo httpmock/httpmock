@@ -18,7 +18,9 @@ use crate::server::{
     tls::{CertificateResolverFactory, GeneratingCertificateResolverFactory},
 };
 
+#[cfg(feature = "https")]
 pub const DEFAULT_CA_PRIVATE_KEY: &str = include_str!("../../certs/ca.key");
+#[cfg(feature = "https")]
 pub const DEFAULT_CA_CERTIFICATE: &str = include_str!("../../certs/ca.pem");
 
 /// The Builder streamlines the configuration process, automatically setting up defaults and

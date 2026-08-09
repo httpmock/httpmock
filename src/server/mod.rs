@@ -10,7 +10,9 @@ mod persistence;
 #[cfg(feature = "https")]
 mod tls;
 
-pub use builder::{HttpMockServerBuilder, DEFAULT_CA_PRIVATE_KEY, DEFAULT_CA_CERTIFICATE};
+pub use builder::HttpMockServerBuilder;
+#[cfg(feature = "https")]
+pub use builder::{DEFAULT_CA_CERTIFICATE, DEFAULT_CA_PRIVATE_KEY};
 pub use server::Error;
 
 use crate::server::{handler::HttpMockHandler, server::MockServer, state::HttpMockStateManager};
