@@ -27,6 +27,7 @@ pub const DEFAULT_CA_CERTIFICATE: &str = include_str!("../../certs/ca.pem");
 /// handling dependency injection for the mock server. It consolidates configuration parameters,
 /// fallback mechanisms, and default settings into a single point of management.
 #[cfg(feature = "https")]
+#[derive(Default)]
 pub struct HttpsConfigBuilder {
     ca_cert: Option<String>,
     ca_key: Option<String>,
@@ -37,16 +38,6 @@ pub struct HttpsConfigBuilder {
 
 #[cfg(feature = "https")]
 impl HttpsConfigBuilder {
-    fn new() -> Self {
-        Self {
-            ca_cert: None,
-            ca_key: None,
-            ca_cert_path: None,
-            ca_key_path: None,
-            cert_resolver_factory: None,
-        }
-    }
-
     /// Validates the HTTPS configuration to ensure no conflicting settings are present.
     fn validate(&self) -> Result<(), Box<dyn Error>> {
         let has_ca_cert = self.ca_cert.is_some() || self.ca_key.is_some();
@@ -180,6 +171,7 @@ impl HttpsConfigBuilder {
 
 /// The `HttpMockServerBuilder` struct is used to configure the HTTP mock server.
 /// It provides methods to set various configuration options such as port, logging, history limit, and HTTPS settings.
+#[derive(Default)]
 pub struct HttpMockServerBuilder {
     port: Option<u16>,
     expose: Option<bool>,
@@ -193,30 +185,13 @@ pub struct HttpMockServerBuilder {
     http_client: Option<Arc<dyn HttpClient + Send + Sync + 'static>>,
 }
 
-impl Default for HttpMockServerBuilder {
-    fn default() -> Self {
-        Self::new()
-    }
-}
-
 impl HttpMockServerBuilder {
     /// Creates a new instance of `HttpMockServerBuilder` with default settings.
     ///
     /// # Returns
     /// A new `HttpMockServerBuilder` instance.
     pub fn new() -> Self {
-        HttpMockServerBuilder {
-            print_access_log: None,
-            port: None,
-            expose: None,
-            history_limit: None,
-            #[cfg(feature = "record")]
-            static_mock_dir: None,
-            #[cfg(feature = "proxy")]
-            http_client: None,
-            #[cfg(feature = "https")]
-            https_config_builder: HttpsConfigBuilder::new(),
-        }
+        Self::default()
     }
 
     /// Sets the port for the HTTP mock server.
