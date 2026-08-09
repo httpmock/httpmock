@@ -212,10 +212,16 @@ impl From<bytes::BytesMut> for HttpMockBytes {
     }
 }
 
-// Copying conversions
+// Owned conversions
 impl From<Vec<u8>> for HttpMockBytes {
     fn from(value: Vec<u8>) -> Self {
         Self(Bytes::from(value))
+    }
+}
+
+impl From<()> for HttpMockBytes {
+    fn from(_: ()) -> Self {
+        Self(Bytes::new())
     }
 }
 
