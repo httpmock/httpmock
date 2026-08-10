@@ -31,7 +31,6 @@ unused_variables = "allow"
 # Gate all clippy lints. The allowed lints are a temporary allow list that should be removed
 # over time.
 all = { level = "deny", priority = -1 }
-collapsible_if = "allow"
 uninlined_format_args = "allow"
 enum_variant_names = "allow"
 useless_borrows_in_formatting = "allow"
