@@ -1,7 +1,7 @@
 mod builder;
 mod handler;
 pub mod matchers;
-mod server;
+mod runtime;
 pub mod state;
 
 #[cfg(feature = "record")]
@@ -13,9 +13,9 @@ mod tls;
 pub use builder::HttpMockServerBuilder;
 #[cfg(feature = "https")]
 pub use builder::{DEFAULT_CA_CERTIFICATE, DEFAULT_CA_PRIVATE_KEY};
-pub use server::Error;
+pub use runtime::Error;
 
-use crate::server::{handler::HttpMockHandler, server::MockServer, state::HttpMockStateManager};
+use crate::server::{handler::HttpMockHandler, runtime::MockServer, state::HttpMockStateManager};
 
 // We want to expose this error to the user
 pub type HttpMockServer = MockServer<HttpMockHandler<HttpMockStateManager>>;
