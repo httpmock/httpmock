@@ -33,7 +33,6 @@ unused_variables = "allow"
 all = { level = "deny", priority = -1 }
 collapsible_if = "allow"
 uninlined_format_args = "allow"
-enum_variant_names = "allow"
 useless_borrows_in_formatting = "allow"
 doc_overindented_list_items = "allow"
 type_complexity = "allow"

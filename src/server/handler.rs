@@ -31,8 +31,8 @@ use crate::{
     prelude::{HttpMockRequest, HttpMockResponse},
     server::{
         handler::Error::{
-            InvalidHeader, ParamError, ParamFormatError, RequestBodyDeserializeError, RequestConversionError,
-            ResponseBodyConversionError, ResponseBodySerializeError, ResponseDataConversionError,
+            InvalidHeader, InvalidParamFormat, MissingParam, RequestBodyDeserialization, RequestConversion,
+            ResponseBodyConstruction, ResponseBodySerialization, ResponseDataConversion,
         },
         state,
         state::StateManager,
@@ -41,35 +41,27 @@ use crate::{
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("cannot parse regex: {0}")]
-    RegexError(#[from] regex::Error),
     #[error("cannot deserialize request body: {0}")]
-    RequestBodyDeserializeError(serde_json::Error),
-    #[error("cannot process request body: {0}")]
-    RequestBodyError(String),
+    RequestBodyDeserialization(#[source] serde_json::Error),
     #[error("cannot serialize response body: {0}")]
-    ResponseBodySerializeError(serde_json::Error),
+    ResponseBodySerialization(#[source] serde_json::Error),
+    #[error("cannot construct response: {0}")]
+    ResponseBodyConstruction(#[source] http::Error),
     #[error("cannot convert response body: {0}")]
-    ResponseBodyConversionError(http::Error),
-    #[error("cannot convert response body: {0}")]
-    ResponseDataConversionError(data::Error),
+    ResponseDataConversion(#[source] data::Error),
     #[error("expected URL parameters not found")]
-    ParamError,
+    MissingParam,
     #[error("URL parameter format is invalid: {0}")]
-    ParamFormatError(String),
-    #[error("cannot modify state: {0}")]
-    StateManagerError(#[from] state::Error),
-    #[error("invalid status code: {0}")]
-    InvalidStatusCode(#[from] http::status::InvalidStatusCode),
+    InvalidParamFormat(String),
+    #[error("state operation failed: {0}")]
+    State(#[from] state::Error),
     #[error("cannot convert request to internal data structure: {0}")]
-    RequestConversionError(String),
+    RequestConversion(String),
     #[cfg(any(feature = "remote", feature = "proxy"))]
     #[error("failed to send HTTP request: {0}")]
-    HttpClientError(#[from] HttpClientError),
+    HttpClient(#[from] HttpClientError),
     #[error("invalid header: {0}")]
     InvalidHeader(String),
-    #[error("unknown error")]
-    Unknown,
 }
 
 enum RoutePath {
@@ -358,7 +350,7 @@ where
     #[cfg(feature = "record")]
     fn handle_load_recording(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let recording_file_content =
-            std::str::from_utf8(req.body()).map_err(|err| RequestConversionError(err.to_string()))?;
+            std::str::from_utf8(req.body()).map_err(|err| RequestConversion(err.to_string()))?;
 
         let rec = self.state.load_mocks_from_recording(recording_file_content)?;
         response(StatusCode::OK, Some(rec))
@@ -367,7 +359,7 @@ where
     async fn catch_all(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let internal_request: HttpMockRequest = (&req)
             .try_into()
-            .map_err(|err: DataError| RequestConversionError(err.to_string()))?;
+            .map_err(|err: DataError| RequestConversion(err.to_string()))?;
 
         #[cfg(feature = "record")]
         let start = Instant::now();
@@ -482,7 +474,7 @@ where
             });
 
         // Convert via your TryFrom<HttpMockResponse> impl
-        let http_resp: http::Response<bytes::Bytes> = resp_def.try_into().map_err(ResponseDataConversionError)?;
+        let http_resp: http::Response<bytes::Bytes> = resp_def.try_into().map_err(ResponseDataConversion)?;
 
         Ok(http_resp)
     }
@@ -496,12 +488,12 @@ where
     for (n, v) in tree_path.params() {
         if n.eq(name) {
             let parse_result: Result<T, T::Err> = v.parse::<T>();
-            let parsed_value = parse_result.map_err(|e| ParamFormatError(format!("{:?}", e)))?;
+            let parsed_value = parse_result.map_err(|e| InvalidParamFormat(format!("{:?}", e)))?;
             return Ok(parsed_value);
         }
     }
 
-    Err(ParamError)
+    Err(MissingParam)
 }
 
 fn response<T>(status: StatusCode, body: Option<T>) -> Result<Response<Bytes>, Error>
@@ -513,21 +505,19 @@ where
     if let Some(body_obj) = body {
         builder = builder.header("content-type", "application/json");
 
-        let body_bytes = serde_json::to_vec(&body_obj).map_err(ResponseBodySerializeError)?;
+        let body_bytes = serde_json::to_vec(&body_obj).map_err(ResponseBodySerialization)?;
 
-        return builder
-            .body(Bytes::from(body_bytes))
-            .map_err(ResponseBodyConversionError);
+        return builder.body(Bytes::from(body_bytes)).map_err(ResponseBodyConstruction);
     }
 
-    builder.body(Bytes::new()).map_err(ResponseBodyConversionError)
+    builder.body(Bytes::new()).map_err(ResponseBodyConstruction)
 }
 
 fn parse_json_body<T>(req: Request<Bytes>) -> Result<T, Error>
 where
     T: DeserializeOwned,
 {
-    let body: T = serde_json::from_slice(req.body().as_ref()).map_err(RequestBodyDeserializeError)?;
+    let body: T = serde_json::from_slice(req.body().as_ref()).map_err(RequestBodyDeserialization)?;
     Ok(body)
 }
 
@@ -558,7 +548,7 @@ pub fn to_origin_form(mut req: Request<Bytes>) -> Result<Request<Bytes>, Error> 
         let new_uri = Uri::builder()
             .path_and_query(path_and_query)
             .build()
-            .map_err(|e| RequestConversionError(e.to_string()))?;
+            .map_err(|e| RequestConversion(e.to_string()))?;
         *req.uri_mut() = new_uri;
     }
 

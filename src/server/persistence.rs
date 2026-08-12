@@ -15,7 +15,7 @@ use crate::{
         data::{MockDefinition, StaticMockDefinition},
     },
     server::{
-        persistence::Error::{DeserializationError, FileReadError},
+        persistence::Error::{Deserialization, FileRead},
         state,
         state::{Error::DataConversionError, StateManager},
     },
@@ -24,13 +24,13 @@ use crate::{
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("cannot read from mock file: {0}")]
-    FileReadError(String),
+    FileRead(String),
     #[error("cannot modify state: {0}")]
-    StateError(#[from] state::Error),
+    State(#[from] state::Error),
     #[error("cannot deserialize YAML: {0}")]
-    DeserializationError(String),
+    Deserialization(String),
     #[error("cannot convert data structures: {0}")]
-    DataConversionError(#[from] data::Error),
+    DataConversion(#[from] data::Error),
 }
 
 pub fn read_static_mock_definitions<S>(path_opt: PathBuf, state: &S) -> Result<(), Error>
@@ -59,7 +59,7 @@ fn read_static_mocks(path: PathBuf) -> Result<Vec<StaticMockDefinition>, Error> 
 
         tracing::info!("Loading static mock file from '{}'", file_path.to_string_lossy());
 
-        let content = read_to_string(file_path).map_err(|err| FileReadError(err.to_string()))?;
+        let content = read_to_string(file_path).map_err(|err| FileRead(err.to_string()))?;
 
         definitions.extend(deserialize_mock_defs_from_yaml(&content)?);
     }
@@ -71,10 +71,10 @@ pub fn deserialize_mock_defs_from_yaml(yaml_content: &str) -> Result<Vec<StaticM
     let mut definitions = Vec::new();
 
     for document in Deserializer::from_str(yaml_content) {
-        let value = YamlValue::deserialize(document).map_err(|err| DeserializationError(err.to_string()))?;
+        let value = YamlValue::deserialize(document).map_err(|err| Deserialization(err.to_string()))?;
 
         let definition: StaticMockDefinition =
-            serde_yaml::from_value(value).map_err(|err| DeserializationError(err.to_string()))?;
+            serde_yaml::from_value(value).map_err(|err| Deserialization(err.to_string()))?;
 
         definitions.push(definition);
     }

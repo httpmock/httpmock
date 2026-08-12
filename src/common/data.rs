@@ -21,7 +21,7 @@ pub type RequestPredicate = Arc<dyn Fn(&HttpMockRequest) -> bool + Send + Sync>;
 
 use crate::{
     common::{
-        data::Error::{HeaderDeserializationError, RequestConversionError, StaticMockConversionError},
+        data::Error::{HeaderDeserialization, RequestConversion, StaticMockConversion},
         util::HttpMockBytes,
     },
     server::{RequestMetadata, matchers::generic::MatchingStrategy},
@@ -30,19 +30,13 @@ use crate::{
 #[derive(thiserror::Error, Debug)]
 pub enum Error {
     #[error("Cannot deserialize header: {0}")]
-    HeaderDeserializationError(String),
-    #[error("Cookie parser error: {0}")]
-    CookieParserError(String),
+    HeaderDeserialization(String),
     #[error("cannot convert to/from static mock: {0}")]
-    StaticMockConversionError(String),
-    #[error("JSONConversionError: {0}")]
-    JSONConversionError(#[from] serde_json::Error),
-    #[error("Invalid request data: {0}")]
-    InvalidRequestData(String),
+    StaticMockConversion(String),
     #[error("Cannot convert request to/from internal structure: {0}")]
-    RequestConversionError(String),
+    RequestConversion(String),
     #[error("Response conversion error: {0}")]
-    ResponseConversionError(String),
+    ResponseConversion(String),
 }
 
 /// A general abstraction of an HTTP request of `httpmock`.
@@ -293,7 +287,7 @@ fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)
         .iter()
         .map(|(name, value)| {
             // Attempt to convert the HeaderValue to a &str, returning an error if it fails.
-            let value_str = value.to_str().map_err(|e| RequestConversionError(e.to_string()))?;
+            let value_str = value.to_str().map_err(|e| RequestConversion(e.to_string()))?;
             Ok((name.as_str().to_string(), value_str.to_string()))
         })
         .collect()
@@ -421,20 +415,20 @@ impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
     fn try_from(res: &HttpMockResponse) -> Result<Self, Self::Error> {
         let raw_status = res
             .status
-            .ok_or_else(|| Error::ResponseConversionError("missing status".into()))?;
+            .ok_or_else(|| Error::ResponseConversion("missing status".into()))?;
 
         let status = http::StatusCode::from_u16(raw_status)
-            .map_err(|_| Error::ResponseConversionError(format!("invalid status: {}", raw_status)))?;
+            .map_err(|_| Error::ResponseConversion(format!("invalid status: {}", raw_status)))?;
 
         let mut builder = http::Response::builder().status(status);
 
         if let Some(headers) = &res.headers {
             for (name, value) in headers {
                 let header_name = http::header::HeaderName::try_from(name.clone())
-                    .map_err(|_| Error::ResponseConversionError(format!("invalid header name: {}", name)))?;
+                    .map_err(|_| Error::ResponseConversion(format!("invalid header name: {}", name)))?;
 
                 let header_value = http::header::HeaderValue::try_from(value.clone()).map_err(|_| {
-                    Error::ResponseConversionError(format!("invalid header value for '{}': {}", name, value))
+                    Error::ResponseConversion(format!("invalid header value for '{}': {}", name, value))
                 })?;
 
                 builder = builder.header(header_name, header_value);
@@ -445,7 +439,7 @@ impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
 
         builder
             .body(body)
-            .map_err(|e| Error::ResponseConversionError(format!("http build error: {}", e)))
+            .map_err(|e| Error::ResponseConversion(format!("http build error: {}", e)))
     }
 }
 
@@ -526,7 +520,7 @@ where
             let name = name.as_str().to_string();
             let val = value
                 .to_str()
-                .map_err(|_| Error::ResponseConversionError(format!("non-utf8 header value for '{}'", name)))?;
+                .map_err(|_| Error::ResponseConversion(format!("non-utf8 header value for '{}'", name)))?;
             headers.push((name, val.to_string()));
         }
 
@@ -660,9 +654,7 @@ impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
         let mut headers = Vec::with_capacity(value.headers().len());
 
         for (key, value) in value.headers() {
-            let value = value
-                .to_str()
-                .map_err(|err| HeaderDeserializationError(err.to_string()))?;
+            let value = value.to_str().map_err(|err| HeaderDeserialization(err.to_string()))?;
 
             headers.push((key.as_str().to_string(), value.to_string()))
         }
@@ -1615,7 +1607,7 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
 
         let mut method = None;
         if let Some(method_str) = value.request.method {
-            method = Some(Method::from_str(&method_str).map_err(|err| StaticMockConversionError(err.to_string()))?);
+            method = Some(Method::from_str(&method_str).map_err(|err| StaticMockConversion(err.to_string()))?);
         }
 
         Ok(StaticMockDefinition {
