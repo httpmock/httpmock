@@ -17,14 +17,12 @@ use crate::server::RequestMetadata;
 
 #[derive(Error, Debug)]
 pub enum Error {
+    #[error("cannot read response body: {0}")]
+    ResponseBodyRead(#[from] hyper::Error),
     #[error("cannot send request: {0}")]
-    HyperError(#[from] hyper::Error),
-    #[error("cannot send request: {0}")]
-    HyperUtilError(#[from] hyper_util::client::legacy::Error),
+    RequestSend(#[from] hyper_util::client::legacy::Error),
     #[error("runtime error: {0}")]
-    RuntimeError(#[from] tokio::task::JoinError),
-    #[error("unknown error")]
-    Unknown,
+    TaskJoin(#[from] tokio::task::JoinError),
 }
 
 #[async_trait]
