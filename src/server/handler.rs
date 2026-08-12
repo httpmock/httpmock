@@ -11,6 +11,7 @@ use hyper::{Method, Request, Response, body::Bytes};
 use path_tree::{Path, PathTree};
 use serde::{Serialize, de::DeserializeOwned};
 use thiserror::Error;
+#[cfg(feature = "record")]
 use tokio::time::Instant;
 
 #[cfg(feature = "record")]
@@ -18,7 +19,9 @@ use crate::common::data::RecordingRuleConfig;
 #[cfg(feature = "proxy")]
 use crate::common::data::{ActiveForwardingRule, ActiveProxyRule};
 #[cfg(any(feature = "remote", feature = "proxy"))]
-use crate::common::http::{Error as HttpClientError, HttpClient};
+use crate::common::http::Error as HttpClientError;
+#[cfg(feature = "proxy")]
+use crate::common::http::HttpClient;
 use crate::{
     common::{
         data,
