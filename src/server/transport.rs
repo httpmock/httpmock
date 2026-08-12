@@ -29,7 +29,7 @@ use tokio_rustls::TlsAcceptor;
 use crate::server::{
     self,
     handler::Handler,
-    runtime::Error::{BufferError, LocalSocketAddrError, PublishSocketAddrError, RouterError, SocketBindError},
+    transport::Error::{BufferError, LocalSocketAddrError, PublishSocketAddrError, RouterError, SocketBindError},
 };
 
 #[derive(Error, Debug)]
@@ -315,7 +315,7 @@ where
     H: Handler + Send + Sync + 'static,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
-    // Build TLS acceptor inline for this connection
+    // Build the TLS acceptor for this connection.
     let cert_resolver = server.config.https.cert_resolver_factory.build(authority);
     // Select the ring crypto provider explicitly rather than relying on
     // `ServerConfig::builder`'s crate-feature auto-detection: dev-dependencies
