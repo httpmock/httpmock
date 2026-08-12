@@ -9,13 +9,13 @@ use crate::server::persistence::read_static_mock_definitions;
 use crate::server::{
     HttpMockServer,
     handler::HttpMockHandler,
-    runtime::{MockServer, MockServerConfig},
     state::{DEFAULT_HISTORY_LIMIT, HttpMockStateManager, StateManager},
+    transport::{MockServer, MockServerConfig},
 };
 #[cfg(feature = "https")]
 use crate::server::{
-    runtime::MockServerHttpsConfig,
     tls::{CertificateResolverFactory, GeneratingCertificateResolverFactory},
+    transport::MockServerHttpsConfig,
 };
 
 #[cfg(feature = "https")]
