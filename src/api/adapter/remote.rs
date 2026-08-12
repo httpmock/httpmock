@@ -62,7 +62,7 @@ impl RemoteMockServerAdapter {
     ) -> Result<Request<Bytes>, ServerAdapterError> {
         let mut builder = Request::builder()
             .method(method)
-            .uri(format!("http://{}/__httpmock__/{}", &self.addr, path));
+            .uri(format!("http://{}/__httpmock__/{}", self.addr, path));
 
         let body = match json_body {
             Some(json) => {
@@ -329,7 +329,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         // content-type header.
         let request = Request::builder()
             .method("POST")
-            .uri(format!("http://{}/__httpmock__/recordings", &self.addr))
+            .uri(format!("http://{}/__httpmock__/recordings", self.addr))
             .body(Bytes::from(recording_file_content.to_owned()))
             .map_err(|e| UpstreamError(e.to_string()))?;
 

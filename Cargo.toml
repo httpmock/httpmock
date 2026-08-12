@@ -16,13 +16,7 @@ rust-version = "1.88.0"
 # allowed lints are a temporary allow list that should be removed over time.
 warnings = { level = "deny", priority = -1 }
 unsafe_code = "forbid"
-# Allowed so lint names below that only exist on newer toolchains (e.g.
-# mismatched_lifetime_syntaxes) don't fail the MSRV build.
-unknown_lints = "allow"
 dead_code = "allow"
-mismatched_lifetime_syntaxes = "allow"
-unused_mut = "allow"
-unused_parens = "allow"
 unused_variables = "allow"
 
 [lints.clippy]
