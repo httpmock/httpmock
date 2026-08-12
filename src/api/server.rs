@@ -440,10 +440,7 @@ impl MockServer {
             .await
             .expect("Cannot deserialize mock server response");
 
-        Mock {
-            id: response.id,
-            server: self,
-        }
+        Mock::new(response.id, self)
     }
 
     /// Resets the mock server. More specifically, it deletes all [Mock](struct.Mock.html) objects
