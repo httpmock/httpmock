@@ -5,6 +5,8 @@ pub mod expectations {
 
     pub type KeyValue<'a> = (&'a String, Option<&'a String>);
     pub type RegexKeyValue<'a> = (&'a HttpMockRegex, Option<&'a HttpMockRegex>);
+    pub type RegexKeyValueCount<'a> = (Option<&'a HttpMockRegex>, Option<&'a HttpMockRegex>, usize);
+    pub type RequestPredicate = Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>;
 
     use crate::{
         common::{
@@ -212,9 +214,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn query_param_count(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(Option<&HttpMockRegex>, Option<&HttpMockRegex>, usize)>> {
+    pub fn query_param_count(mock: &RequestRequirements) -> Option<Vec<RegexKeyValueCount<'_>>> {
         mock.query_param_count
             .as_ref()
             .map(|v| v.iter().map(|(k, v, c)| (Some(k), Some(v), *c)).collect())
@@ -298,9 +298,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn header_count(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(Option<&HttpMockRegex>, Option<&HttpMockRegex>, usize)>> {
+    pub fn header_count(mock: &RequestRequirements) -> Option<Vec<RegexKeyValueCount<'_>>> {
         mock.header_count
             .as_ref()
             .map(|v| v.iter().map(|(k, v, c)| (Some(k), Some(v), *c)).collect())
@@ -384,9 +382,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn cookie_count(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(Option<&HttpMockRegex>, Option<&HttpMockRegex>, usize)>> {
+    pub fn cookie_count(mock: &RequestRequirements) -> Option<Vec<RegexKeyValueCount<'_>>> {
         mock.cookie_count
             .as_ref()
             .map(|v| v.iter().map(|(k, v, c)| (Some(k), Some(v), *c)).collect())
@@ -453,16 +449,12 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn is_true(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<&Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>>> {
+    pub fn is_true(mock: &RequestRequirements) -> Option<Vec<&RequestPredicate>> {
         mock.is_true.as_ref().map(|b| b.iter().collect())
     }
 
     #[inline]
-    pub fn is_false(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<&Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>>> {
+    pub fn is_false(mock: &RequestRequirements) -> Option<Vec<&RequestPredicate>> {
         mock.is_false.as_ref().map(|b| b.iter().collect())
     }
 
@@ -542,9 +534,7 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn form_urlencoded_key_value_count(
-        mock: &RequestRequirements,
-    ) -> Option<Vec<(Option<&HttpMockRegex>, Option<&HttpMockRegex>, usize)>> {
+    pub fn form_urlencoded_key_value_count(mock: &RequestRequirements) -> Option<Vec<RegexKeyValueCount<'_>>> {
         mock.form_urlencoded_tuple_count
             .as_ref()
             .map(|v| v.iter().map(|(k, v, c)| (Some(k), Some(v), *c)).collect())

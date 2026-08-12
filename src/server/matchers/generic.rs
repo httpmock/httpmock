@@ -318,6 +318,9 @@ where
 // ************************************************************************************************
 // MultiValueCountMatcher
 // ************************************************************************************************
+type MultiValueCountExpectation<EK, EV> =
+    for<'a> fn(&'a RequestRequirements) -> Option<Vec<(Option<&'a EK>, Option<&'a EV>, usize)>>;
+
 pub(crate) struct MultiValueCountMatcher<EK, EV, RK, RV>
 where
     EK: Display,
@@ -327,7 +330,7 @@ where
 {
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
-    pub expectation: for<'a> fn(&'a RequestRequirements) -> Option<Vec<(Option<&'a EK>, Option<&'a EV>, usize)>>,
+    pub expectation: MultiValueCountExpectation<EK, EV>,
     pub request_value: MultiValueRequest<RK, RV>,
     pub key_comparator: Box<dyn ValueComparator<EK, RK> + Send + Sync>,
     pub value_comparator: Box<dyn ValueComparator<EV, RV> + Send + Sync>,
