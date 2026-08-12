@@ -29,18 +29,10 @@ unused_variables = "allow"
 # Gate all clippy lints. The allowed lints are a temporary allow list that should be removed
 # over time.
 all = { level = "deny", priority = -1 }
-collapsible_if = "allow"
-uninlined_format_args = "allow"
-useless_borrows_in_formatting = "allow"
 doc_overindented_list_items = "allow"
-needless_return = "allow"
-expect_fun_call = "allow"
 to_string_in_format_args = "allow"
-extra_unused_lifetimes = "allow"
 new_ret_no_self = "allow"
-unnecessary_to_owned = "allow"
 ptr_arg = "allow"
-useless_format = "allow"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
