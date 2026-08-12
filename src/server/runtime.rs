@@ -29,7 +29,7 @@ use tokio_rustls::TlsAcceptor;
 use crate::server::{
     self,
     handler::Handler,
-    server::Error::{BufferError, LocalSocketAddrError, PublishSocketAddrError, RouterError, SocketBindError},
+    runtime::Error::{BufferError, LocalSocketAddrError, PublishSocketAddrError, RouterError, SocketBindError},
 };
 
 #[derive(Error, Debug)]
@@ -211,7 +211,7 @@ where
                             }
                         }
                         Err(err) => {
-                            let e = crate::server::server::Error::ServerConnectionError(Box::new(err));
+                            let e = Error::ServerConnectionError(Box::new(err));
                             tracing::warn!("CONNECT upgraded handling failed: {:?}", e);
                         }
                     }
