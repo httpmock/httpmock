@@ -7,10 +7,9 @@ use crate::common::http::{HttpClient, HttpMockHttpClient};
 #[cfg(feature = "record")]
 use crate::server::persistence::read_static_mock_definitions;
 use crate::server::{
-    HttpMockServer,
-    handler::HttpMockHandler,
-    state::{DEFAULT_HISTORY_LIMIT, HttpMockStateManager, StateManager},
-    transport::{MockServer, MockServerConfig},
+    handler,
+    state::{self, DEFAULT_HISTORY_LIMIT},
+    transport::{HttpMockServer, MockServerConfig},
 };
 #[cfg(feature = "https")]
 use crate::server::{
@@ -419,20 +418,17 @@ impl HttpMockServerBuilder {
     /// A `HttpMockServer` instance or an error if the build process fails.
     pub fn build(self) -> Result<HttpMockServer, Box<dyn Error>> {
         let history_limit = self.history_limit.unwrap_or(DEFAULT_HISTORY_LIMIT);
-        self.build_with_state(Arc::new(HttpMockStateManager::new(history_limit)))
+        self.build_with_state(Arc::new(state::Manager::new(history_limit)))
     }
 
-    /// Builds the `MockServer` with the current settings and provided state manager.
+    /// Builds the `HttpMockServer` with the current settings and provided state manager.
     ///
     /// # Parameters
     /// - `state`: The state manager to use.
     ///
     /// # Returns
-    /// A `MockServer` instance or an error if the build process fails.
-    pub(crate) fn build_with_state<S>(self, state: Arc<S>) -> Result<MockServer<HttpMockHandler<S>>, Box<dyn Error>>
-    where
-        S: StateManager + Send + Sync + 'static,
-    {
+    /// A `HttpMockServer` instance or an error if the build process fails.
+    pub(crate) fn build_with_state(self, state: Arc<state::Manager>) -> Result<HttpMockServer, Box<dyn Error>> {
         #[cfg(feature = "proxy")]
         let http_client = self
             .http_client
@@ -443,14 +439,14 @@ impl HttpMockServerBuilder {
             read_static_mock_definitions(dir, state.as_ref())?;
         }
 
-        let handler = HttpMockHandler::new(
+        let handler = handler::Handler::new(
             state,
             #[cfg(feature = "proxy")]
             http_client,
         );
 
-        Ok(MockServer::new(
-            Box::new(handler),
+        Ok(HttpMockServer::new(
+            handler,
             MockServerConfig {
                 static_port: self.port,
                 expose: self.expose.unwrap_or(false),
@@ -458,6 +454,6 @@ impl HttpMockServerBuilder {
                 #[cfg(feature = "https")]
                 https: self.https_config_builder.build()?,
             },
-        )?)
+        ))
     }
 }

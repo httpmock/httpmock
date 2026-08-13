@@ -33,7 +33,7 @@ use crate::{
         runtime,
         util::{Join, read_env, with_retry},
     },
-    server::{HttpMockServerBuilder, state::HttpMockStateManager},
+    server::{HttpMockServerBuilder, state},
 };
 #[cfg(feature = "proxy")]
 use crate::{
@@ -1325,7 +1325,7 @@ impl Drop for MockServer {
 
 const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn MockServerAdapter + Send + Sync> = || {
     let (addr_sender, addr_receiver) = channel::<SocketAddr>();
-    let state_manager = Arc::new(HttpMockStateManager::default());
+    let state_manager = Arc::new(state::Manager::default());
     let srv = HttpMockServerBuilder::new()
         .build_with_state(state_manager.clone())
         .expect("cannot build mock server");

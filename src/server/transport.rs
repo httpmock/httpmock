@@ -27,8 +27,7 @@ use tokio::{
 use tokio_rustls::TlsAcceptor;
 
 use crate::server::{
-    self,
-    handler::Handler,
+    self, handler,
     transport::Error::{BufferError, LocalSocketAddrError, PublishSocketAddrError, RouterError, SocketBindError},
 };
 
@@ -77,29 +76,20 @@ pub struct MockServerConfig {
     pub https: MockServerHttpsConfig,
 }
 
-/// The `MockServer` struct represents a mock server that can handle incoming HTTP requests.
-pub struct MockServer<H>
-where
-    H: Handler + Send + Sync + 'static,
-{
-    handler: Box<H>,
+/// The `HttpMockServer` struct represents a mock server that can handle incoming HTTP requests.
+pub struct HttpMockServer {
+    handler: handler::Handler,
     config: MockServerConfig,
 }
 
-impl<H> MockServer<H>
-where
-    H: Handler + Send + Sync + 'static,
-{
-    /// Creates a new `MockServer` instance with the given handler and configuration.
+impl HttpMockServer {
+    /// Creates a new `HttpMockServer` instance with the given handler and configuration.
     ///
     /// # Parameters
-    /// - `handler`: A boxed handler that implements the `Handler` trait.
+    /// - `handler`: The request handler.
     /// - `config`: The configuration settings for the mock server.
-    ///
-    /// # Returns
-    /// A `Result` containing the new `MockServer` instance or an `Error` if creation fails.
-    pub fn new(handler: Box<H>, config: MockServerConfig) -> Result<Self, Error> {
-        Ok(MockServer { handler, config })
+    pub(crate) fn new(handler: handler::Handler, config: MockServerConfig) -> Self {
+        HttpMockServer { handler, config }
     }
 
     /// Starts the mock server asynchronously.
@@ -306,13 +296,12 @@ where
 }
 
 #[cfg(feature = "https")]
-async fn serve_tls_connection<H, S>(
-    server: Arc<MockServer<H>>,
+async fn serve_tls_connection<S>(
+    server: Arc<HttpMockServer>,
     stream: S,
     authority: Option<String>, // The target host:port for SNI and cert selection
 ) -> Result<(), Error>
 where
-    H: Handler + Send + Sync + 'static,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     // Build the TLS acceptor for this connection.
@@ -345,20 +334,19 @@ where
 }
 
 // `serve_connection` cannot be a plain `async fn` (nor return an implicit/explicit
-// `impl Future`): `service_fn`'s closure below calls `MockServer::service`, which can spawn a
+// `impl Future`): `service_fn`'s closure below calls `HttpMockServer::service`, which can spawn a
 // task that calls `serve_tls_connection` -> `serve_connection` again for CONNECT/upgrade
 // tunneling. Any opaque `impl Future` return type here would need to resolve itself through
 // that indirect cycle, which rustc cannot do ("cycle detected when computing type of opaque
 // type"), surfacing as cascading bogus "is not Send" errors. Returning a `BoxFuture` erases
 // the concrete type and breaks the cycle. This runs once per TCP connection (not per
 // request, unlike `service`), so the extra heap allocation is negligible.
-fn serve_connection<H, S>(
-    server: Arc<MockServer<H>>,
+fn serve_connection<S>(
+    server: Arc<HttpMockServer>,
     stream: S,
     scheme: &'static str,
 ) -> BoxFuture<'static, Result<(), Error>>
 where
-    H: Handler + Send + Sync + 'static,
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     Box::pin(async move {
