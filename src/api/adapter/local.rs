@@ -13,16 +13,16 @@ use crate::{
         ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch, ForwardingRuleConfig,
         MockDefinition, ProxyRuleConfig, RecordingRuleConfig, RequestRequirements,
     },
-    server::state::{HttpMockStateManager, StateManager},
+    server::state,
 };
 
 pub struct LocalMockServerAdapter {
     pub addr: SocketAddr,
-    state: Arc<HttpMockStateManager>,
+    state: Arc<state::Manager>,
 }
 
 impl LocalMockServerAdapter {
-    pub fn new(addr: SocketAddr, local_state: Arc<HttpMockStateManager>) -> Self {
+    pub fn new(addr: SocketAddr, local_state: Arc<state::Manager>) -> Self {
         LocalMockServerAdapter {
             addr,
             state: local_state,

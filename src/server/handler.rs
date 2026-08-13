@@ -1,7 +1,6 @@
 use std::{
     convert::TryInto,
     fmt::{Debug, Display},
-    future::Future,
     str::FromStr,
     sync::Arc,
 };
@@ -38,7 +37,6 @@ use crate::{
             ResponseBodyConstruction, ResponseBodySerialization, ResponseDataConversion,
         },
         state,
-        state::StateManager,
     },
 };
 
@@ -88,25 +86,54 @@ enum RoutePath {
     SingleRecording,
 }
 
-pub(crate) trait Handler {
-    fn handle(&self, req: Request<Bytes>) -> impl Future<Output = Result<Response<Bytes>, Error>> + Send;
-}
-
-pub struct HttpMockHandler<S>
-where
-    S: StateManager + Send + Sync + 'static,
-{
+/// Routes incoming requests either to the mock server's management API or to the
+/// mocking, forwarding and proxying logic.
+pub(crate) struct Handler {
     path_tree: PathTree<RoutePath>,
-    state: Arc<S>,
+    state: Arc<state::Manager>,
     #[cfg(feature = "proxy")]
     http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
 }
 
-impl<H> Handler for HttpMockHandler<H>
-where
-    H: StateManager + Send + Sync + 'static,
-{
-    async fn handle(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
+impl Handler {
+    pub(crate) fn new(
+        state: Arc<state::Manager>,
+        #[cfg(feature = "proxy")] http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
+    ) -> Self {
+        let mut path_tree: PathTree<RoutePath> = PathTree::new();
+        #[allow(unused_must_use)]
+        {
+            path_tree.insert("/__httpmock__/ping", RoutePath::Ping);
+            path_tree.insert("/__httpmock__/state", RoutePath::Reset);
+            path_tree.insert("/__httpmock__/mocks", RoutePath::MockCollection);
+            path_tree.insert("/__httpmock__/mocks/:id", RoutePath::SingleMock);
+            path_tree.insert("/__httpmock__/verify", RoutePath::Verify);
+            path_tree.insert("/__httpmock__/history", RoutePath::History);
+
+            #[cfg(feature = "proxy")]
+            {
+                path_tree.insert("/__httpmock__/forwarding_rules", RoutePath::ForwardingRuleCollection);
+                path_tree.insert("/__httpmock__/forwarding_rules/:id", RoutePath::SingleForwardingRule);
+                path_tree.insert("/__httpmock__/proxy_rules", RoutePath::ProxyRuleCollection);
+                path_tree.insert("/__httpmock__/proxy_rules/:id", RoutePath::SingleProxyRule);
+            }
+
+            #[cfg(feature = "record")]
+            {
+                path_tree.insert("/__httpmock__/recordings", RoutePath::RecordingCollection);
+                path_tree.insert("/__httpmock__/recordings/:id", RoutePath::SingleRecording);
+            }
+        }
+
+        Self {
+            path_tree,
+            state,
+            #[cfg(feature = "proxy")]
+            http_client,
+        }
+    }
+
+    pub(crate) async fn handle(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         tracing::trace!("Routing incoming request: {:?}", req);
 
         let method = req.method().clone();
@@ -185,48 +212,6 @@ where
         }
 
         return self.catch_all(req).await;
-    }
-}
-
-impl<H> HttpMockHandler<H>
-where
-    H: StateManager + Send + Sync + 'static,
-{
-    pub fn new(
-        state: Arc<H>,
-        #[cfg(feature = "proxy")] http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
-    ) -> Self {
-        let mut path_tree: PathTree<RoutePath> = PathTree::new();
-        #[allow(unused_must_use)]
-        {
-            path_tree.insert("/__httpmock__/ping", RoutePath::Ping);
-            path_tree.insert("/__httpmock__/state", RoutePath::Reset);
-            path_tree.insert("/__httpmock__/mocks", RoutePath::MockCollection);
-            path_tree.insert("/__httpmock__/mocks/:id", RoutePath::SingleMock);
-            path_tree.insert("/__httpmock__/verify", RoutePath::Verify);
-            path_tree.insert("/__httpmock__/history", RoutePath::History);
-
-            #[cfg(feature = "proxy")]
-            {
-                path_tree.insert("/__httpmock__/forwarding_rules", RoutePath::ForwardingRuleCollection);
-                path_tree.insert("/__httpmock__/forwarding_rules/:id", RoutePath::SingleForwardingRule);
-                path_tree.insert("/__httpmock__/proxy_rules", RoutePath::ProxyRuleCollection);
-                path_tree.insert("/__httpmock__/proxy_rules/:id", RoutePath::SingleProxyRule);
-            }
-
-            #[cfg(feature = "record")]
-            {
-                path_tree.insert("/__httpmock__/recordings", RoutePath::RecordingCollection);
-                path_tree.insert("/__httpmock__/recordings/:id", RoutePath::SingleRecording);
-            }
-        }
-
-        Self {
-            path_tree,
-            state,
-            #[cfg(feature = "proxy")]
-            http_client,
-        }
     }
 
     fn handle_ping(&self) -> Result<Response<Bytes>, Error> {

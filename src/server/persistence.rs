@@ -14,7 +14,7 @@ use crate::{
         data,
         data::{MockDefinition, StaticMockDefinition},
     },
-    server::{state, state::StateManager},
+    server::state,
 };
 
 #[derive(Error, Debug)]
@@ -39,10 +39,7 @@ pub enum Error {
     DataConversion(#[from] data::Error),
 }
 
-pub fn read_static_mock_definitions<S>(path_opt: PathBuf, state: &S) -> Result<(), Error>
-where
-    S: StateManager + Send + Sync + 'static,
-{
+pub fn read_static_mock_definitions(path_opt: PathBuf, state: &state::Manager) -> Result<(), Error> {
     for def in read_static_mocks(path_opt)? {
         state.add_mock(def.try_into()?, true)?;
     }

@@ -13,12 +13,7 @@ mod tls;
 pub use builder::HttpMockServerBuilder;
 #[cfg(feature = "https")]
 pub use builder::{DEFAULT_CA_CERTIFICATE, DEFAULT_CA_PRIVATE_KEY};
-pub use transport::Error;
-
-use crate::server::{handler::HttpMockHandler, state::HttpMockStateManager, transport::MockServer};
-
-// We want to expose this error to the user
-pub type HttpMockServer = MockServer<HttpMockHandler<HttpMockStateManager>>;
+pub use transport::{Error, HttpMockServer};
 
 /// Per-request metadata propagated through Hyper services.
 #[derive(Clone)]

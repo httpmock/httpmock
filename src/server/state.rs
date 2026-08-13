@@ -47,7 +47,9 @@ pub enum Error {
 /// no explicit limit is configured.
 pub(crate) const DEFAULT_HISTORY_LIMIT: usize = 100;
 
-pub struct MockServerState {
+/// The mock server's mutable state: the registered mocks, the request history,
+/// and the active forwarding, proxy and recording rules.
+pub(crate) struct Inner {
     next_mock_id: usize,
     next_forwarding_rule_id: usize,
     next_proxy_rule_id: usize,
@@ -61,9 +63,9 @@ pub struct MockServerState {
     pub recordings: BTreeMap<usize, ActiveRecording>,
 }
 
-impl MockServerState {
+impl Inner {
     pub fn new(history_limit: usize) -> Self {
-        MockServerState {
+        Inner {
             mocks: BTreeMap::new(),
             forwarding_rules: BTreeMap::new(),
             proxy_rules: BTreeMap::new(),
@@ -79,70 +81,19 @@ impl MockServerState {
     }
 }
 
-pub(crate) trait StateManager {
-    fn reset(&self);
-    fn add_mock(&self, definition: MockDefinition, is_static: bool) -> Result<ActiveMock, Error>;
-    fn read_mock(&self, id: usize) -> Result<Option<ActiveMock>, Error>;
-    fn delete_mock(&self, id: usize) -> Result<bool, Error>;
-    fn delete_all_mocks(&self);
-
-    fn delete_history(&self);
-
-    fn verify(&self, requirements: &RequestRequirements) -> Result<Option<ClosestMatch>, Error>;
-
-    fn serve_mock(&self, req: &HttpMockRequest) -> Result<Option<MockServerHttpResponse>, Error>;
-
-    fn create_forwarding_rule(&self, config: ForwardingRuleConfig) -> ActiveForwardingRule;
-    fn delete_forwarding_rule(&self, id: usize) -> Option<ActiveForwardingRule>;
-    fn delete_all_forwarding_rules(&self);
-
-    fn create_proxy_rule(&self, constraints: ProxyRuleConfig) -> ActiveProxyRule;
-    fn delete_proxy_rule(&self, id: usize) -> Option<ActiveProxyRule>;
-    fn delete_all_proxy_rules(&self);
-
-    fn create_recording(&self, config: RecordingRuleConfig) -> ActiveRecording;
-    fn delete_recording(&self, recording_id: usize) -> Option<ActiveRecording>;
-    fn delete_all_recordings(&self);
-
-    #[cfg(feature = "record")]
-    fn export_recording(&self, id: usize) -> Result<Option<Bytes>, Error>;
-
-    #[cfg(feature = "record")]
-    fn load_mocks_from_recording(&self, recording_file_content: &str) -> Result<Vec<usize>, Error>;
-
-    fn find_forward_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveForwardingRule>, Error>;
-    fn find_proxy_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveProxyRule>, Error>;
-    fn record<
-        IntoResponse: TryInto<MockServerHttpResponse, Error = impl std::fmt::Display + std::fmt::Debug + 'static>,
-    >(
-        &self,
-        is_proxied: bool,
-        time_taken: Duration,
-        req: HttpMockRequest,
-        res: IntoResponse,
-    ) -> Result<(), Error>;
+/// Owns the mock server's state and serialises access to it.
+pub struct Manager {
+    state: Mutex<Inner>,
 }
 
-pub struct HttpMockStateManager {
-    state: Mutex<MockServerState>,
-}
-
-impl HttpMockStateManager {
+impl Manager {
     pub fn new(history_limit: usize) -> Self {
         Self {
-            state: Mutex::new(MockServerState::new(history_limit)),
+            state: Mutex::new(Inner::new(history_limit)),
         }
     }
-}
 
-impl Default for HttpMockStateManager {
-    fn default() -> Self {
-        HttpMockStateManager::new(DEFAULT_HISTORY_LIMIT)
-    }
-}
-
-impl StateManager for HttpMockStateManager {
-    fn reset(&self) {
+    pub(crate) fn reset(&self) {
         self.delete_all_mocks();
         self.delete_history();
         self.delete_all_forwarding_rules();
@@ -150,7 +101,7 @@ impl StateManager for HttpMockStateManager {
         self.delete_all_recordings();
     }
 
-    fn add_mock(&self, definition: MockDefinition, is_static: bool) -> Result<ActiveMock, Error> {
+    pub(crate) fn add_mock(&self, definition: MockDefinition, is_static: bool) -> Result<ActiveMock, Error> {
         validate_request_requirements(&definition.request)?;
 
         let mut state = self.state.lock().unwrap();
@@ -167,7 +118,7 @@ impl StateManager for HttpMockStateManager {
         Ok(active_mock)
     }
 
-    fn read_mock(&self, id: usize) -> Result<Option<ActiveMock>, Error> {
+    pub(crate) fn read_mock(&self, id: usize) -> Result<Option<ActiveMock>, Error> {
         let state = self.state.lock().unwrap();
 
         let result = state.mocks.get(&id);
@@ -177,7 +128,7 @@ impl StateManager for HttpMockStateManager {
         }
     }
 
-    fn delete_mock(&self, id: usize) -> Result<bool, Error> {
+    pub(crate) fn delete_mock(&self, id: usize) -> Result<bool, Error> {
         let mut state = self.state.lock().unwrap();
 
         if let Some(m) = state.mocks.get(&id)
@@ -191,7 +142,7 @@ impl StateManager for HttpMockStateManager {
         Ok(state.mocks.remove(&id).is_some())
     }
 
-    fn delete_all_mocks(&self) {
+    pub(crate) fn delete_all_mocks(&self) {
         let mut state = self.state.lock().unwrap();
 
         let ids: Vec<usize> = state
@@ -208,13 +159,13 @@ impl StateManager for HttpMockStateManager {
         tracing::trace!("Deleted all mocks");
     }
 
-    fn delete_history(&self) {
+    pub(crate) fn delete_history(&self) {
         let mut state = self.state.lock().unwrap();
         state.history.clear();
         tracing::trace!("Deleted request history");
     }
 
-    fn verify(&self, requirements: &RequestRequirements) -> Result<Option<ClosestMatch>, Error> {
+    pub(crate) fn verify(&self, requirements: &RequestRequirements) -> Result<Option<ClosestMatch>, Error> {
         let state = self.state.lock().unwrap();
 
         let non_matching_requests: Vec<&Arc<HttpMockRequest>> = state
@@ -241,7 +192,7 @@ impl StateManager for HttpMockStateManager {
         }))
     }
 
-    fn serve_mock(&self, req: &HttpMockRequest) -> Result<Option<MockServerHttpResponse>, Error> {
+    pub(crate) fn serve_mock(&self, req: &HttpMockRequest) -> Result<Option<MockServerHttpResponse>, Error> {
         let mut state = self.state.lock().unwrap();
 
         let req = Arc::new(req.clone());
@@ -272,7 +223,7 @@ impl StateManager for HttpMockStateManager {
         Ok(None)
     }
 
-    fn create_forwarding_rule(&self, config: ForwardingRuleConfig) -> ActiveForwardingRule {
+    pub(crate) fn create_forwarding_rule(&self, config: ForwardingRuleConfig) -> ActiveForwardingRule {
         let mut state = self.state.lock().unwrap();
 
         let rule = ActiveForwardingRule {
@@ -287,7 +238,7 @@ impl StateManager for HttpMockStateManager {
         rule
     }
 
-    fn delete_forwarding_rule(&self, id: usize) -> Option<ActiveForwardingRule> {
+    pub(crate) fn delete_forwarding_rule(&self, id: usize) -> Option<ActiveForwardingRule> {
         let mut state = self.state.lock().unwrap();
 
         let result = state.forwarding_rules.remove(&id);
@@ -304,14 +255,14 @@ impl StateManager for HttpMockStateManager {
         result
     }
 
-    fn delete_all_forwarding_rules(&self) {
+    pub(crate) fn delete_all_forwarding_rules(&self) {
         let mut state = self.state.lock().unwrap();
         state.forwarding_rules.clear();
 
         tracing::debug!("Deleted all forwarding rules");
     }
 
-    fn create_proxy_rule(&self, config: ProxyRuleConfig) -> ActiveProxyRule {
+    pub(crate) fn create_proxy_rule(&self, config: ProxyRuleConfig) -> ActiveProxyRule {
         let mut state = self.state.lock().unwrap();
 
         let rule = ActiveProxyRule {
@@ -326,7 +277,7 @@ impl StateManager for HttpMockStateManager {
         rule
     }
 
-    fn delete_proxy_rule(&self, id: usize) -> Option<ActiveProxyRule> {
+    pub(crate) fn delete_proxy_rule(&self, id: usize) -> Option<ActiveProxyRule> {
         let mut state = self.state.lock().unwrap();
 
         let result = state.proxy_rules.remove(&id);
@@ -343,14 +294,14 @@ impl StateManager for HttpMockStateManager {
         result
     }
 
-    fn delete_all_proxy_rules(&self) {
+    pub(crate) fn delete_all_proxy_rules(&self) {
         let mut state = self.state.lock().unwrap();
         state.proxy_rules.clear();
 
         tracing::debug!("Deleted all proxy rules");
     }
 
-    fn create_recording(&self, config: RecordingRuleConfig) -> ActiveRecording {
+    pub(crate) fn create_recording(&self, config: RecordingRuleConfig) -> ActiveRecording {
         let mut state = self.state.lock().unwrap();
 
         let rec = ActiveRecording {
@@ -366,7 +317,7 @@ impl StateManager for HttpMockStateManager {
         rec
     }
 
-    fn delete_recording(&self, id: usize) -> Option<ActiveRecording> {
+    pub(crate) fn delete_recording(&self, id: usize) -> Option<ActiveRecording> {
         let mut state = self.state.lock().unwrap();
 
         let result = state.recordings.remove(&id);
@@ -383,7 +334,7 @@ impl StateManager for HttpMockStateManager {
         result
     }
 
-    fn delete_all_recordings(&self) {
+    pub(crate) fn delete_all_recordings(&self) {
         let mut state = self.state.lock().unwrap();
         state.recordings.clear();
 
@@ -391,7 +342,7 @@ impl StateManager for HttpMockStateManager {
     }
 
     #[cfg(feature = "record")]
-    fn export_recording(&self, id: usize) -> Result<Option<Bytes>, Error> {
+    pub(crate) fn export_recording(&self, id: usize) -> Result<Option<Bytes>, Error> {
         let state = self.state.lock().unwrap();
 
         if let Some(rec) = state.recordings.get(&id) {
@@ -404,7 +355,7 @@ impl StateManager for HttpMockStateManager {
     }
 
     #[cfg(feature = "record")]
-    fn load_mocks_from_recording(&self, recording_file_content: &str) -> Result<Vec<usize>, Error> {
+    pub(crate) fn load_mocks_from_recording(&self, recording_file_content: &str) -> Result<Vec<usize>, Error> {
         let all_static_mock_defs = deserialize_mock_defs_from_yaml(recording_file_content)
             .map_err(|err| DataConversionError(err.to_string()))?;
 
@@ -428,7 +379,10 @@ impl StateManager for HttpMockStateManager {
         Ok(mock_ids)
     }
 
-    fn find_forward_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveForwardingRule>, Error> {
+    pub(crate) fn find_forward_rule<'a>(
+        &'a self,
+        req: &'a HttpMockRequest,
+    ) -> Result<Option<ActiveForwardingRule>, Error> {
         let state = self.state.lock().unwrap();
 
         let result = state
@@ -440,7 +394,7 @@ impl StateManager for HttpMockStateManager {
         Ok(result)
     }
 
-    fn find_proxy_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveProxyRule>, Error> {
+    pub(crate) fn find_proxy_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveProxyRule>, Error> {
         let state = self.state.lock().unwrap();
 
         let result = state
@@ -452,7 +406,7 @@ impl StateManager for HttpMockStateManager {
         Ok(result)
     }
 
-    fn record<
+    pub(crate) fn record<
         IntoResponse: TryInto<MockServerHttpResponse, Error = impl std::fmt::Display + std::fmt::Debug + 'static>,
     >(
         &self,
@@ -483,6 +437,12 @@ impl StateManager for HttpMockStateManager {
         }
 
         Ok(())
+    }
+}
+
+impl Default for Manager {
+    fn default() -> Self {
+        Manager::new(DEFAULT_HISTORY_LIMIT)
     }
 }
 
@@ -659,7 +619,7 @@ mod tests {
     #[test]
     fn history_is_capped_at_configured_limit() {
         let history_limit = 3;
-        let manager = HttpMockStateManager::new(history_limit);
+        let manager = Manager::new(history_limit);
 
         // Serve more requests than the configured limit.
         for _ in 0..10 {
@@ -682,7 +642,7 @@ mod tests {
 
     #[test]
     fn default_history_limit_is_preserved() {
-        let manager = HttpMockStateManager::default();
+        let manager = Manager::default();
         assert_eq!(manager.state.lock().unwrap().history_limit, DEFAULT_HISTORY_LIMIT);
     }
 }
