@@ -6,14 +6,9 @@ use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
 
 use crate::{
-    api::{
-        MockServerAdapter,
-        adapter::{
-            ServerAdapterError,
-            ServerAdapterError::{
-                InvalidMockDefinitionError, JsonDeserializationError, JsonSerializationError, UpstreamError,
-            },
-        },
+    api::adapter::{
+        Adapter, Error,
+        Error::{InvalidMockDefinitionError, JsonDeserializationError, JsonSerializationError, UpstreamError},
     },
     common::{
         data::{
@@ -24,17 +19,17 @@ use crate::{
     },
 };
 
-pub struct RemoteMockServerAdapter {
+pub struct Remote {
     addr: SocketAddr,
     http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
 }
 
-impl RemoteMockServerAdapter {
+impl Remote {
     pub fn new(addr: SocketAddr, http_client: Arc<dyn HttpClient + Send + Sync + 'static>) -> Self {
         Self { addr, http_client }
     }
 
-    fn validate_request_requirements(&self, requirements: &RequestRequirements) -> Result<(), ServerAdapterError> {
+    fn validate_request_requirements(&self, requirements: &RequestRequirements) -> Result<(), Error> {
         match requirements.is_true {
             Some(_) => Err(InvalidMockDefinitionError(
                 "Anonymous function request matchers are not supported when using a remote mock server".to_string(),
@@ -43,7 +38,7 @@ impl RemoteMockServerAdapter {
         }
     }
 
-    fn validate_response(&self, response: &MockServerHttpResponse) -> Result<(), ServerAdapterError> {
+    fn validate_response(&self, response: &MockServerHttpResponse) -> Result<(), Error> {
         match response.respond_with {
             Some(_) => Err(InvalidMockDefinitionError(
                 "Dynamic responders are not supported by remote/standalone servers".to_string(),
@@ -59,7 +54,7 @@ impl RemoteMockServerAdapter {
         method: &str,
         path: &str,
         json_body: Option<String>,
-    ) -> Result<Request<Bytes>, ServerAdapterError> {
+    ) -> Result<Request<Bytes>, Error> {
         let mut builder = Request::builder()
             .method(method)
             .uri(format!("http://{}/__httpmock__/{}", self.addr, path));
@@ -83,7 +78,7 @@ impl RemoteMockServerAdapter {
         request: Request<Bytes>,
         expected_status: StatusCode,
         context: &str,
-    ) -> Result<String, ServerAdapterError> {
+    ) -> Result<String, Error> {
         let (status, body) = self.do_request(request).await?;
 
         if status != expected_status.as_u16() {
@@ -107,7 +102,7 @@ impl RemoteMockServerAdapter {
         json_body: Option<String>,
         expected_status: StatusCode,
         context: &str,
-    ) -> Result<T, ServerAdapterError> {
+    ) -> Result<T, Error> {
         let request = self.build_request(method, path, json_body)?;
         let body = self.send_checked(request, expected_status, context).await?;
         serde_json::from_str(&body).map_err(JsonDeserializationError)
@@ -122,13 +117,13 @@ impl RemoteMockServerAdapter {
         json_body: Option<String>,
         expected_status: StatusCode,
         context: &str,
-    ) -> Result<(), ServerAdapterError> {
+    ) -> Result<(), Error> {
         let request = self.build_request(method, path, json_body)?;
         self.send_checked(request, expected_status, context).await?;
         Ok(())
     }
 
-    async fn do_request(&self, req: Request<Bytes>) -> Result<(u16, String), ServerAdapterError> {
+    async fn do_request(&self, req: Request<Bytes>) -> Result<(u16, String), Error> {
         let (code, body_bytes) = self.do_request_raw(req).await?;
 
         let body = String::from_utf8(body_bytes.to_vec()).map_err(|e| UpstreamError(e.to_string()))?;
@@ -136,7 +131,7 @@ impl RemoteMockServerAdapter {
         Ok((code, body))
     }
 
-    async fn do_request_raw(&self, req: Request<Bytes>) -> Result<(u16, Bytes), ServerAdapterError> {
+    async fn do_request_raw(&self, req: Request<Bytes>) -> Result<(u16, Bytes), Error> {
         let response = self
             .http_client
             .send(req)
@@ -148,7 +143,7 @@ impl RemoteMockServerAdapter {
 }
 
 #[async_trait]
-impl MockServerAdapter for RemoteMockServerAdapter {
+impl Adapter for Remote {
     fn host(&self) -> String {
         self.addr.ip().to_string()
     }
@@ -161,12 +156,12 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         &self.addr
     }
 
-    async fn reset(&self) -> Result<(), ServerAdapterError> {
+    async fn reset(&self) -> Result<(), Error> {
         self.request_empty("DELETE", "state", None, StatusCode::NO_CONTENT, "reset the mock server")
             .await
     }
 
-    async fn create_mock(&self, mock: &MockDefinition) -> Result<ActiveMock, ServerAdapterError> {
+    async fn create_mock(&self, mock: &MockDefinition) -> Result<ActiveMock, Error> {
         self.validate_request_requirements(&mock.request)?;
         self.validate_response(&mock.response)?;
 
@@ -176,7 +171,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
             .await
     }
 
-    async fn fetch_mock(&self, mock_id: usize) -> Result<ActiveMock, ServerAdapterError> {
+    async fn fetch_mock(&self, mock_id: usize) -> Result<ActiveMock, Error> {
         self.request_json(
             "GET",
             &format!("mocks/{}", mock_id),
@@ -187,7 +182,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
-    async fn delete_mock(&self, mock_id: usize) -> Result<(), ServerAdapterError> {
+    async fn delete_mock(&self, mock_id: usize) -> Result<(), Error> {
         self.request_empty(
             "DELETE",
             &format!("mocks/{}", mock_id),
@@ -198,7 +193,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
-    async fn verify(&self, requirements: &RequestRequirements) -> Result<Option<ClosestMatch>, ServerAdapterError> {
+    async fn verify(&self, requirements: &RequestRequirements) -> Result<Option<ClosestMatch>, Error> {
         let json = serde_json::to_string(requirements).map_err(JsonSerializationError)?;
 
         let request = self.build_request("POST", "verify", Some(json))?;
@@ -223,7 +218,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     async fn create_forwarding_rule(
         &self,
         config: ForwardingRuleConfig,
-    ) -> Result<ActiveForwardingRule, ServerAdapterError> {
+    ) -> Result<ActiveForwardingRule, Error> {
         self.validate_request_requirements(&config.request_requirements)?;
 
         let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
@@ -238,7 +233,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
-    async fn delete_forwarding_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
+    async fn delete_forwarding_rule(&self, id: usize) -> Result<(), Error> {
         self.request_empty(
             "DELETE",
             &format!("forwarding_rules/{}", id),
@@ -249,7 +244,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
-    async fn create_proxy_rule(&self, config: ProxyRuleConfig) -> Result<ActiveProxyRule, ServerAdapterError> {
+    async fn create_proxy_rule(&self, config: ProxyRuleConfig) -> Result<ActiveProxyRule, Error> {
         self.validate_request_requirements(&config.request_requirements)?;
 
         let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
@@ -264,7 +259,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
-    async fn delete_proxy_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
+    async fn delete_proxy_rule(&self, id: usize) -> Result<(), Error> {
         self.request_empty(
             "DELETE",
             &format!("proxy_rules/{}", id),
@@ -275,7 +270,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
-    async fn create_recording(&self, config: RecordingRuleConfig) -> Result<ActiveRecording, ServerAdapterError> {
+    async fn create_recording(&self, config: RecordingRuleConfig) -> Result<ActiveRecording, Error> {
         self.validate_request_requirements(&config.request_requirements)?;
 
         let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
@@ -290,7 +285,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
-    async fn delete_recording(&self, id: usize) -> Result<(), ServerAdapterError> {
+    async fn delete_recording(&self, id: usize) -> Result<(), Error> {
         self.request_empty(
             "DELETE",
             &format!("recordings/{}", id),
@@ -302,7 +297,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     }
 
     #[cfg(feature = "record")]
-    async fn export_recording(&self, id: usize) -> Result<Option<Bytes>, ServerAdapterError> {
+    async fn export_recording(&self, id: usize) -> Result<Option<Bytes>, Error> {
         let request = self.build_request("GET", &format!("recordings/{}", id), None)?;
 
         let (status, body) = self.do_request_raw(request).await?;
@@ -323,7 +318,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     async fn create_mocks_from_recording<'a>(
         &self,
         recording_file_content: &'a str,
-    ) -> Result<Vec<usize>, ServerAdapterError> {
+    ) -> Result<Vec<usize>, Error> {
         // Note: this endpoint receives the raw recording file content and,
         // unlike the other POST calls, is intentionally sent without a JSON
         // content-type header.

@@ -16,7 +16,7 @@ use thiserror::Error;
 use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
 
 #[derive(Error, Debug)]
-pub enum ServerAdapterError {
+pub enum Error {
     #[error("mock with ID {0} not found")]
     MockNotFound(usize),
     #[error("invalid mock definition: {0}")]
@@ -33,37 +33,31 @@ pub enum ServerAdapterError {
 pub mod remote;
 
 #[async_trait]
-pub trait MockServerAdapter {
+pub trait Adapter {
     fn host(&self) -> String;
     fn port(&self) -> u16;
     fn address(&self) -> &SocketAddr;
 
-    async fn reset(&self) -> Result<(), ServerAdapterError>;
+    async fn reset(&self) -> Result<(), Error>;
 
-    async fn create_mock(&self, mock: &MockDefinition) -> Result<ActiveMock, ServerAdapterError>;
-    async fn fetch_mock(&self, mock_id: usize) -> Result<ActiveMock, ServerAdapterError>;
-    async fn delete_mock(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
+    async fn create_mock(&self, mock: &MockDefinition) -> Result<ActiveMock, Error>;
+    async fn fetch_mock(&self, mock_id: usize) -> Result<ActiveMock, Error>;
+    async fn delete_mock(&self, mock_id: usize) -> Result<(), Error>;
 
-    async fn verify(&self, rr: &RequestRequirements) -> Result<Option<ClosestMatch>, ServerAdapterError>;
+    async fn verify(&self, rr: &RequestRequirements) -> Result<Option<ClosestMatch>, Error>;
 
-    async fn create_forwarding_rule(
-        &self,
-        config: ForwardingRuleConfig,
-    ) -> Result<ActiveForwardingRule, ServerAdapterError>;
-    async fn delete_forwarding_rule(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
+    async fn create_forwarding_rule(&self, config: ForwardingRuleConfig) -> Result<ActiveForwardingRule, Error>;
+    async fn delete_forwarding_rule(&self, mock_id: usize) -> Result<(), Error>;
 
-    async fn create_proxy_rule(&self, config: ProxyRuleConfig) -> Result<ActiveProxyRule, ServerAdapterError>;
-    async fn delete_proxy_rule(&self, mock_id: usize) -> Result<(), ServerAdapterError>;
+    async fn create_proxy_rule(&self, config: ProxyRuleConfig) -> Result<ActiveProxyRule, Error>;
+    async fn delete_proxy_rule(&self, mock_id: usize) -> Result<(), Error>;
 
-    async fn create_recording(&self, mock: RecordingRuleConfig) -> Result<ActiveRecording, ServerAdapterError>;
-    async fn delete_recording(&self, id: usize) -> Result<(), ServerAdapterError>;
+    async fn create_recording(&self, mock: RecordingRuleConfig) -> Result<ActiveRecording, Error>;
+    async fn delete_recording(&self, id: usize) -> Result<(), Error>;
 
     #[cfg(feature = "record")]
-    async fn export_recording(&self, id: usize) -> Result<Option<Bytes>, ServerAdapterError>;
+    async fn export_recording(&self, id: usize) -> Result<Option<Bytes>, Error>;
 
     #[cfg(feature = "record")]
-    async fn create_mocks_from_recording<'a>(
-        &self,
-        recording_file_content: &'a str,
-    ) -> Result<Vec<usize>, ServerAdapterError>;
+    async fn create_mocks_from_recording<'a>(&self, recording_file_content: &'a str) -> Result<Vec<usize>, Error>;
 }
