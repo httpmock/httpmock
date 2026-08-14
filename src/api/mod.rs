@@ -8,7 +8,7 @@ pub use spec::{Then, When};
 
 use crate::common;
 
-pub(crate) mod adapter;
+mod backend;
 mod mock;
 mod output;
 mod proxy;

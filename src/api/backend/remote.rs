@@ -6,32 +6,32 @@ use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
 
 use crate::{
-    api::adapter::{
+    api::backend::{
         Adapter, Error,
-        Error::{InvalidMockDefinitionError, JsonDeserializationError, JsonSerializationError, UpstreamError},
+        Error::{InvalidMockDefinition, JsonDeserialization, JsonSerialization, Upstream},
     },
     common::{
         data::{
             ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch, ForwardingRuleConfig,
             MockDefinition, MockServerHttpResponse, ProxyRuleConfig, RecordingRuleConfig, RequestRequirements,
         },
-        http::HttpClient,
+        http::Client,
     },
 };
 
-pub struct Remote {
+pub(in crate::api) struct Remote {
     addr: SocketAddr,
-    http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
+    http_client: Arc<dyn Client + Send + Sync + 'static>,
 }
 
 impl Remote {
-    pub fn new(addr: SocketAddr, http_client: Arc<dyn HttpClient + Send + Sync + 'static>) -> Self {
+    pub(in crate::api) fn new(addr: SocketAddr, http_client: Arc<dyn Client + Send + Sync + 'static>) -> Self {
         Self { addr, http_client }
     }
 
     fn validate_request_requirements(&self, requirements: &RequestRequirements) -> Result<(), Error> {
         match requirements.is_true {
-            Some(_) => Err(InvalidMockDefinitionError(
+            Some(_) => Err(InvalidMockDefinition(
                 "Anonymous function request matchers are not supported when using a remote mock server".to_string(),
             )),
             None => Ok(()),
@@ -40,7 +40,7 @@ impl Remote {
 
     fn validate_response(&self, response: &MockServerHttpResponse) -> Result<(), Error> {
         match response.respond_with {
-            Some(_) => Err(InvalidMockDefinitionError(
+            Some(_) => Err(InvalidMockDefinition(
                 "Dynamic responders are not supported by remote/standalone servers".to_string(),
             )),
             None => Ok(()),
@@ -49,12 +49,7 @@ impl Remote {
 
     /// Builds a request against the `__httpmock__` API. When `json_body` is
     /// `Some`, the payload is sent with a JSON content type.
-    fn build_request(
-        &self,
-        method: &str,
-        path: &str,
-        json_body: Option<String>,
-    ) -> Result<Request<Bytes>, Error> {
+    fn build_request(&self, method: &str, path: &str, json_body: Option<String>) -> Result<Request<Bytes>, Error> {
         let mut builder = Request::builder()
             .method(method)
             .uri(format!("http://{}/__httpmock__/{}", self.addr, path));
@@ -67,11 +62,11 @@ impl Remote {
             None => Bytes::new(),
         };
 
-        builder.body(body).map_err(|e| UpstreamError(e.to_string()))
+        builder.body(body).map_err(|e| Upstream(e.to_string()))
     }
 
     /// Sends a request and returns the response body as a string, failing with
-    /// an [`UpstreamError`] when the status does not match `expected_status`.
+    /// an [`Upstream`] when the status does not match `expected_status`.
     /// `context` names the operation for diagnostic error messages.
     async fn send_checked(
         &self,
@@ -82,7 +77,7 @@ impl Remote {
         let (status, body) = self.do_request(request).await?;
 
         if status != expected_status.as_u16() {
-            return Err(UpstreamError(format!(
+            return Err(Upstream(format!(
                 "Could not {}. Expected response status {} but was {} (response body = '{}')",
                 context,
                 expected_status.as_u16(),
@@ -105,7 +100,7 @@ impl Remote {
     ) -> Result<T, Error> {
         let request = self.build_request(method, path, json_body)?;
         let body = self.send_checked(request, expected_status, context).await?;
-        serde_json::from_str(&body).map_err(JsonDeserializationError)
+        serde_json::from_str(&body).map_err(JsonDeserialization)
     }
 
     /// Sends a request that is expected to have no meaningful response body,
@@ -126,17 +121,13 @@ impl Remote {
     async fn do_request(&self, req: Request<Bytes>) -> Result<(u16, String), Error> {
         let (code, body_bytes) = self.do_request_raw(req).await?;
 
-        let body = String::from_utf8(body_bytes.to_vec()).map_err(|e| UpstreamError(e.to_string()))?;
+        let body = String::from_utf8(body_bytes.to_vec()).map_err(|e| Upstream(e.to_string()))?;
 
         Ok((code, body))
     }
 
     async fn do_request_raw(&self, req: Request<Bytes>) -> Result<(u16, Bytes), Error> {
-        let response = self
-            .http_client
-            .send(req)
-            .await
-            .map_err(|e| UpstreamError(e.to_string()))?;
+        let response = self.http_client.send(req).await.map_err(|e| Upstream(e.to_string()))?;
 
         Ok((response.status().as_u16(), response.body().clone()))
     }
@@ -165,7 +156,7 @@ impl Adapter for Remote {
         self.validate_request_requirements(&mock.request)?;
         self.validate_response(&mock.response)?;
 
-        let json = serde_json::to_string(mock).map_err(JsonSerializationError)?;
+        let json = serde_json::to_string(mock).map_err(JsonSerialization)?;
 
         self.request_json("POST", "mocks", Some(json), StatusCode::CREATED, "create mock")
             .await
@@ -194,7 +185,7 @@ impl Adapter for Remote {
     }
 
     async fn verify(&self, requirements: &RequestRequirements) -> Result<Option<ClosestMatch>, Error> {
-        let json = serde_json::to_string(requirements).map_err(JsonSerializationError)?;
+        let json = serde_json::to_string(requirements).map_err(JsonSerialization)?;
 
         let request = self.build_request("POST", "verify", Some(json))?;
         let (status, body) = self.do_request(request).await?;
@@ -204,24 +195,21 @@ impl Adapter for Remote {
         }
 
         if status != StatusCode::OK.as_u16() {
-            return Err(UpstreamError(format!(
+            return Err(Upstream(format!(
                 "Could not verify mock. Expected response status 200 but was {} (response body = '{}')",
                 status, body
             )));
         }
 
-        let response: ClosestMatch = serde_json::from_str(&body).map_err(JsonDeserializationError)?;
+        let response: ClosestMatch = serde_json::from_str(&body).map_err(JsonDeserialization)?;
 
         Ok(Some(response))
     }
 
-    async fn create_forwarding_rule(
-        &self,
-        config: ForwardingRuleConfig,
-    ) -> Result<ActiveForwardingRule, Error> {
+    async fn create_forwarding_rule(&self, config: ForwardingRuleConfig) -> Result<ActiveForwardingRule, Error> {
         self.validate_request_requirements(&config.request_requirements)?;
 
-        let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
+        let json = serde_json::to_string(&config).map_err(JsonSerialization)?;
 
         self.request_json(
             "POST",
@@ -247,7 +235,7 @@ impl Adapter for Remote {
     async fn create_proxy_rule(&self, config: ProxyRuleConfig) -> Result<ActiveProxyRule, Error> {
         self.validate_request_requirements(&config.request_requirements)?;
 
-        let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
+        let json = serde_json::to_string(&config).map_err(JsonSerialization)?;
 
         self.request_json(
             "POST",
@@ -273,7 +261,7 @@ impl Adapter for Remote {
     async fn create_recording(&self, config: RecordingRuleConfig) -> Result<ActiveRecording, Error> {
         self.validate_request_requirements(&config.request_requirements)?;
 
-        let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
+        let json = serde_json::to_string(&config).map_err(JsonSerialization)?;
 
         self.request_json(
             "POST",
@@ -305,7 +293,7 @@ impl Adapter for Remote {
         if status == StatusCode::NOT_FOUND {
             return Ok(None);
         } else if status != StatusCode::OK.as_u16() {
-            return Err(UpstreamError(format!(
+            return Err(Upstream(format!(
                 "Could not fetch mock from the mock server. Expected response status 200 but was {}",
                 status
             )));
@@ -315,10 +303,7 @@ impl Adapter for Remote {
     }
 
     #[cfg(feature = "record")]
-    async fn create_mocks_from_recording<'a>(
-        &self,
-        recording_file_content: &'a str,
-    ) -> Result<Vec<usize>, Error> {
+    async fn create_mocks_from_recording<'a>(&self, recording_file_content: &'a str) -> Result<Vec<usize>, Error> {
         // Note: this endpoint receives the raw recording file content and,
         // unlike the other POST calls, is intentionally sent without a JSON
         // content-type header.
@@ -326,12 +311,12 @@ impl Adapter for Remote {
             .method("POST")
             .uri(format!("http://{}/__httpmock__/recordings", self.addr))
             .body(Bytes::from(recording_file_content.to_owned()))
-            .map_err(|e| UpstreamError(e.to_string()))?;
+            .map_err(|e| Upstream(e.to_string()))?;
 
         let body = self
             .send_checked(request, StatusCode::OK, "create mocks from recording")
             .await?;
 
-        serde_json::from_str(&body).map_err(JsonDeserializationError)
+        serde_json::from_str(&body).map_err(JsonDeserialization)
     }
 }

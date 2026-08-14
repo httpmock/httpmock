@@ -26,11 +26,11 @@ pub enum Error {
 }
 
 #[async_trait]
-pub trait HttpClient {
+pub(crate) trait Client {
     async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error>;
 }
 
-pub struct Client {
+pub(crate) struct DefaultClient {
     runtime: Option<Arc<Runtime>>,
     #[cfg(any(feature = "remote-https", feature = "https"))]
     client: Arc<legacy::Client<HttpsConnector<HttpConnector>, Full<Bytes>>>,
@@ -38,9 +38,9 @@ pub struct Client {
     client: Arc<legacy::Client<HttpConnector, Full<Bytes>>>,
 }
 
-impl Client {
+impl DefaultClient {
     #[cfg(any(feature = "remote-https", feature = "https"))]
-    pub fn new(runtime: Option<Arc<Runtime>>) -> Self {
+    pub(crate) fn new(runtime: Option<Arc<Runtime>>) -> Self {
         // see https://github.com/rustls/rustls/issues/1938
         if rustls::crypto::CryptoProvider::get_default().is_none() {
             rustls::crypto::ring::default_provider()
@@ -66,7 +66,7 @@ impl Client {
     }
 
     #[cfg(not(any(feature = "remote-https", feature = "https")))]
-    pub fn new(runtime: Option<Arc<Runtime>>) -> Self {
+    pub(crate) fn new(runtime: Option<Arc<Runtime>>) -> Self {
         Self {
             runtime,
             client: Arc::new(legacy::Client::builder(TokioExecutor::new()).build(HttpConnector::new())),
@@ -75,7 +75,7 @@ impl Client {
 }
 
 #[async_trait]
-impl HttpClient for Client {
+impl Client for DefaultClient {
     async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let (mut req_parts, req_body) = req.into_parts();
 

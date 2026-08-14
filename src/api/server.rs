@@ -18,12 +18,10 @@ use crate::api::{
     mock::MockSet,
     proxy::{Recording, RecordingRuleBuilder},
 };
-#[cfg(feature = "remote")]
-use crate::common::http;
 use crate::{
     Mock,
     api::{
-        adapter,
+        backend::{Adapter, Local},
         spec::{Then, When},
     },
     common::{
@@ -33,6 +31,8 @@ use crate::{
     },
     server::{HttpMockServerBuilder, state},
 };
+#[cfg(feature = "remote")]
+use crate::{api::backend::Remote, common::http::DefaultClient};
 #[cfg(feature = "proxy")]
 use crate::{
     api::proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder},
@@ -50,14 +50,14 @@ use crate::{
 /// - Monitor and verify that the expected requests are made by the client under test.
 /// - Simulate various network conditions and server responses, including errors and latencies.
 pub struct MockServer {
-    pub(crate) server_adapter: Option<Arc<dyn adapter::Adapter + Send + Sync>>,
-    pool: Arc<Pool<Arc<dyn adapter::Adapter + Send + Sync>>>,
+    pub(in crate::api) server_adapter: Option<Arc<dyn Adapter + Send + Sync>>,
+    pool: Arc<Pool<Arc<dyn Adapter + Send + Sync>>>,
 }
 
 impl MockServer {
     async fn from(
-        server_adapter: Arc<dyn adapter::Adapter + Send + Sync>,
-        pool: Arc<Pool<Arc<dyn adapter::Adapter + Send + Sync>>>,
+        server_adapter: Arc<dyn Adapter + Send + Sync>,
+        pool: Arc<Pool<Arc<dyn Adapter + Send + Sync>>>,
     ) -> Self {
         let server = Self {
             server_adapter: Some(server_adapter),
@@ -92,7 +92,7 @@ impl MockServer {
             .expect("Not able to resolve the provided host name to an IPv4 address");
 
         let adapter = REMOTE_SERVER_POOL_REF
-            .take_or_create(|| Arc::new(adapter::remote::Remote::new(addr, REMOTE_SERVER_CLIENT.clone())))
+            .take_or_create(|| Arc::new(Remote::new(addr, REMOTE_SERVER_CLIENT.clone())))
             .await;
         Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await
     }
@@ -1321,7 +1321,7 @@ impl Drop for MockServer {
     }
 }
 
-const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn adapter::Adapter + Send + Sync> = || {
+const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn Adapter + Send + Sync> = || {
     let (addr_sender, addr_receiver) = channel::<SocketAddr>();
     let state_manager = Arc::new(state::Manager::default());
     let srv = HttpMockServerBuilder::new()
@@ -1336,17 +1336,17 @@ const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn adapter::Adapter + Send + 
     });
 
     let addr = addr_receiver.join().expect("Cannot get server address");
-    Arc::new(adapter::local::Local::new(addr, state_manager))
+    Arc::new(Local::new(addr, state_manager))
 };
 
-static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn adapter::Adapter + Send + Sync>>>> = LazyLock::new(|| {
+static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn Adapter + Send + Sync>>>> = LazyLock::new(|| {
     let max_servers = read_env("HTTPMOCK_MAX_SERVERS", "25")
         .parse::<usize>()
         .expect("Cannot parse environment variable HTTPMOCK_MAX_SERVERS as an integer");
     Arc::new(Pool::new(max_servers))
 });
 
-static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn adapter::Adapter + Send + Sync>>>> =
+static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn Adapter + Send + Sync>>>> =
     LazyLock::new(|| Arc::new(Pool::new(1)));
 
 #[cfg(feature = "remote")]
@@ -1355,14 +1355,14 @@ static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn adapter::Adapter + Send
 //  other HTTP clients (tested: isahc, surf). Curl seems to use OpenSSL by default,
 //  so this is not an option. Optimally, the HTTP client uses rustls to avoid the
 //  dependency on OpenSSL installed on the OS.
-static REMOTE_SERVER_CLIENT: LazyLock<Arc<http::Client>> = LazyLock::new(|| {
+static REMOTE_SERVER_CLIENT: LazyLock<Arc<DefaultClient>> = LazyLock::new(|| {
     let max_workers = read_env("HTTPMOCK_HTTP_CLIENT_WORKER_THREADS", "1")
         .parse::<usize>()
         .expect("Cannot parse environment variable HTTPMOCK_HTTP_CLIENT_WORKER_THREADS as an integer");
     let max_blocking_threads = read_env("HTTPMOCK_HTTP_CLIENT_MAX_BLOCKING_THREADS", "10")
         .parse::<usize>()
         .expect("Cannot parse environment variable HTTPMOCK_HTTP_CLIENT_MAX_BLOCKING_THREADS to an integer");
-    Arc::new(http::Client::new(Some(Arc::new(
+    Arc::new(DefaultClient::new(Some(Arc::new(
         runtime::new(max_workers, max_blocking_threads).unwrap(),
     ))))
 });

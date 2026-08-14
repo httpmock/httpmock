@@ -13,12 +13,12 @@ use crate::{
     },
 };
 
-pub mod comparators;
+mod comparators;
 mod comparison;
-pub mod generic;
-pub mod readers;
+pub(crate) mod generic;
+mod readers;
 
-pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
+pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
     vec![
         //*************************************************************************************
         // Scheme matchers
@@ -283,7 +283,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param",
             matching_strategy: MatchingStrategy::Presence,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::query_param,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -295,7 +295,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_not",
             matching_strategy: MatchingStrategy::Absence,
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::query_param_not,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -308,7 +308,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_exists",
             matching_strategy: MatchingStrategy::Presence,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::query_param_exists,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -320,7 +320,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_missing",
             matching_strategy: MatchingStrategy::Absence,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::query_param_missing,
             request_value: readers::request_value::query_params,
             key_required: false,
@@ -332,7 +332,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_includes",
             matching_strategy: MatchingStrategy::Presence,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::query_param_includes,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -344,7 +344,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_excludes",
             matching_strategy: MatchingStrategy::Absence,
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::query_param_excludes,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -356,7 +356,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_prefix",
             matching_strategy: MatchingStrategy::Presence,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::query_param_prefix,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -368,7 +368,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_prefix_not",
             matching_strategy: MatchingStrategy::Absence,
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::query_param_prefix_not,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -381,7 +381,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_suffix",
             matching_strategy: MatchingStrategy::Presence,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::query_param_suffix,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -393,7 +393,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_suffix_not",
             matching_strategy: MatchingStrategy::Absence,
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::query_param_suffix_not,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -406,7 +406,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "query parameter",
             matcher_method: "query_param_matches",
             matching_strategy: MatchingStrategy::Presence,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::query_param_matches,
             request_value: readers::request_value::query_params,
             key_required: true,
@@ -432,7 +432,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "header",
             matcher_method: "header",
             matching_strategy: MatchingStrategy::Presence,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::header,
             request_value: readers::request_value::headers,
             key_required: true,
@@ -443,7 +443,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_not",
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::header_not,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Absence,
@@ -455,7 +455,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_exists",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::header_exists,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Presence,
@@ -467,7 +467,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_missing",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::header_missing,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Absence,
@@ -479,7 +479,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_includes",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::header_includes,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Presence,
@@ -491,7 +491,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_excludes",
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::header_excludes,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Absence,
@@ -503,7 +503,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_prefix",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::header_prefix,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Presence,
@@ -515,7 +515,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_prefix_not",
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::header_prefix_not,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Absence,
@@ -528,7 +528,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_suffix",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::header_suffix,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Presence,
@@ -540,7 +540,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_suffix_not",
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::header_suffix_not,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Absence,
@@ -553,7 +553,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "header",
             matcher_method: "header_matches",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::header_matches,
             request_value: readers::request_value::headers,
             matching_strategy: MatchingStrategy::Presence,
@@ -580,7 +580,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::cookie,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Presence,
@@ -594,7 +594,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "cookie",
             matcher_method: "cookie_not",
             matching_strategy: MatchingStrategy::Absence,
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::cookie_not,
             request_value: readers::request_value::cookies,
             key_required: true,
@@ -607,7 +607,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie_exists",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::cookie_exists,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Presence,
@@ -620,7 +620,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie_missing",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::cookie_missing,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Absence,
@@ -633,7 +633,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie_includes",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::cookie_includes,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Presence,
@@ -646,7 +646,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie_excludes",
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::cookie_excludes,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Absence,
@@ -659,7 +659,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie_prefix",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::cookie_prefix,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Presence,
@@ -672,7 +672,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie_prefix_not",
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::cookie_prefix_not,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Absence,
@@ -686,7 +686,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie_suffix",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::cookie_suffix,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Presence,
@@ -699,7 +699,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie_suffix_not",
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::cookie_suffix_not,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Absence,
@@ -713,7 +713,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "cookie",
             matcher_method: "cookie_matches",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::cookie_matches,
             request_value: readers::request_value::cookies,
             matching_strategy: MatchingStrategy::Presence,
@@ -884,7 +884,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matcher_method: "form_urlencoded_tuple",
             expectation: readers::expectations::form_urlencoded_tuple,
             request_value: readers::request_value::form_urlencoded_body,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             matching_strategy: MatchingStrategy::Presence,
             key_required: true,
             key_comparator: Box::new(StringEquals::new(true, false)),
@@ -895,7 +895,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "form-urlencoded body",
             matcher_method: "form_urlencoded_tuple_not",
             matching_strategy: MatchingStrategy::Absence,
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             expectation: readers::expectations::form_urlencoded_tuple_not,
             request_value: readers::request_value::form_urlencoded_body,
             key_required: true,
@@ -908,7 +908,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matcher_method: "form_urlencoded_tuple_exists",
             expectation: readers::expectations::form_urlencoded_key_exists,
             request_value: readers::request_value::form_urlencoded_body,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             matching_strategy: MatchingStrategy::Presence,
             key_required: true,
             key_comparator: Box::new(StringEquals::new(true, false)),
@@ -920,7 +920,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matcher_method: "form_urlencoded_tuple_missing",
             expectation: readers::expectations::form_urlencoded_key_missing,
             request_value: readers::request_value::form_urlencoded_body,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             matching_strategy: MatchingStrategy::Absence,
             key_required: false,
             key_comparator: Box::new(StringEquals::new(true, true)),
@@ -932,7 +932,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matcher_method: "form_urlencoded_tuple_includes",
             expectation: readers::expectations::form_urlencoded_includes,
             request_value: readers::request_value::form_urlencoded_body,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             matching_strategy: MatchingStrategy::Presence,
             key_required: true,
             key_comparator: Box::new(StringEquals::new(true, false)),
@@ -945,7 +945,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matcher_method: "form_urlencoded_tuple_excludes",
             expectation: readers::expectations::form_urlencoded_excludes,
             request_value: readers::request_value::form_urlencoded_body,
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             matching_strategy: MatchingStrategy::Absence,
             key_required: true,
             key_comparator: Box::new(StringEquals::new(true, false)),
@@ -957,7 +957,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matcher_method: "form_urlencoded_tuple_prefix",
             expectation: readers::expectations::form_urlencoded_prefix,
             request_value: readers::request_value::form_urlencoded_body,
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             matching_strategy: MatchingStrategy::Presence,
             key_required: true,
             key_comparator: Box::new(StringEquals::new(true, false)),
@@ -969,7 +969,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matcher_method: "form_urlencoded_tuple_prefix_not",
             expectation: readers::expectations::form_urlencoded_prefix_not,
             request_value: readers::request_value::form_urlencoded_body,
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             matching_strategy: MatchingStrategy::Absence,
             key_required: true,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
@@ -980,7 +980,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "form-urlencoded body",
             matcher_method: "form_urlencoded_tuple_suffix",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::form_urlencoded_suffix,
             request_value: readers::request_value::form_urlencoded_body,
             matching_strategy: MatchingStrategy::Presence,
@@ -994,7 +994,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matcher_method: "form_urlencoded_tuple_suffix_not",
             expectation: readers::expectations::form_urlencoded_suffix_not,
             request_value: readers::request_value::form_urlencoded_body,
-            operator: KeyValueOperator::IMPLICATION,
+            operator: KeyValueOperator::Implication,
             matching_strategy: MatchingStrategy::Absence,
             key_required: true,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
@@ -1005,7 +1005,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
         Box::new(MultiValueMatcher {
             entity_name: "form-urlencoded body",
             matcher_method: "form_urlencoded_tuple_matches",
-            operator: KeyValueOperator::AND,
+            operator: KeyValueOperator::And,
             expectation: readers::expectations::form_urlencoded_matches,
             request_value: readers::request_value::form_urlencoded_body,
             matching_strategy: MatchingStrategy::Presence,
@@ -1028,7 +1028,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
     ]
 }
 
-pub trait Matcher {
+pub(crate) trait Matcher {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool;
     fn distance(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> usize;
     fn mismatches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> Vec<Mismatch>;

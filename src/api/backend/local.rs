@@ -5,9 +5,9 @@ use async_trait::async_trait;
 use bytes::Bytes;
 
 use crate::{
-    api::adapter::{
+    api::backend::{
         Adapter, Error,
-        Error::{MockNotFound, UpstreamError},
+        Error::{MockNotFound, Upstream},
     },
     common::data::{
         ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch, ForwardingRuleConfig,
@@ -16,13 +16,13 @@ use crate::{
     server::state,
 };
 
-pub struct Local {
-    pub addr: SocketAddr,
+pub(in crate::api) struct Local {
+    pub(in crate::api) addr: SocketAddr,
     state: Arc<state::Manager>,
 }
 
 impl Local {
-    pub fn new(addr: SocketAddr, local_state: Arc<state::Manager>) -> Self {
+    pub(in crate::api) fn new(addr: SocketAddr, local_state: Arc<state::Manager>) -> Self {
         Local {
             addr,
             state: local_state,
@@ -53,7 +53,7 @@ impl Adapter for Local {
         let active_mock = self
             .state
             .add_mock(mock.clone(), false)
-            .map_err(|e| UpstreamError(e.to_string()))?;
+            .map_err(|e| Upstream(e.to_string()))?;
         Ok(active_mock)
     }
 
@@ -61,7 +61,7 @@ impl Adapter for Local {
         let mock = self
             .state
             .read_mock(mock_id)
-            .map_err(|e| UpstreamError(e.to_string()))?
+            .map_err(|e| Upstream(e.to_string()))?
             .ok_or(MockNotFound(mock_id))?;
         Ok(mock)
     }
@@ -69,7 +69,7 @@ impl Adapter for Local {
     async fn delete_mock(&self, mock_id: usize) -> Result<(), Error> {
         self.state
             .delete_mock(mock_id)
-            .map_err(|e| UpstreamError(format!("Cannot delete mock: {:?}", e)))?;
+            .map_err(|e| Upstream(format!("Cannot delete mock: {:?}", e)))?;
         Ok(())
     }
 
@@ -77,7 +77,7 @@ impl Adapter for Local {
         let closest_match = self
             .state
             .verify(mock_rr)
-            .map_err(|e| UpstreamError(format!("Cannot delete mock: {:?}", e)))?;
+            .map_err(|e| Upstream(format!("Cannot delete mock: {:?}", e)))?;
         Ok(closest_match)
     }
 
@@ -113,7 +113,7 @@ impl Adapter for Local {
         Ok(self
             .state
             .export_recording(id)
-            .map_err(|err| UpstreamError(err.to_string()))?)
+            .map_err(|err| Upstream(err.to_string()))?)
     }
 
     #[cfg(feature = "record")]
@@ -121,6 +121,6 @@ impl Adapter for Local {
         Ok(self
             .state
             .load_mocks_from_recording(recording_file_content)
-            .map_err(|err| UpstreamError(err.to_string()))?)
+            .map_err(|err| Upstream(err.to_string()))?)
     }
 }

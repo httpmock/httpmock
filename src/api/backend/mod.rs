@@ -7,7 +7,8 @@ use crate::common::data::{
     RequestRequirements,
 };
 
-pub mod local;
+mod local;
+pub(super) use local::Local;
 
 #[cfg(feature = "record")]
 use bytes::Bytes;
@@ -16,24 +17,26 @@ use thiserror::Error;
 use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
 
 #[derive(Error, Debug)]
-pub enum Error {
+pub(super) enum Error {
     #[error("mock with ID {0} not found")]
     MockNotFound(usize),
     #[error("invalid mock definition: {0}")]
-    InvalidMockDefinitionError(String),
+    InvalidMockDefinition(String),
     #[error("cannot serialize JSON: {0}")]
-    JsonSerializationError(serde_json::error::Error),
+    JsonSerialization(serde_json::error::Error),
     #[error("cannot deserialize JSON: {0}")]
-    JsonDeserializationError(serde_json::error::Error),
+    JsonDeserialization(serde_json::error::Error),
     #[error("adapter error: {0}")]
-    UpstreamError(String),
+    Upstream(String),
 }
 
 #[cfg(feature = "remote")]
-pub mod remote;
+mod remote;
+#[cfg(feature = "remote")]
+pub(super) use remote::Remote;
 
 #[async_trait]
-pub trait Adapter {
+pub(super) trait Adapter {
     fn host(&self) -> String;
     fn port(&self) -> u16;
     fn address(&self) -> &SocketAddr;
