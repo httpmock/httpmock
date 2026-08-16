@@ -16,7 +16,6 @@ rust-version = "1.88.0"
 # allowed lints are a temporary allow list that should be removed over time.
 warnings = { level = "deny", priority = -1 }
 unsafe_code = "forbid"
-dead_code = "allow"
 unused_variables = "allow"
 
 [lints.clippy]
