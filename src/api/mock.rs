@@ -622,11 +622,14 @@ impl<'a> Mock<'a> {
     }
 }
 
+/// A set of mocks created from a recording.
+#[cfg(feature = "record")]
 pub struct MockSet<'a> {
     pub ids: Vec<usize>,
     pub(crate) server: &'a MockServer,
 }
 
+#[cfg(feature = "record")]
 impl<'a> MockSet<'a> {
     pub fn delete(&mut self) {
         self.delete_async().join();
