@@ -1,6 +1,6 @@
 use std::{future::Future, time::Duration};
 
-use tokio::{runtime::Runtime, task::LocalSet};
+use tokio::task::LocalSet;
 
 pub(crate) async fn sleep(duration: Duration) {
     tokio::time::sleep(duration).await
@@ -18,7 +18,8 @@ where
     LocalSet::new().block_on(&runtime, f)
 }
 
-pub(crate) fn new(worker_threads: usize, blocking_threads: usize) -> std::io::Result<Runtime> {
+#[cfg(feature = "remote")]
+pub(crate) fn new(worker_threads: usize, blocking_threads: usize) -> std::io::Result<tokio::runtime::Runtime> {
     assert!(worker_threads > 0, "Parameter worker_threads must be larger than 0");
     assert!(blocking_threads > 0, "Parameter blocking_threads must be larger than 0");
 

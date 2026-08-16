@@ -288,130 +288,6 @@ impl HttpMockServerBuilder {
         self.history_limit = limit;
         self
     }
-
-    /// Sets the directory for static mock files.
-    ///
-    /// # Parameters
-    /// - `path`: The path to the static mock directory.
-    ///
-    /// # Returns
-    /// A modified `HttpMockServerBuilder` instance for method chaining.
-    #[cfg(feature = "record")]
-    pub fn static_mock_dir(mut self, path: PathBuf) -> Self {
-        self.static_mock_dir = Some(path);
-        self
-    }
-
-    /// Sets the directory for static mock files as an optional value.
-    ///
-    /// # Parameters
-    /// - `path`: An optional path to the static mock directory.
-    ///
-    /// # Returns
-    /// A modified `HttpMockServerBuilder` instance for method chaining.
-    #[cfg(feature = "record")]
-    pub fn static_mock_dir_option(mut self, path: Option<PathBuf>) -> Self {
-        self.static_mock_dir = path;
-        self
-    }
-
-    /// Sets the certificate resolver factory for generating certificates.
-    ///
-    /// # Parameters
-    /// - `factory`: A certificate resolver factory.
-    ///
-    /// # Returns
-    /// A modified `HttpMockServerBuilder` instance for method chaining.
-    #[cfg(feature = "https")]
-    pub fn server_config_factory(mut self, factory: Arc<GeneratingCertificateResolverFactory>) -> Self {
-        self.https_config_builder = self.https_config_builder.cert_resolver(Some(factory));
-        self
-    }
-
-    /// Sets the certificate resolver factory as an optional value.
-    ///
-    /// # Parameters
-    /// - `factory`: An optional certificate resolver factory.
-    ///
-    /// # Returns
-    /// A modified `HttpMockServerBuilder` instance for method chaining.
-    #[cfg(feature = "https")]
-    pub fn cert_resolver_option(mut self, factory: Option<Arc<dyn CertificateResolverFactory + Send + Sync>>) -> Self {
-        self.https_config_builder = self.https_config_builder.cert_resolver(factory);
-        self
-    }
-
-    /// Sets the CA certificate and private key for HTTPS.
-    ///
-    /// # Parameters
-    /// - `cert`: The CA certificate.
-    /// - `private_key`: The CA private key.
-    ///
-    /// # Returns
-    /// A modified `HttpMockServerBuilder` instance for method chaining.
-    #[cfg(feature = "https")]
-    pub fn https_ca_key_pair<IntoString: Into<String>>(mut self, cert: IntoString, private_key: IntoString) -> Self {
-        self.https_config_builder = self.https_config_builder.ca_cert(Some(cert));
-        self.https_config_builder = self.https_config_builder.ca_key(Some(private_key));
-        self
-    }
-
-    /// Sets the CA certificate and private key for HTTPS as optional values.
-    ///
-    /// # Parameters
-    /// - `cert`: An optional CA certificate.
-    /// - `private_key`: An optional CA private key.
-    ///
-    /// # Returns
-    /// A modified `HttpMockServerBuilder` instance for method chaining.
-    #[cfg(feature = "https")]
-    pub fn https_ca_key_pair_option<IntoString: Into<String>>(
-        mut self,
-        cert: Option<IntoString>,
-        private_key: Option<IntoString>,
-    ) -> Self {
-        self.https_config_builder = self.https_config_builder.ca_cert(cert);
-        self.https_config_builder = self.https_config_builder.ca_key(private_key);
-        self
-    }
-
-    /// Sets the paths to the CA certificate and private key files for HTTPS.
-    ///
-    /// # Parameters
-    /// - `cert_path`: The path to the CA certificate file.
-    /// - `private_key_path`: The path to the CA private key file.
-    ///
-    /// # Returns
-    /// A modified `HttpMockServerBuilder` instance for method chaining.
-    #[cfg(feature = "https")]
-    pub fn https_ca_key_pair_files<Path: Into<PathBuf>>(mut self, cert_path: Path, private_key_path: Path) -> Self {
-        self.https_config_builder = self.https_config_builder.ca_cert_path(Some(cert_path.into()));
-        self.https_config_builder = self.https_config_builder.ca_key_path(Some(private_key_path.into()));
-        self
-    }
-
-    /// Sets the paths to the CA certificate and private key files for HTTPS as optional values.
-    ///
-    /// # Parameters
-    /// - `cert_path`: An optional path to the CA certificate file.
-    /// - `private_key_path`: An optional path to the CA private key file.
-    ///
-    /// # Returns
-    /// A modified `HttpMockServerBuilder` instance for method chaining.
-    #[cfg(feature = "https")]
-    pub fn https_ca_key_pair_files_option<Path: Into<PathBuf>>(
-        mut self,
-        cert_path: Option<Path>,
-        private_key_path: Option<Path>,
-    ) -> Self {
-        let cert_path = cert_path.map(|b| b.into());
-        let private_key_path = private_key_path.map(|b| b.into());
-
-        self.https_config_builder = self.https_config_builder.ca_cert_path(cert_path);
-        self.https_config_builder = self.https_config_builder.ca_key_path(private_key_path);
-        self
-    }
-
     /// Builds the `HttpMockServer` with the current settings.
     ///
     /// # Returns
@@ -455,5 +331,126 @@ impl HttpMockServerBuilder {
                 https: self.https_config_builder.build()?,
             },
         ))
+    }
+}
+
+#[cfg(feature = "record")]
+impl HttpMockServerBuilder {
+    /// Sets the directory for static mock files.
+    ///
+    /// # Parameters
+    /// - `path`: The path to the static mock directory.
+    ///
+    /// # Returns
+    /// A modified `HttpMockServerBuilder` instance for method chaining.
+    pub fn static_mock_dir(mut self, path: PathBuf) -> Self {
+        self.static_mock_dir = Some(path);
+        self
+    }
+
+    /// Sets the directory for static mock files as an optional value.
+    ///
+    /// # Parameters
+    /// - `path`: An optional path to the static mock directory.
+    ///
+    /// # Returns
+    /// A modified `HttpMockServerBuilder` instance for method chaining.
+    pub fn static_mock_dir_option(mut self, path: Option<PathBuf>) -> Self {
+        self.static_mock_dir = path;
+        self
+    }
+}
+
+#[cfg(feature = "https")]
+impl HttpMockServerBuilder {
+    /// Sets the certificate resolver factory for generating certificates.
+    ///
+    /// # Parameters
+    /// - `factory`: A certificate resolver factory.
+    ///
+    /// # Returns
+    /// A modified `HttpMockServerBuilder` instance for method chaining.
+    pub fn server_config_factory(mut self, factory: Arc<GeneratingCertificateResolverFactory>) -> Self {
+        self.https_config_builder = self.https_config_builder.cert_resolver(Some(factory));
+        self
+    }
+
+    /// Sets the certificate resolver factory as an optional value.
+    ///
+    /// # Parameters
+    /// - `factory`: An optional certificate resolver factory.
+    ///
+    /// # Returns
+    /// A modified `HttpMockServerBuilder` instance for method chaining.
+    pub fn cert_resolver_option(mut self, factory: Option<Arc<dyn CertificateResolverFactory + Send + Sync>>) -> Self {
+        self.https_config_builder = self.https_config_builder.cert_resolver(factory);
+        self
+    }
+
+    /// Sets the CA certificate and private key for HTTPS.
+    ///
+    /// # Parameters
+    /// - `cert`: The CA certificate.
+    /// - `private_key`: The CA private key.
+    ///
+    /// # Returns
+    /// A modified `HttpMockServerBuilder` instance for method chaining.
+    pub fn https_ca_key_pair<IntoString: Into<String>>(mut self, cert: IntoString, private_key: IntoString) -> Self {
+        self.https_config_builder = self.https_config_builder.ca_cert(Some(cert));
+        self.https_config_builder = self.https_config_builder.ca_key(Some(private_key));
+        self
+    }
+
+    /// Sets the CA certificate and private key for HTTPS as optional values.
+    ///
+    /// # Parameters
+    /// - `cert`: An optional CA certificate.
+    /// - `private_key`: An optional CA private key.
+    ///
+    /// # Returns
+    /// A modified `HttpMockServerBuilder` instance for method chaining.
+    pub fn https_ca_key_pair_option<IntoString: Into<String>>(
+        mut self,
+        cert: Option<IntoString>,
+        private_key: Option<IntoString>,
+    ) -> Self {
+        self.https_config_builder = self.https_config_builder.ca_cert(cert);
+        self.https_config_builder = self.https_config_builder.ca_key(private_key);
+        self
+    }
+
+    /// Sets the paths to the CA certificate and private key files for HTTPS.
+    ///
+    /// # Parameters
+    /// - `cert_path`: The path to the CA certificate file.
+    /// - `private_key_path`: The path to the CA private key file.
+    ///
+    /// # Returns
+    /// A modified `HttpMockServerBuilder` instance for method chaining.
+    pub fn https_ca_key_pair_files<Path: Into<PathBuf>>(mut self, cert_path: Path, private_key_path: Path) -> Self {
+        self.https_config_builder = self.https_config_builder.ca_cert_path(Some(cert_path.into()));
+        self.https_config_builder = self.https_config_builder.ca_key_path(Some(private_key_path.into()));
+        self
+    }
+
+    /// Sets the paths to the CA certificate and private key files for HTTPS as optional values.
+    ///
+    /// # Parameters
+    /// - `cert_path`: An optional path to the CA certificate file.
+    /// - `private_key_path`: An optional path to the CA private key file.
+    ///
+    /// # Returns
+    /// A modified `HttpMockServerBuilder` instance for method chaining.
+    pub fn https_ca_key_pair_files_option<Path: Into<PathBuf>>(
+        mut self,
+        cert_path: Option<Path>,
+        private_key_path: Option<Path>,
+    ) -> Self {
+        let cert_path = cert_path.map(|b| b.into());
+        let private_key_path = private_key_path.map(|b| b.into());
+
+        self.https_config_builder = self.https_config_builder.ca_cert_path(cert_path);
+        self.https_config_builder = self.https_config_builder.ca_key_path(private_key_path);
+        self
     }
 }
