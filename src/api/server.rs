@@ -25,7 +25,7 @@ use crate::common::http::HttpMockHttpClient;
 use crate::{
     Mock,
     api::{
-        LocalMockServerAdapter, MockServerAdapter, ServerAdapterError,
+        LocalMockServerAdapter, MockServerAdapter,
         spec::{Then, When},
     },
     common::{
@@ -37,7 +37,10 @@ use crate::{
 };
 #[cfg(feature = "proxy")]
 use crate::{
-    api::proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder},
+    api::{
+        ServerAdapterError,
+        proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder},
+    },
     common::data::{ForwardingRuleConfig, ProxyRuleConfig},
 };
 
