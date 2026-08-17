@@ -618,7 +618,7 @@ impl HttpMockResponseBuilder {
 }
 
 /// A general abstraction of an HTTP response for all handlers.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct MockServerHttpResponse {
     pub status: Option<u16>,
     pub headers: Option<Vec<(String, String)>>,
@@ -627,24 +627,6 @@ pub struct MockServerHttpResponse {
     pub delay: Option<u64>,
     #[serde(skip)]
     pub respond_with: Option<ResponseCallback>,
-}
-
-impl MockServerHttpResponse {
-    pub(crate) fn new() -> Self {
-        Self {
-            status: None,
-            headers: None,
-            body: None,
-            delay: None,
-            respond_with: None,
-        }
-    }
-}
-
-impl Default for MockServerHttpResponse {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
@@ -879,26 +861,11 @@ pub struct RequestRequirements {
     pub is_false: Option<Vec<RequestPredicate>>, // NEW
 }
 
-impl RequestRequirements {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 /// A Request that is made to set a new mock.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MockDefinition {
     pub request: RequestRequirements,
     pub response: MockServerHttpResponse,
-}
-
-impl MockDefinition {
-    pub fn new(req: RequestRequirements, mock: MockServerHttpResponse) -> Self {
-        Self {
-            request: req,
-            response: mock,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -909,27 +876,10 @@ pub struct ActiveMock {
     pub is_static: bool,
 }
 
-impl ActiveMock {
-    pub fn new(id: usize, definition: MockDefinition, call_counter: usize, is_static: bool) -> Self {
-        ActiveMock {
-            id,
-            definition,
-            call_counter,
-            is_static,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveForwardingRule {
     pub id: usize,
     pub config: ForwardingRuleConfig,
-}
-
-impl ActiveForwardingRule {
-    pub fn new(id: usize, config: ForwardingRuleConfig) -> Self {
-        ActiveForwardingRule { id, config }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -938,27 +888,11 @@ pub struct ActiveProxyRule {
     pub config: ProxyRuleConfig,
 }
 
-impl ActiveProxyRule {
-    pub fn new(id: usize, config: ProxyRuleConfig) -> Self {
-        ActiveProxyRule { id, config }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveRecording {
     pub id: usize,
     pub config: RecordingRuleConfig,
     pub mocks: Vec<MockDefinition>,
-}
-
-impl ActiveRecording {
-    pub fn new(id: usize, config: RecordingRuleConfig) -> Self {
-        ActiveRecording {
-            id,
-            config,
-            mocks: vec![],
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize)]
