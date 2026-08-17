@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- `HttpMockRequest` now stores validated `http` types. `uri()`, `scheme()`, `method()`, and `headers()` return borrowed `Uri`, `Scheme`, `Method`, and `HeaderMap` values; `host()` returns `Option<&str>` and `query_params()` returns an iterator. The redundant `*_str`, `*_vec`, `*_ref`, and `*_bytes` accessors have been removed.
+- Converting an `http::Request` into `HttpMockRequest` now uses fallible `TryFrom` and returns the public `HttpMockRequestConversionError`. The reverse conversions to `http::Request<String>` and `http::Request<()>` have been removed; convert to `http::Request<Bytes>` instead.
+- `http::Request<Box<[u8]>>` no longer converts directly into `HttpMockRequest`. Map the body with `bytes::Bytes::from` or `Vec::from` first; both reuse the boxed allocation. `http::Request<()>` remains supported as an empty incoming request.
+- `RequestMetadata::new` and its public `scheme` field now use `http::uri::Scheme` instead of `&'static str`.
+
 ## Version 0.8.3
 
 Minimum supported Rust version has been raised to 1.88.

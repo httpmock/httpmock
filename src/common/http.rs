@@ -87,7 +87,12 @@ impl HttpClient for HttpMockHttpClient {
             // Prefer scheme from the URI if present; otherwise use RequestMetadata; fallback to http
             let scheme = uri
                 .scheme_str()
-                .or_else(|| req_parts.extensions.get::<RequestMetadata>().map(|m| m.scheme))
+                .or_else(|| {
+                    req_parts
+                        .extensions
+                        .get::<RequestMetadata>()
+                        .map(|metadata| metadata.scheme.as_str())
+                })
                 .unwrap_or("http");
 
             let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
