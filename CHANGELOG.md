@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- `MockServer::forward_to` and `MockServer::forward_to_async` now return `Result` and reject invalid forwarding targets when the rule is created.
+
 ## Version 0.8.3
 
 Minimum supported Rust version has been raised to 1.88.
