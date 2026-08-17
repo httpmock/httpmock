@@ -42,15 +42,41 @@ use crate::{
 /// assert_eq!(response2.status(), 404); // Expect a 404 status after the mock is deleted
 /// ```
 pub struct Mock<'a> {
-    // Please find the reason why id is public in
-    // https://github.com/httpmock/httpmock/issues/26.
-    pub id: usize,
+    id: usize,
     pub(crate) server: &'a MockServer,
 }
 
 impl<'a> Mock<'a> {
+    /// Creates a reference to an existing mock on `server`.
+    ///
+    /// This is useful when a mock's ID was retained after its original [`Mock`] handle was dropped.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use httpmock::{Mock, MockServer};
+    ///
+    /// let server = MockServer::start();
+    /// let original = server.mock(|when, then| {
+    ///     when.path("/test");
+    ///     then.status(202);
+    /// });
+    /// let mock_id = original.id();
+    /// drop(original);
+    ///
+    /// let recreated = Mock::new(mock_id, &server);
+    /// recreated.assert_hits(0);
+    /// ```
     pub fn new(id: usize, server: &'a MockServer) -> Self {
         Self { id, server }
+    }
+
+    /// Returns the identifier assigned to this mock by its server.
+    ///
+    /// The identifier can be retained and later passed to [`Mock::new`] to recreate a handle to
+    /// the same server-side mock.
+    pub fn id(&self) -> usize {
+        self.id
     }
 
     /// Verifies that the mock server received exactly one HTTP request matching all specified
@@ -593,99 +619,6 @@ impl<'a> Mock<'a> {
     /// ```
     pub fn server_address(&self) -> &SocketAddr {
         self.server.server_adapter.as_ref().unwrap().address()
-    }
-}
-
-/// The [MockExt](trait.MockExt.html) trait extends the [Mock](struct.Mock.html)
-/// structure with some additional functionality, that is usually not required.
-pub trait MockExt<'a> {
-    /// Creates a new [Mock](struct.Mock.html) instance that references an already existing
-    /// mock on a [MockServer](struct.MockServer.html). This method is typically used in advanced scenarios
-    /// where you need to re-establish a reference to a mock after its original instance has been dropped
-    /// or lost.
-    ///
-    /// # Parameters
-    /// * `id` - The ID of the existing mock on the [MockServer](struct.MockServer.html).
-    /// * `mock_server` - A reference to the [MockServer](struct.MockServer.html) where the mock is hosted.
-    ///
-    /// # Example
-    /// Demonstrates how to recreate a [Mock](struct.Mock.html) instance from a mock ID to verify
-    /// assertions or perform further actions after the original [Mock](struct.Mock.html) reference
-    /// has been discarded.
-    ///
-    /// ```rust
-    /// use httpmock::{MockServer, Mock, MockExt};
-    /// use reqwest::blocking::get;
-    ///
-    /// // Arrange
-    /// let server = MockServer::start();
-    /// let initial_mock = server.mock(|when, then| {
-    ///     when.path("/test");
-    ///     then.status(202);
-    /// });
-    ///
-    /// // Store away the mock ID and drop the initial Mock instance
-    /// let mock_id = initial_mock.id();
-    /// drop(initial_mock);
-    ///
-    /// // Act: Send an HTTP request to the mock endpoint
-    /// let response = get(&server.url("/test")).unwrap();
-    ///
-    /// // Recreate the Mock instance using the stored ID
-    /// let recreated_mock = Mock::new(mock_id, &server);
-    ///
-    /// // Assert: Use the recreated Mock to check assertions
-    /// recreated_mock.assert();
-    /// assert_eq!(response.status(), 202);
-    /// ```
-    /// For more detailed use cases, see [`Issue 26`](https://github.com/httpmock/httpmock/issues/26) on GitHub.
-    fn new(id: usize, mock_server: &'a MockServer) -> Mock<'a>;
-
-    /// Returns the unique identifier (ID) assigned to the mock on the [MockServer](struct.MockServer.html).
-    /// This ID is used internally by the mock server to track and manage the mock throughout its lifecycle.
-    ///
-    /// The ID can be particularly useful in advanced testing scenarios where mocks need to be referenced or manipulated
-    /// programmatically after their creation.
-    ///
-    /// # Returns
-    /// Returns the ID of the mock as a `usize`.
-    ///
-    /// # Example
-    /// Demonstrates how to retrieve the ID of a mock for later reference or manipulation.
-    ///
-    /// ```rust
-    /// use httpmock::MockExt;
-    /// use httpmock::prelude::*;
-    ///
-    /// // Arrange: Start a mock server and create a mock
-    /// let server = MockServer::start();
-    /// let mock = server.mock(|when, then| {
-    ///     when.path("/example");
-    ///     then.status(200);
-    /// });
-    ///
-    /// // Act: Retrieve the ID of the mock
-    /// let mock_id = mock.id();
-    ///
-    /// // The mock_id can now be used to reference or manipulate this specific mock in subsequent operations
-    /// println!("Mock ID: {}", mock_id);
-    /// ```
-    ///
-    /// This method is particularly useful when dealing with multiple mocks and needing to assert or modify
-    /// specific mocks based on their identifiers.
-    fn id(&self) -> usize;
-}
-
-impl<'a> MockExt<'a> for Mock<'a> {
-    fn new(id: usize, mock_server: &'a MockServer) -> Mock<'a> {
-        Mock {
-            id,
-            server: mock_server,
-        }
-    }
-
-    fn id(&self) -> usize {
-        self.id
     }
 }
 
