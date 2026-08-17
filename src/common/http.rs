@@ -7,7 +7,7 @@ use http_body_util::{BodyExt, Full};
 #[cfg(any(feature = "remote-https", feature = "https"))]
 use hyper_rustls::HttpsConnector;
 use hyper_util::{
-    client::legacy::{Client, connect::HttpConnector},
+    client::legacy::{self, connect::HttpConnector},
     rt::TokioExecutor,
 };
 use thiserror::Error;
@@ -26,21 +26,21 @@ pub enum Error {
 }
 
 #[async_trait]
-pub trait HttpClient {
+pub(crate) trait Client {
     async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error>;
 }
 
-pub struct HttpMockHttpClient {
+pub(crate) struct DefaultClient {
     runtime: Option<Arc<Runtime>>,
     #[cfg(any(feature = "remote-https", feature = "https"))]
-    client: Arc<Client<HttpsConnector<HttpConnector>, Full<Bytes>>>,
+    client: Arc<legacy::Client<HttpsConnector<HttpConnector>, Full<Bytes>>>,
     #[cfg(not(any(feature = "remote-https", feature = "https")))]
-    client: Arc<Client<HttpConnector, Full<Bytes>>>,
+    client: Arc<legacy::Client<HttpConnector, Full<Bytes>>>,
 }
 
-impl HttpMockHttpClient {
+impl DefaultClient {
     #[cfg(any(feature = "remote-https", feature = "https"))]
-    pub fn new(runtime: Option<Arc<Runtime>>) -> Self {
+    pub(crate) fn new(runtime: Option<Arc<Runtime>>) -> Self {
         // see https://github.com/rustls/rustls/issues/1938
         if rustls::crypto::CryptoProvider::get_default().is_none() {
             rustls::crypto::ring::default_provider()
@@ -61,21 +61,21 @@ impl HttpMockHttpClient {
 
         Self {
             runtime,
-            client: Arc::new(Client::builder(TokioExecutor::new()).build(https_connector)),
+            client: Arc::new(legacy::Client::builder(TokioExecutor::new()).build(https_connector)),
         }
     }
 
     #[cfg(not(any(feature = "remote-https", feature = "https")))]
-    pub fn new(runtime: Option<Arc<Runtime>>) -> Self {
+    pub(crate) fn new(runtime: Option<Arc<Runtime>>) -> Self {
         Self {
             runtime,
-            client: Arc::new(Client::builder(TokioExecutor::new()).build(HttpConnector::new())),
+            client: Arc::new(legacy::Client::builder(TokioExecutor::new()).build(HttpConnector::new())),
         }
     }
 }
 
 #[async_trait]
-impl HttpClient for HttpMockHttpClient {
+impl Client for DefaultClient {
     async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let (mut req_parts, req_body) = req.into_parts();
 

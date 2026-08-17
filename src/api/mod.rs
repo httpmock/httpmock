@@ -1,6 +1,3 @@
-#[cfg(feature = "remote")]
-pub use adapter::remote::RemoteMockServerAdapter;
-pub use adapter::{MockServerAdapter, local::LocalMockServerAdapter};
 pub use mock::{Mock, MockExt};
 #[cfg(feature = "proxy")]
 pub use proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder};
@@ -11,7 +8,7 @@ pub use spec::{Then, When};
 
 use crate::common;
 
-mod adapter;
+mod backend;
 mod mock;
 mod output;
 mod proxy;
