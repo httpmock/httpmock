@@ -353,7 +353,7 @@ impl Handler {
         let start = Instant::now();
 
         #[cfg(feature = "proxy")]
-        let (res, is_proxied) = if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
+        let dispatch = if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
             (self.forward(rule, req).await?, false)
         } else if let Some(rule) = self.state.find_proxy_rule(&internal_request)? {
             (self.proxy(rule, req).await?, true)
@@ -362,12 +362,19 @@ impl Handler {
         };
 
         #[cfg(not(feature = "proxy"))]
-        let (res, is_proxied) = (self.serve_mock(&internal_request).await?, false);
+        let dispatch = (self.serve_mock(&internal_request).await?, false);
 
         #[cfg(feature = "record")]
-        self.state.record(is_proxied, start.elapsed(), internal_request, &res)?;
+        let (response, is_proxied) = dispatch;
 
-        Ok(res)
+        #[cfg(not(feature = "record"))]
+        let (response, _) = dispatch;
+
+        #[cfg(feature = "record")]
+        self.state
+            .record(is_proxied, start.elapsed(), internal_request, &response)?;
+
+        Ok(response)
     }
 
     #[cfg(feature = "proxy")]
