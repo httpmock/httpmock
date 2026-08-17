@@ -2,15 +2,18 @@ use std::{
     borrow::Cow,
     cell::Cell,
     env,
-    fs::{File, create_dir_all},
+    fs::File,
     future::Future,
-    io::{Read, Write},
+    io::Read,
     path::{Path, PathBuf},
     sync::Arc,
     task::{Context, Poll, Wake, Waker},
     thread::{self, Thread},
     time::Duration,
 };
+
+#[cfg(feature = "record")]
+use std::{fs::create_dir_all, io::Write};
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;
@@ -111,6 +114,7 @@ pub fn get_test_resource_file_path(relative_resource_path: &str) -> Result<PathB
     }
 }
 
+#[cfg(feature = "record")]
 pub async fn write_file<P: AsRef<Path>>(
     resource_path: P,
     content: &Bytes,

@@ -10,10 +10,7 @@ use serde_yaml::Deserializer;
 use thiserror::Error;
 
 use crate::{
-    common::{
-        data,
-        data::{MockDefinition, StaticMockDefinition},
-    },
+    common::{data, data::MockDefinition, static_mock::StaticMockDefinition},
     server::state,
 };
 
