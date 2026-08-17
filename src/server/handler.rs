@@ -397,10 +397,10 @@ impl Handler {
         if !rule.config.request_header.is_empty() {
             for (key, value) in &rule.config.request_header {
                 let key = http::HeaderName::from_str(key)
-                    .map_err(|err| InvalidHeader(format!("invalid header key: {}", err)))?;
+                    .map_err(|err| InvalidHeader(format!("invalid header key: {err}")))?;
 
                 let value = HeaderValue::from_str(value)
-                    .map_err(|err| InvalidHeader(format!("invalid header value: {}", err)))?;
+                    .map_err(|err| InvalidHeader(format!("invalid header value: {err}")))?;
 
                 req_parts.headers.append(key, value);
             }
@@ -422,10 +422,10 @@ impl Handler {
 
             for (key, value) in &rule.config.request_header {
                 let key = http::HeaderName::from_str(key)
-                    .map_err(|err| InvalidHeader(format!("invalid header key: {}", err)))?;
+                    .map_err(|err| InvalidHeader(format!("invalid header key: {err}")))?;
 
                 let value = HeaderValue::from_str(value)
-                    .map_err(|err| InvalidHeader(format!("invalid header value: {}", err)))?;
+                    .map_err(|err| InvalidHeader(format!("invalid header value: {err}")))?;
 
                 headers.append(key, value);
             }
