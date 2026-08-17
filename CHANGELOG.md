@@ -1,5 +1,11 @@
 # Changelog
 
+## Unreleased
+
+### Breaking changes
+
+- `http::Request<Box<[u8]>>` and `http::Response<Box<[u8]>>` no longer convert directly into httpmock's request and response types. Map the body with `bytes::Bytes::from` or `Vec::from` first; both reuse the boxed allocation.
+
 ## Version 0.8.3
 
 Minimum supported Rust version has been raised to 1.88.
