@@ -13,6 +13,7 @@ use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;
 #[cfg(feature = "cookies")]
 use headers::{Cookie, HeaderMapExt};
+use http::{HeaderMap, HeaderValue};
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
@@ -385,61 +386,35 @@ impl From<&HttpMockRequest> for http::Request<()> {
     }
 }
 
-/// A general abstraction of an HTTP response for all handlers.
-#[derive(Serialize, Deserialize, Clone)]
-pub struct HttpMockResponse {
-    pub status: Option<u16>,
-    pub headers: Option<Vec<(String, String)>>,
-    #[serde(default, with = "opt_vector_serde_base64")]
-    pub body: Option<HttpMockBytes>,
-}
+/// A complete response returned by a dynamic responder.
+#[derive(Debug, Clone)]
+pub struct HttpMockResponse(http::Response<HttpMockBytes>);
 
 impl HttpMockResponse {
+    /// Creates a response builder with status 200, no headers, and an empty body.
     pub fn builder() -> HttpMockResponseBuilder {
-        HttpMockResponseBuilder::new()
+        HttpMockResponseBuilder::default()
+    }
+
+    /// Returns the response status.
+    pub fn status(&self) -> http::StatusCode {
+        self.0.status()
+    }
+
+    /// Returns the response headers.
+    pub fn headers(&self) -> &HeaderMap {
+        self.0.headers()
+    }
+
+    /// Returns the response body.
+    pub fn body(&self) -> &[u8] {
+        self.0.body().as_ref()
     }
 }
 
-/// Converts an `HttpMockResponse` into a real `http::Response<Bytes>`.
-impl TryFrom<HttpMockResponse> for http::Response<bytes::Bytes> {
-    type Error = Error;
-
-    fn try_from(res: HttpMockResponse) -> Result<Self, Self::Error> {
-        (&res).try_into() // reuse the by-ref impl
-    }
-}
-
-impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
-    type Error = Error;
-
-    fn try_from(res: &HttpMockResponse) -> Result<Self, Self::Error> {
-        let raw_status = res
-            .status
-            .ok_or_else(|| Error::ResponseConversion("missing status".into()))?;
-
-        let status = http::StatusCode::from_u16(raw_status)
-            .map_err(|_| Error::ResponseConversion(format!("invalid status: {}", raw_status)))?;
-
-        let mut builder = http::Response::builder().status(status);
-
-        if let Some(headers) = &res.headers {
-            for (name, value) in headers {
-                let header_name = http::header::HeaderName::try_from(name.clone())
-                    .map_err(|_| Error::ResponseConversion(format!("invalid header name: {}", name)))?;
-
-                let header_value = http::header::HeaderValue::try_from(value.clone()).map_err(|_| {
-                    Error::ResponseConversion(format!("invalid header value for '{}': {}", name, value))
-                })?;
-
-                builder = builder.header(header_name, header_value);
-            }
-        }
-
-        let body = res.body.as_ref().map_or(bytes::Bytes::new(), |b| b.0.clone());
-
-        builder
-            .body(body)
-            .map_err(|e| Error::ResponseConversion(format!("http build error: {}", e)))
+impl From<HttpMockResponse> for http::Response<Bytes> {
+    fn from(response: HttpMockResponse) -> Self {
+        response.0.map(Into::into)
     }
 }
 
@@ -507,117 +482,161 @@ impl IntoMockBytes for () {
     }
 }
 
-impl<B> TryFrom<&http::Response<B>> for HttpMockResponse
-where
-    B: Clone + IntoMockBytes, // Clone only if you need to read body/headers without moving
-{
-    type Error = Error;
-
-    fn try_from(resp: &http::Response<B>) -> Result<Self, Self::Error> {
-        // headers -> Vec<(String, String)> (UTF-8 strict)
-        let mut headers = Vec::with_capacity(resp.headers().len());
-        for (name, value) in resp.headers() {
-            let name = name.as_str().to_string();
-            let val = value
-                .to_str()
-                .map_err(|_| Error::ResponseConversion(format!("non-utf8 header value for '{}'", name)))?;
-            headers.push((name, val.to_string()));
-        }
-
-        // Body: need a `B` value. Since we only have `&Response<B>`, either:
-        //  - require `B: Clone` and clone it, or
-        //  - restrict this impl to specific `B` you can borrow from (e.g., Bytes)
-        let body_bytes = resp.body().clone().into_httpmock_bytes()?;
-
-        Ok(HttpMockResponse {
-            status: Some(resp.status().as_u16()),
-            headers: Some(headers),
-            body: Some(HttpMockBytes(body_bytes)),
-        })
-    }
-}
-
 impl<B> From<http::Response<B>> for HttpMockResponse
 where
-    B: Clone + IntoMockBytes,
+    B: Into<HttpMockBytes>,
 {
-    fn from(resp: http::Response<B>) -> Self {
-        // Avoid recursive TryFrom<http::Response<B>> derived from this From impl.
-        // Convert by reference using the blanket &Response<B> implementation.
-        <HttpMockResponse as TryFrom<&http::Response<B>>>::try_from(&resp)
-            .expect("invalid http::Response for HttpMockResponse")
+    fn from(response: http::Response<B>) -> Self {
+        Self(response.map(Into::into))
     }
 }
 
-#[derive(Default, Debug, Clone)]
-pub struct HttpMockResponseBuilder {
-    status: Option<u16>,
-    headers: Vec<(String, String)>,
-    body: Option<HttpMockBytes>,
+#[cfg(test)]
+mod http_response_tests {
+    use super::*;
+
+    #[test]
+    fn builder_produces_a_complete_response_by_default() {
+        let response = HttpMockResponse::builder().build();
+
+        assert_eq!(response.status(), http::StatusCode::OK);
+        assert!(response.headers().is_empty());
+        assert!(response.body().is_empty());
+    }
+
+    #[test]
+    fn builder_appends_and_replaces_typed_headers() {
+        let response = HttpMockResponse::builder()
+            .header(
+                http::HeaderName::from_static("x-repeated"),
+                HeaderValue::from_static("one"),
+            )
+            .header(
+                http::HeaderName::from_static("x-repeated"),
+                HeaderValue::from_static("two"),
+            )
+            .build();
+        assert_eq!(response.headers().get_all("x-repeated").iter().count(), 2);
+
+        let mut headers = HeaderMap::new();
+        headers.insert("x-replacement", HeaderValue::from_static("value"));
+        let response = HttpMockResponse::builder().headers(headers.clone()).build();
+        assert_eq!(response.headers(), &headers);
+    }
+
+    #[test]
+    fn unit_body_produces_an_empty_response() {
+        let response: HttpMockResponse = http::Response::new(()).into();
+
+        assert!(response.body().is_empty());
+    }
+
+    #[test]
+    fn typed_response_conversion_preserves_parts() {
+        #[derive(Clone, Debug, PartialEq)]
+        struct Extension(&'static str);
+
+        let mut response = http::Response::builder()
+            .status(http::StatusCode::CREATED)
+            .version(http::Version::HTTP_2)
+            .body(Bytes::from_static(b"response"))
+            .unwrap();
+        response
+            .headers_mut()
+            .insert("x-binary", HeaderValue::from_bytes(&[0x80]).unwrap());
+        response.extensions_mut().insert(Extension("preserved"));
+
+        let response: HttpMockResponse = response.into();
+        let response: http::Response<Bytes> = response.into();
+
+        assert_eq!(response.status(), http::StatusCode::CREATED);
+        assert_eq!(response.version(), http::Version::HTTP_2);
+        assert_eq!(response.headers()["x-binary"].as_bytes(), &[0x80]);
+        assert_eq!(response.body(), &Bytes::from_static(b"response"));
+        assert_eq!(response.extensions().get::<Extension>(), Some(&Extension("preserved")));
+    }
+
+    #[test]
+    fn static_response_conversion_reports_the_invalid_part() {
+        let invalid_status = MockServerHttpResponse {
+            status: Some(99),
+            ..MockServerHttpResponse::new()
+        };
+        assert!(
+            HttpMockResponse::try_from(invalid_status)
+                .unwrap_err()
+                .to_string()
+                .contains("99")
+        );
+
+        let invalid_name = MockServerHttpResponse {
+            headers: Some(vec![("bad name".into(), "value".into())]),
+            ..MockServerHttpResponse::new()
+        };
+        assert!(
+            HttpMockResponse::try_from(invalid_name)
+                .unwrap_err()
+                .to_string()
+                .contains("bad name")
+        );
+
+        let invalid_value = MockServerHttpResponse {
+            headers: Some(vec![("x-header".into(), "\n".into())]),
+            ..MockServerHttpResponse::new()
+        };
+        assert!(
+            HttpMockResponse::try_from(invalid_value)
+                .unwrap_err()
+                .to_string()
+                .contains("x-header")
+        );
+    }
+}
+
+#[derive(Debug, Clone)]
+pub struct HttpMockResponseBuilder(http::Response<HttpMockBytes>);
+
+impl Default for HttpMockResponseBuilder {
+    fn default() -> Self {
+        Self(http::Response::new(Bytes::new().into()))
+    }
 }
 
 impl HttpMockResponseBuilder {
-    pub fn new() -> Self {
-        Self::default()
-    }
-
-    /// Set an HTTP status (e.g., 200, 404).
-    pub fn status(mut self, status: u16) -> Self {
-        self.status = Some(status);
+    /// Sets the HTTP status.
+    pub fn status(mut self, status: http::StatusCode) -> Self {
+        *self.0.status_mut() = status;
         self
     }
 
-    /// Add a single header (appends; duplicates are allowed).
-    pub fn header<K, V>(mut self, key: K, val: V) -> Self
-    where
-        K: Into<String>,
-        V: Into<String>,
-    {
-        self.headers.push((key.into(), val.into()));
+    /// Appends a header. Existing values with the same name are preserved.
+    pub fn header(mut self, name: http::HeaderName, value: HeaderValue) -> Self {
+        self.0.headers_mut().append(name, value);
         self
     }
 
-    /// Replace all headers at once.
-    pub fn headers<I, K, V>(mut self, headers: I) -> Self
-    where
-        I: IntoIterator<Item = (K, V)>,
-        K: Into<String>,
-        V: Into<String>,
-    {
-        self.headers = headers.into_iter().map(|(k, v)| (k.into(), v.into())).collect();
+    /// Replaces all response headers.
+    pub fn headers(mut self, headers: HeaderMap) -> Self {
+        *self.0.headers_mut() = headers;
         self
     }
 
-    /// Set a body from anything convertible into `HttpMockBytes`.
+    /// Sets the response body.
     pub fn body<B>(mut self, body: B) -> Self
     where
         B: Into<HttpMockBytes>,
     {
-        self.body = Some(body.into());
+        *self.0.body_mut() = body.into();
         self
     }
 
-    /// Explicitly clear the body.
-    pub fn no_body(mut self) -> Self {
-        self.body = None;
-        self
-    }
-
-    /// Finalize into `HttpMockResponse`.
+    /// Builds the response.
     pub fn build(self) -> HttpMockResponse {
-        HttpMockResponse {
-            status: self.status,
-            headers: if self.headers.is_empty() {
-                None
-            } else {
-                Some(self.headers)
-            },
-            body: self.body,
-        }
+        HttpMockResponse(self.0)
     }
 }
 
-/// A general abstraction of an HTTP response for all handlers.
+/// A serializable partial response configuration for static mocks.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MockServerHttpResponse {
     pub status: Option<u16>,
@@ -644,6 +663,30 @@ impl MockServerHttpResponse {
 impl Default for MockServerHttpResponse {
     fn default() -> Self {
         Self::new()
+    }
+}
+
+impl TryFrom<MockServerHttpResponse> for HttpMockResponse {
+    type Error = Error;
+
+    fn try_from(response: MockServerHttpResponse) -> Result<Self, Self::Error> {
+        let raw_status = response.status.unwrap_or(http::StatusCode::OK.as_u16());
+        let status = http::StatusCode::from_u16(raw_status)
+            .map_err(|err| Error::ResponseConversion(format!("invalid response status {raw_status}: {err}")))?;
+
+        let mut headers = HeaderMap::new();
+        for (name, value) in response.headers.unwrap_or_default() {
+            let name = http::HeaderName::try_from(name.as_str())
+                .map_err(|err| Error::ResponseConversion(format!("invalid response header name {name:?}: {err}")))?;
+            let value = HeaderValue::try_from(value)
+                .map_err(|err| Error::ResponseConversion(format!("invalid response header value for {name}: {err}")))?;
+            headers.append(name, value);
+        }
+
+        let mut result = http::Response::new(response.body.unwrap_or_else(|| Bytes::new().into()));
+        *result.status_mut() = status;
+        *result.headers_mut() = headers;
+        Ok(Self(result))
     }
 }
 
