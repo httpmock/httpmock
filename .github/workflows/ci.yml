@@ -54,7 +54,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
-      - uses: taiki-e/install-action@v2.85.5
+      - uses: taiki-e/install-action@v2.86.5
         with:
           tool: cargo-hack
 
@@ -81,7 +81,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
-      - uses: taiki-e/install-action@v2.85.5
+      - uses: taiki-e/install-action@v2.86.5
         with:
           tool: cargo-hack
 
@@ -143,7 +143,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v1
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
-      - uses: taiki-e/install-action@v2.85.5
+      - uses: taiki-e/install-action@v2.86.5
         with:
           tool: cargo-llvm-cov
 
@@ -153,7 +153,7 @@ jobs:
         run: cargo llvm-cov --features standalone --lcov --output-path lcov.info
 
       - name: Upload to codecov.io
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v7
         with:
           use_oidc: true
           files: lcov.info

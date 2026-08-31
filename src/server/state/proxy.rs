@@ -38,10 +38,10 @@ impl Manager {
         let result = state.proxy.forwarding_rules.remove(&id);
 
         if result.is_some() {
-            tracing::debug!("Deleting proxy rule with id={}", id);
+            tracing::debug!("Deleting forwarding rule with id={}", id);
         } else {
             tracing::warn!(
-                "Could not delete proxy rule with id={} (no proxy rule with that id found)",
+                "Could not delete forwarding rule with id={} (no forwarding rule with that id found)",
                 id
             );
         }

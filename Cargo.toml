@@ -16,16 +16,12 @@ rust-version = "1.88.0"
 # allowed lints are a temporary allow list that should be removed over time.
 warnings = { level = "deny", priority = -1 }
 unsafe_code = "forbid"
-unused_variables = "allow"
 
 [lints.clippy]
 # Gate all clippy lints. The allowed lints are a temporary allow list that should be removed
 # over time.
 all = { level = "deny", priority = -1 }
-doc_overindented_list_items = "allow"
-to_string_in_format_args = "allow"
 new_ret_no_self = "allow"
-ptr_arg = "allow"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
