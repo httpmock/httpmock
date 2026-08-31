@@ -317,10 +317,10 @@ impl Manager {
         let result = state.forwarding_rules.remove(&id).map(|rule| rule.active);
 
         if result.is_some() {
-            tracing::debug!("Deleting proxy rule with id={}", id);
+            tracing::debug!("Deleting forwarding rule with id={}", id);
         } else {
             tracing::warn!(
-                "Could not delete proxy rule with id={} (no proxy rule with that id found)",
+                "Could not delete forwarding rule with id={} (no forwarding rule with that id found)",
                 id
             );
         }
@@ -396,10 +396,10 @@ impl Manager {
         let result = state.recordings.remove(&id);
 
         if result.is_some() {
-            tracing::debug!("Deleting proxy rule with id={}", id);
+            tracing::debug!("Deleting recording with id={}", id);
         } else {
             tracing::warn!(
-                "Could not delete proxy rule with id={} (no proxy rule with that id found)",
+                "Could not delete recording with id={} (no recording with that id found)",
                 id
             );
         }
@@ -411,7 +411,7 @@ impl Manager {
         let mut state = self.state.lock().unwrap();
         state.recordings.clear();
 
-        tracing::debug!("Deleted all recorders");
+        tracing::debug!("Deleted all recordings");
     }
 
     #[cfg(feature = "record")]
@@ -613,7 +613,7 @@ fn validate_request_requirements(req: &RequestRequirements) -> Result<(), Error>
 }
 
 fn request_matches(
-    matchers: &Vec<Box<dyn Matcher + Sync + Send>>,
+    matchers: &[Box<dyn Matcher + Sync + Send>],
     req: &HttpMockRequest,
     request_requirements: &RequestRequirements,
 ) -> bool {
@@ -622,8 +622,8 @@ fn request_matches(
 }
 
 fn get_distances(
-    history: &Vec<&Arc<HttpMockRequest>>,
-    matchers: &Vec<Box<dyn Matcher + Sync + Send>>,
+    history: &[&Arc<HttpMockRequest>],
+    matchers: &[Box<dyn Matcher + Sync + Send>],
     mock_rr: &RequestRequirements,
 ) -> BTreeMap<usize, usize> {
     history
@@ -636,7 +636,7 @@ fn get_distances(
 fn get_request_distance(
     req: &Arc<HttpMockRequest>,
     mock_request_requirements: &RequestRequirements,
-    matchers: &Vec<Box<dyn Matcher + Sync + Send>>,
+    matchers: &[Box<dyn Matcher + Sync + Send>],
 ) -> usize {
     matchers
         .iter()
@@ -665,7 +665,7 @@ fn get_min_distance_requests(request_distances: &BTreeMap<usize, usize>) -> Vec<
 fn get_request_mismatches(
     req: &Arc<HttpMockRequest>,
     mock_rr: &RequestRequirements,
-    matchers: &Vec<Box<dyn Matcher + Sync + Send>>,
+    matchers: &[Box<dyn Matcher + Sync + Send>],
 ) -> Vec<Mismatch> {
     matchers.iter().flat_map(|mat| mat.mismatches(req, mock_rr)).collect()
 }

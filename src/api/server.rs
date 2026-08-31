@@ -826,17 +826,17 @@ impl MockServer {
     /// # Parameters
     ///
     /// * `rule`: A closure that takes a `RecordingRuleBuilder` as an argument,
-    ///           which defines the conditions under which HTTP requests and
-    ///           their corresponding responses will be recorded.
+    ///   which defines the conditions under which HTTP requests and
+    ///   their corresponding responses will be recorded.
     ///
     /// # Returns
     ///
     /// * `Recording`: A reference to the recording object stored on the mock server,
-    ///                which can be used to manage the recording, such as downloading
-    ///                or deleting it. The `Recording` object provides functionality
-    ///                to download the recording and store it under a file. Users can
-    ///                use these files for later playback by calling the `playback`
-    ///                method of the mock server.
+    ///   which can be used to manage the recording, such as downloading
+    ///   or deleting it. The `Recording` object provides functionality
+    ///   to download the recording and store it under a file. Users can
+    ///   use these files for later playback by calling the `playback`
+    ///   method of the mock server.
     ///
     /// # Example
     ///
@@ -911,16 +911,16 @@ impl MockServer {
     /// # Parameters
     ///
     /// * `rule`: A closure that takes a `RecordingRuleBuilder` as an argument,
-    ///           which defines the conditions under which requests will be recorded.
+    ///   which defines the conditions under which requests will be recorded.
     ///
     /// # Returns
     ///
     /// * `Recording`: A reference to the recording object stored on the mock server,
-    ///                which can be used to manage the recording, such as downloading
-    ///                or deleting it. The `Recording` object provides functionality
-    ///                to download the recording and store it under a file. Users can
-    ///                use these files for later playback by calling the `playback`
-    ///                method of the mock server.
+    ///   which can be used to manage the recording, such as downloading
+    ///   or deleting it. The `Recording` object provides functionality
+    ///   to download the recording and store it under a file. Users can
+    ///   use these files for later playback by calling the `playback`
+    ///   method of the mock server.
     ///
     /// # Example
     ///
@@ -1020,7 +1020,7 @@ impl MockServer {
     /// # Parameters
     ///
     /// * `path`: A path to the file containing the recording. This can be any type
-    ///           that implements `Into<PathBuf>`, such as a `&str` or `String`.
+    ///   that implements `Into<PathBuf>`, such as a `&str` or `String`.
     ///
     /// # Returns
     ///
@@ -1098,7 +1098,7 @@ impl MockServer {
     /// # Parameters
     ///
     /// * `path`: A path to the file containing the recorded interactions. This can be any type
-    ///           that implements `Into<PathBuf>`, such as a `&str` or `String`.
+    ///   that implements `Into<PathBuf>`, such as a `&str` or `String`.
     ///
     /// # Returns
     ///
@@ -1189,7 +1189,7 @@ impl MockServer {
     /// # Parameters
     ///
     /// * `content`: A YAML string that represents the contents of the recording file.
-    ///              This can be any type that implements `AsRef<str>`, such as a `&str` or `String`.
+    ///   This can be any type that implements `AsRef<str>`, such as a `&str` or `String`.
     ///
     /// # Returns
     ///
@@ -1247,7 +1247,7 @@ impl MockServer {
     /// # Parameters
     ///
     /// * `content`: A YAML string that represents the contents of the recording file.
-    ///              This can be any type that implements `AsRef<str>`, such as a `&str` or `String`.
+    ///   This can be any type that implements `AsRef<str>`, such as a `&str` or `String`.
     ///
     /// # Returns
     ///
