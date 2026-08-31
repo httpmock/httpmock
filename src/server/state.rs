@@ -244,10 +244,10 @@ impl Manager {
         let result = state.forwarding_rules.remove(&id);
 
         if result.is_some() {
-            tracing::debug!("Deleting proxy rule with id={}", id);
+            tracing::debug!("Deleting forwarding rule with id={}", id);
         } else {
             tracing::warn!(
-                "Could not delete proxy rule with id={} (no proxy rule with that id found)",
+                "Could not delete forwarding rule with id={} (no forwarding rule with that id found)",
                 id
             );
         }
@@ -323,10 +323,10 @@ impl Manager {
         let result = state.recordings.remove(&id);
 
         if result.is_some() {
-            tracing::debug!("Deleting proxy rule with id={}", id);
+            tracing::debug!("Deleting recording with id={}", id);
         } else {
             tracing::warn!(
-                "Could not delete proxy rule with id={} (no proxy rule with that id found)",
+                "Could not delete recording with id={} (no recording with that id found)",
                 id
             );
         }
@@ -338,7 +338,7 @@ impl Manager {
         let mut state = self.state.lock().unwrap();
         state.recordings.clear();
 
-        tracing::debug!("Deleted all recorders");
+        tracing::debug!("Deleted all recordings");
     }
 
     #[cfg(feature = "record")]
