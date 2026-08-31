@@ -315,7 +315,7 @@ impl Handler {
 
     #[cfg(feature = "record")]
     fn handle_delete_recording(&self, params: Path) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_proxy_rule(param("id", params)?);
+        let deleted = self.state.delete_recording(param("id", params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
         } else {
@@ -355,7 +355,7 @@ impl Handler {
         let start = Instant::now();
 
         #[cfg(feature = "proxy")]
-        let (res, is_proxied) = if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
+        let dispatch = if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
             (self.forward(rule, req).await?, false)
         } else if let Some(rule) = self.state.find_proxy_rule(&internal_request)? {
             (self.proxy(rule, req).await?, true)
@@ -364,12 +364,19 @@ impl Handler {
         };
 
         #[cfg(not(feature = "proxy"))]
-        let (res, is_proxied) = (self.serve_mock(&internal_request).await?, false);
+        let dispatch = (self.serve_mock(&internal_request).await?, false);
 
         #[cfg(feature = "record")]
-        self.state.record(is_proxied, start.elapsed(), internal_request, &res)?;
+        let (response, is_proxied) = dispatch;
 
-        Ok(res)
+        #[cfg(not(feature = "record"))]
+        let (response, _) = dispatch;
+
+        #[cfg(feature = "record")]
+        self.state
+            .record(is_proxied, start.elapsed(), internal_request, &response)?;
+
+        Ok(response)
     }
 
     #[cfg(feature = "proxy")]
@@ -396,10 +403,10 @@ impl Handler {
         if !rule.config.request_header.is_empty() {
             for (key, value) in &rule.config.request_header {
                 let key = http::HeaderName::from_str(key)
-                    .map_err(|err| InvalidHeader(format!("invalid header key: {}", err)))?;
+                    .map_err(|err| InvalidHeader(format!("invalid header key: {err}")))?;
 
                 let value = HeaderValue::from_str(value)
-                    .map_err(|err| InvalidHeader(format!("invalid header value: {}", err)))?;
+                    .map_err(|err| InvalidHeader(format!("invalid header value: {err}")))?;
 
                 req_parts.headers.append(key, value);
             }
@@ -421,10 +428,10 @@ impl Handler {
 
             for (key, value) in &rule.config.request_header {
                 let key = http::HeaderName::from_str(key)
-                    .map_err(|err| InvalidHeader(format!("invalid header key: {}", err)))?;
+                    .map_err(|err| InvalidHeader(format!("invalid header key: {err}")))?;
 
                 let value = HeaderValue::from_str(value)
-                    .map_err(|err| InvalidHeader(format!("invalid header value: {}", err)))?;
+                    .map_err(|err| InvalidHeader(format!("invalid header value: {err}")))?;
 
                 headers.append(key, value);
             }
