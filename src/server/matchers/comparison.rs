@@ -1276,7 +1276,7 @@ mod string_matches_regex_tests {
 ///
 /// # Returns
 /// * `usize` - The computed distance. In the negated case, it returns the number of characters that did match the regex.
-///             In the non-negated case, it returns the number of characters that did not match the regex.
+///   In the non-negated case, it returns the number of characters that did not match the regex.
 pub fn regex_string_distance(
     negated: bool,
     case_sensitive: bool,
