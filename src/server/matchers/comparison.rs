@@ -1,7 +1,6 @@
 use std::{convert::TryInto, ops::Deref};
 
 use regex::Regex;
-use stringmetrics::LevWeights;
 
 use crate::common::{data::HttpMockRegex, util::HttpMockBytes};
 
@@ -805,7 +804,7 @@ pub fn string_distance(
         (mock_slice.to_lowercase(), req_slice.to_lowercase())
     };
 
-    let distance = equal_weight_distance_for(mock_slice.as_bytes(), req_slice.as_bytes());
+    let distance = distance_for(mock_slice.as_bytes(), req_slice.as_bytes());
 
     if negated {
         std::cmp::max(mock_slice.len(), req_slice.len()) - distance
@@ -911,29 +910,55 @@ mod string_distance_tests {
 // *************************************************************************************************
 // Helper functions
 // *************************************************************************************************
+/// Computes the Levenshtein distance between two sequences.
 pub fn distance_for<T>(expected: &[T], actual: &[T]) -> usize
 where
     T: PartialEq + Sized,
 {
-    stringmetrics::levenshtein_limit_iter(expected.iter(), actual.iter(), u32::MAX) as usize
-}
+    // Trim the common prefix and suffix first: distances are often computed between
+    // large, mostly identical values (e.g. request bodies), where trimming reduces the
+    // quadratic algorithm below to the small differing middle part. Trimming does not
+    // change the result, because an optimal edit sequence never touches equal
+    // leading/trailing parts.
+    let prefix_len = expected.iter().zip(actual).take_while(|(e, a)| e == a).count();
+    let (expected, actual) = (&expected[prefix_len..], &actual[prefix_len..]);
 
-pub fn equal_weight_distance_for<T>(expected: &[T], actual: &[T]) -> usize
-where
-    T: PartialEq + Sized,
-{
-    stringmetrics::try_levenshtein_weight_iter(
-        expected.iter(),
-        actual.iter(),
-        u32::MAX,
-        &LevWeights {
-            insertion: 1,
-            deletion: 1,
-            substitution: 1,
-        },
-    )
-    // Option=None is only returned in case limit is maxed out here it realistically can't
-    .expect("character limit exceeded") as usize
+    let suffix_len = expected
+        .iter()
+        .rev()
+        .zip(actual.iter().rev())
+        .take_while(|(e, a)| e == a)
+        .count();
+    let (a, b) = (
+        &expected[..expected.len() - suffix_len],
+        &actual[..actual.len() - suffix_len],
+    );
+
+    // The distance is symmetric, so let `b` be the shorter sequence to bound the DP row
+    // allocation below by the shorter operand (e.g. a small expected value compared
+    // against a large request body).
+    let (a, b) = if a.len() < b.len() { (b, a) } else { (a, b) };
+
+    // The classic single-row dynamic programming algorithm. row[j] holds the distance
+    // between the first `i` elements of `a` (0 before the outer loop's first iteration)
+    // and the first `j` elements of `b`.
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+
+    for (i, a_elem) in a.iter().enumerate() {
+        let mut diagonal = row[0];
+        row[0] = i + 1;
+
+        for (j, b_elem) in b.iter().enumerate() {
+            let substitution = diagonal + usize::from(a_elem != b_elem);
+            let insertion = row[j] + 1;
+            let deletion = row[j + 1] + 1;
+
+            diagonal = row[j + 1];
+            row[j + 1] = substitution.min(insertion).min(deletion);
+        }
+    }
+
+    row[b.len()]
 }
 
 pub fn regex_unmatched_length(text: &str, re: &HttpMockRegex) -> usize {

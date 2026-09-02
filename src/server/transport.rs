@@ -2,10 +2,10 @@ use std::{
     future::{Future, pending},
     io,
     net::SocketAddr,
+    pin::Pin,
     sync::Arc,
 };
 
-use futures_util::{FutureExt, future::BoxFuture};
 use http::{Request, StatusCode};
 use http_body_util::{BodyExt, Empty, Full, combinators::BoxBody};
 use hyper::{
@@ -14,7 +14,9 @@ use hyper::{
     http,
     service::service_fn,
 };
-use hyper_util::{rt::tokio::TokioIo, server::conn::auto::Builder as ServerBuilder};
+use hyper_util::rt::tokio::TokioIo;
+#[cfg(feature = "http2")]
+use hyper_util::server::conn::auto::Builder as ServerBuilder;
 #[cfg(feature = "https")]
 use rustls::ServerConfig;
 use thiserror::Error;
@@ -130,7 +132,7 @@ impl HttpMockServer {
     where
         F: Future<Output = ()>,
     {
-        let shutdown = shutdown.shared();
+        let mut shutdown = std::pin::pin!(shutdown);
         let server = Arc::new(self);
 
         loop {
@@ -150,7 +152,7 @@ impl HttpMockServer {
                         },
                     };
                 }
-                _ = shutdown.clone() => {
+                _ = &mut shutdown => {
                     break;
                 }
             }
@@ -338,37 +340,55 @@ where
 // task that calls `serve_tls_connection` -> `serve_connection` again for CONNECT/upgrade
 // tunneling. Any opaque `impl Future` return type here would need to resolve itself through
 // that indirect cycle, which rustc cannot do ("cycle detected when computing type of opaque
-// type"), surfacing as cascading bogus "is not Send" errors. Returning a `BoxFuture` erases
+// type"), surfacing as cascading bogus "is not Send" errors. Returning a boxed future erases
 // the concrete type and breaks the cycle. This runs once per TCP connection (not per
 // request, unlike `service`), so the extra heap allocation is negligible.
 fn serve_connection<S>(
     server: Arc<HttpMockServer>,
     stream: S,
     scheme: &'static str,
-) -> BoxFuture<'static, Result<(), Error>>
+) -> Pin<Box<dyn Future<Output = Result<(), Error>> + Send + 'static>>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
 {
     Box::pin(async move {
-        let mut server_builder = ServerBuilder::new(TokioExecutor::new());
+        let service = service_fn(|mut req| {
+            // We pass authority None here since we don't know it for non-CONNECT requests
+            // yet. We only know it when the full request has been buffered in `service()`.
+            // Here, we only the scheme is known from the connection type.
+            req.extensions_mut().insert(RequestMetadata::new(scheme));
+            server.clone().service(req)
+        });
 
-        server_builder.http1().preserve_header_case(true);
-        server_builder.http2();
-        //.enable_connect_protocol();
+        #[cfg(feature = "http2")]
+        {
+            let mut server_builder = ServerBuilder::new(TokioExecutor::new());
 
-        server_builder
-            .serve_connection_with_upgrades(
-                TokioIo::new(stream),
-                service_fn(|mut req| {
-                    // We pass authority None here since we don't know it for non-CONNECT requests
-                    // yet. We only know it when the full request has been buffered in `service()`.
-                    // Here, we only the scheme is known from the connection type.
-                    req.extensions_mut().insert(RequestMetadata::new(scheme));
-                    server.clone().service(req)
-                }),
-            )
-            .await
-            .map_err(ServerConnectionError)
+            server_builder.http1().preserve_header_case(true);
+            server_builder.http2();
+
+            server_builder
+                .serve_connection_with_upgrades(TokioIo::new(stream), service)
+                .await
+                .map_err(ServerConnectionError)
+        }
+
+        #[cfg(not(feature = "http2"))]
+        {
+            // Without the `http2` feature we use hyper's plain HTTP/1 connection builder
+            // instead of hyper-util's `auto` builder: `hyper-util/server-auto`
+            // unconditionally enables `hyper/http2`, which would pull the `h2` dependency
+            // subtree into builds that opted out of HTTP/2.
+            let mut server_builder = hyper::server::conn::http1::Builder::new();
+
+            server_builder.preserve_header_case(true);
+
+            server_builder
+                .serve_connection(TokioIo::new(stream), service)
+                .with_upgrades()
+                .await
+                .map_err(|e| ServerConnectionError(Box::new(e)))
+        }
     })
 }
 
@@ -396,6 +416,7 @@ fn to_service_response(response: Response<Bytes>) -> Result<Response<BoxBody<Byt
     Ok(Response::from_parts(parts, full(body)))
 }
 
+#[cfg(feature = "http2")]
 use hyper_util::rt::TokioExecutor;
 #[cfg(feature = "https")]
 use tls_detect::is_encrypted;

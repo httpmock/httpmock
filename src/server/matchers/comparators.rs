@@ -11,9 +11,9 @@ use crate::{
     server::matchers::{
         comparison,
         comparison::{
-            distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix, equal_weight_distance_for,
-            hostname_equals, regex_unmatched_length, string_contains, string_distance, string_equals,
-            string_has_prefix, string_has_suffix,
+            distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix, hostname_equals,
+            regex_unmatched_length, string_contains, string_distance, string_equals, string_has_prefix,
+            string_has_suffix,
         },
     },
 };
@@ -92,7 +92,7 @@ impl ValueComparator<Value, Value> for JSONContainsMatchComparator {
     fn distance(&self, mock_value: &Option<&Value>, req_value: &Option<&Value>) -> usize {
         let mv_bytes = mock_value.map_or(Vec::new(), |v| v.to_string().into_bytes());
         let rv_bytes = req_value.map_or(Vec::new(), |v| v.to_string().into_bytes());
-        let distance = equal_weight_distance_for(&mv_bytes, &rv_bytes);
+        let distance = distance_for(&mv_bytes, &rv_bytes);
 
         if self.negated {
             std::cmp::max(mv_bytes.len(), rv_bytes.len()) - distance
@@ -551,12 +551,12 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
 
         // Compare only up to the length of the mock_slice
         let compared_window = std::cmp::min(mock_slice.len(), req_slice.len());
-        let distance = equal_weight_distance_for(&mock_slice[..compared_window], &req_slice[..compared_window]);
+        let distance = distance_for(&mock_slice[..compared_window], &req_slice[..compared_window]);
 
         // if negated, we want to find out how many
         if self.negated {
-            // This is why we need the equal_weight_distance_for function:
-            // to calculate the distance as the number of differing characters.
+            // The Levenshtein distance of two equally sized windows is the number of
+            // differing characters, so this counts the matching characters.
             compared_window - distance
         } else {
             distance
@@ -603,15 +603,15 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
 
         // Compare only up to the length of the mock_slice
         let compared_window = std::cmp::min(mock_slice.len(), req_slice.len());
-        let distance = equal_weight_distance_for(
+        let distance = distance_for(
             &mock_slice[..compared_window],
             &req_slice[req_slice.len() - compared_window..],
         );
 
         // if negated, we want to find out how many
         if self.negated {
-            // This is why we need the equal_weight_distance_for function:
-            // to calculate the distance as the number of differing characters.
+            // The Levenshtein distance of two equally sized windows is the number of
+            // differing characters, so this counts the matching characters.
             compared_window - distance
         } else {
             distance
