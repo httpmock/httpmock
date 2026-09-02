@@ -28,9 +28,13 @@ The following pull requests have been merged:
 
 ## Version 0.8.0
 This release includes refactoring, dependency updates, and internal cleanups.
-No breaking changes expected.
 
 The minimum required Rust version has been increased to 1.82.
+
+### BREAKING CHANGES
+- [When::body](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body) now compares the
+  request body byte-by-byte and is therefore case-sensitive. Up to and including version 0.7, this matcher
+  performed a case-insensitive string comparison (see [#224](https://github.com/httpmock/httpmock/issues/224)).
 
 The following pull requests have been merged:
 - [#172](https://github.com/httpmock/httpmock/pull/172): "Update Rust edition to 2021" (thanks [@FalkWoldmann](https://github.com/FalkWoldmann))
