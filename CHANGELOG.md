@@ -1,5 +1,14 @@
 # Changelog
 
+## Unreleased
+
+- The dependency tree has been reduced significantly (about 30% fewer crates in default builds, see
+  [#46](https://github.com/httpmock/httpmock/issues/46)). Behavior change: the mock server now only
+  accepts HTTP/2 connections when the `http2` cargo feature is enabled. Previously, cleartext
+  HTTP/2 with prior knowledge (e.g. gRPC clients) was accepted even without this feature, because
+  an internal dependency unconditionally enabled HTTP/2 support. Enable the `http2` feature to
+  keep serving such clients.
+
 ## Version 0.8.3
 
 Minimum supported Rust version has been raised to 1.88.
