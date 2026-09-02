@@ -1,5 +1,63 @@
 # Changelog
 
+## Version 0.9.0
+
+This release upgrades the crate to the Rust 2024 edition, adds support for `json_body` and
+`body_from_file` in static mock YAML files, and includes many internal cleanups, bug fixes,
+and CI improvements. The minimum supported Rust version remains 1.88.
+
+### BREAKING CHANGES
+- [#289](https://github.com/httpmock/httpmock/pull/289): The internal `Handler` and `StateManager`
+  traits were removed in favor of concrete types (thanks [@danieleades](https://github.com/danieleades)).
+
+The following pull requests have been merged:
+
+- [#210](https://github.com/httpmock/httpmock/pull/210): "style: remove unused imports" (thanks [@danieleades](https://github.com/danieleades))
+- [#212](https://github.com/httpmock/httpmock/pull/212): "Bump the npm_and_yarn group across 1 directory with 16 updates"
+- [#216](https://github.com/httpmock/httpmock/pull/216): "address some more warnings" (thanks [@danieleades](https://github.com/danieleades))
+- [#217](https://github.com/httpmock/httpmock/pull/217): "update deprecated methods" (thanks [@danieleades](https://github.com/danieleades))
+- [#221](https://github.com/httpmock/httpmock/pull/221): "ci(deps): bump docker/build-push-action from 6 to 7"
+- [#222](https://github.com/httpmock/httpmock/pull/222): "ci(deps): bump docker/login-action from 3 to 4"
+- [#223](https://github.com/httpmock/httpmock/pull/223): "ci(deps): bump withastro/action from 5 to 6"
+- [#225](https://github.com/httpmock/httpmock/pull/225): "ci(deps): bump actions/deploy-pages from 4 to 5"
+- [#229](https://github.com/httpmock/httpmock/pull/229): "fix: enable hyper-rustls/ring for the https feature" (thanks [@danieleades](https://github.com/danieleades))
+- [#230](https://github.com/httpmock/httpmock/pull/230): "ci: restructure pipelines into fast, deep, and platform lanes" (thanks [@danieleades](https://github.com/danieleades))
+- [#231](https://github.com/httpmock/httpmock/pull/231): "ci: add a dedicated MSRV job and drop rust-toolchain.toml" (thanks [@danieleades](https://github.com/danieleades))
+- [#232](https://github.com/httpmock/httpmock/pull/232): "chore: extend deny.toml license policy for the all-features graph" (thanks [@danieleades](https://github.com/danieleades))
+- [#233](https://github.com/httpmock/httpmock/pull/233): "ci: run clippy and rustfmt on a pinned nightly toolchain" (thanks [@danieleades](https://github.com/danieleades))
+- [#238](https://github.com/httpmock/httpmock/pull/238): "style: re-enable clippy linting and gate clippy::all" (thanks [@danieleades](https://github.com/danieleades))
+- [#239](https://github.com/httpmock/httpmock/pull/239): "ci(deps): bump codecov/codecov-action from 5 to 7"
+- [#240](https://github.com/httpmock/httpmock/pull/240): "ci(deps): bump actions/checkout from 6 to 7"
+- [#241](https://github.com/httpmock/httpmock/pull/241): "style: enforce clippy::to_string_in_format_args" (thanks [@danieleades](https://github.com/danieleades))
+- [#242](https://github.com/httpmock/httpmock/pull/242): "fix: select ring crypto provider explicitly for server TLS" (thanks [@danieleades](https://github.com/danieleades))
+- [#243](https://github.com/httpmock/httpmock/pull/243): "fix: delete recordings instead of proxy rules in DELETE recordings/:id" (thanks [@danieleades](https://github.com/danieleades))
+- [#244](https://github.com/httpmock/httpmock/pull/244): "refactor: replace crossbeam-utils parker with std thread park/unpark" (thanks [@danieleades](https://github.com/danieleades))
+- [#245](https://github.com/httpmock/httpmock/pull/245): "fix: honor the configured history_limit instead of a hardcoded cap" (thanks [@danieleades](https://github.com/danieleades))
+- [#246](https://github.com/httpmock/httpmock/pull/246): "refactor: remove dead code and drop the url dependency" (thanks [@danieleades](https://github.com/danieleades))
+- [#247](https://github.com/httpmock/httpmock/pull/247): "refactor: derive Default for RequestRequirements" (thanks [@danieleades](https://github.com/danieleades))
+- [#248](https://github.com/httpmock/httpmock/pull/248): "refactor: deduplicate remote adapter request handling" (thanks [@danieleades](https://github.com/danieleades))
+- [#250](https://github.com/httpmock/httpmock/pull/250): "refactor: deduplicate list-append builder boilerplate in spec.rs" (thanks [@danieleades](https://github.com/danieleades))
+- [#251](https://github.com/httpmock/httpmock/pull/251): "Expose Default Certificate Constants" (thanks [@ErikMcClure](https://github.com/ErikMcClure))
+- [#253](https://github.com/httpmock/httpmock/pull/253): "ci(deps): bump the npm_and_yarn group across 1 directory with 2 updates"
+- [#255](https://github.com/httpmock/httpmock/pull/255): "ci(deps): bump taiki-e/install-action from 2 to 2.85.5"
+- [#256](https://github.com/httpmock/httpmock/pull/256): "ci(deps): bump the npm_and_yarn group across 1 directory with 3 updates"
+- [#258](https://github.com/httpmock/httpmock/pull/258): "Fix CI failures on master" (thanks [@danieleades](https://github.com/danieleades))
+- [#263](https://github.com/httpmock/httpmock/pull/263): "style: enforce clippy::ptr_arg" (thanks [@danieleades](https://github.com/danieleades))
+- [#266](https://github.com/httpmock/httpmock/pull/266): "style: enforce clippy::new_without_default" (thanks [@danieleades](https://github.com/danieleades))
+- [#268](https://github.com/httpmock/httpmock/pull/268): "style: enforce clippy::doc_overindented_list_items" (thanks [@danieleades](https://github.com/danieleades))
+- [#271](https://github.com/httpmock/httpmock/pull/271): "Fix for code scanning alert no. 22: Workflow does not contain permissions" (thanks [@FalkWoldmann](https://github.com/FalkWoldmann))
+- [#272](https://github.com/httpmock/httpmock/pull/272): "ci(deps): bump js-yaml from 4.3.0 to 4.3.1 in /docs/website"
+- [#282](https://github.com/httpmock/httpmock/pull/282): "style: enforce satisfied lints" (thanks [@danieleades](https://github.com/danieleades))
+- [#283](https://github.com/httpmock/httpmock/pull/283): "style: enforce clippy::type_complexity" (thanks [@danieleades](https://github.com/danieleades))
+- [#284](https://github.com/httpmock/httpmock/pull/284): "style: enforce clippy::module_inception" (thanks [@danieleades](https://github.com/danieleades))
+- [#286](https://github.com/httpmock/httpmock/pull/286): "style: simplify internal error variants" (thanks [@danieleades](https://github.com/danieleades))
+- [#287](https://github.com/httpmock/httpmock/pull/287): "style: enforce unused_variables" (thanks [@danieleades](https://github.com/danieleades))
+- [#288](https://github.com/httpmock/httpmock/pull/288): "style: enforce unused_imports" (thanks [@danieleades](https://github.com/danieleades))
+- [#289](https://github.com/httpmock/httpmock/pull/289): "breaking: remove the Handler and StateManager traits" (thanks [@danieleades](https://github.com/danieleades))
+- [#294](https://github.com/httpmock/httpmock/pull/294): "ci(deps): bump taiki-e/install-action from 2.85.5 to 2.86.5"
+- [#298](https://github.com/httpmock/httpmock/pull/298): "docs: document case-sensitive body matching introduced in v0.8.0"
+- [#299](https://github.com/httpmock/httpmock/pull/299): "feat: support json_body and body_from_file in static mock YAML files"
+
 ## Version 0.8.3
 
 Minimum supported Rust version has been raised to 1.88.
