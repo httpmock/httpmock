@@ -4,11 +4,8 @@
 
 This release upgrades the crate to the Rust 2024 edition, adds support for `json_body` and
 `body_from_file` in static mock YAML files, and includes many internal cleanups, bug fixes,
-and CI improvements. The minimum supported Rust version remains 1.88.
-
-### BREAKING CHANGES
-- [#289](https://github.com/httpmock/httpmock/pull/289): The internal `Handler` and `StateManager`
-  traits were removed in favor of concrete types (thanks [@danieleades](https://github.com/danieleades)).
+and CI improvements. The minimum supported Rust version remains 1.88. There are no breaking
+changes to the public mocking API.
 
 The following pull requests have been merged:
 
