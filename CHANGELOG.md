@@ -2,10 +2,27 @@
 
 ## Version 0.9.0
 
-This release upgrades the crate to the Rust 2024 edition, adds support for `json_body` and
-`body_from_file` in static mock YAML files, and includes many internal cleanups, bug fixes,
-and CI improvements. The minimum supported Rust version remains 1.88. There are no breaking
-changes to the public mocking API.
+Highlights of this release:
+
+- The crate was upgraded to the Rust 2024 edition.
+- Static mock YAML files now support `json_body` and `body_from_file`
+  ([#299](https://github.com/httpmock/httpmock/pull/299), resolves issues
+  [#118](https://github.com/httpmock/httpmock/issues/118) and
+  [#185](https://github.com/httpmock/httpmock/issues/185)).
+- `DELETE /recordings/:id` now deletes recordings instead of proxy rules
+  ([#243](https://github.com/httpmock/httpmock/pull/243)).
+- The configured `history_limit` is honored instead of a hardcoded cap
+  ([#245](https://github.com/httpmock/httpmock/pull/245)).
+- TLS fixes: the `https` feature builds correctly again and the ring crypto provider
+  is selected explicitly for server TLS
+  ([#229](https://github.com/httpmock/httpmock/pull/229),
+  [#242](https://github.com/httpmock/httpmock/pull/242)).
+- Default certificates and keys are exposed for testing
+  ([#251](https://github.com/httpmock/httpmock/pull/251)).
+- Many internal cleanups and CI improvements.
+
+The minimum supported Rust version remains 1.88. There are no breaking changes to the
+public mocking API.
 
 The following pull requests have been merged:
 
