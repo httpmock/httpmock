@@ -42,13 +42,7 @@ fn body_case_sensitive() {
         "case sensitivity",
         |when| when.body("test"),
         "TEST",
-        Some(vec![
-            "Expected body equals:",
-            "test",
-            "",
-            "Received:",
-            "TEST",
-        ]),
+        Some(vec!["Expected body equals:", "test", "", "Received:", "TEST"]),
     )
 }
 
