@@ -9,7 +9,6 @@ use std::{
     thread,
 };
 
-use async_object_pool::Pool;
 use tokio::sync::oneshot::channel;
 
 #[cfg(feature = "remote")]
@@ -30,6 +29,7 @@ use crate::{
     },
     common::{
         data::{MockDefinition, MockServerHttpResponse, RequestRequirements},
+        pool::Pool,
         runtime,
         util::{Join, read_env, with_retry},
     },
@@ -1319,7 +1319,7 @@ impl Drop for MockServer {
     /// This behavior is part of the `MockServer` struct and does not require any additional features to be enabled.
     fn drop(&mut self) {
         let adapter = self.server_adapter.take().unwrap();
-        self.pool.put(adapter).join();
+        self.pool.put(adapter);
     }
 }
 

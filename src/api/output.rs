@@ -1,8 +1,7 @@
-use std::io::Write;
+use std::fmt::Write;
 
 #[cfg(feature = "color")]
 use colored::Colorize;
-use tabwriter::TabWriter;
 
 use crate::{
     common::{
@@ -16,6 +15,78 @@ use crate::{
 };
 
 const QUOTED_TEXT: &str = "quoted for better readability";
+
+/// A writer that aligns `\t`-separated columns of consecutive tab-containing lines
+/// (elastic tab stops) when the buffered text is retrieved via [`TabWriter::into_string`].
+///
+/// This is a simplified replacement for the `tabwriter` crate that produces identical
+/// output for the patterns this module generates. It measures cell width in `char`s
+/// rather than display columns, so cells containing wide characters (e.g. CJK) may
+/// align differently in terminals.
+struct TabWriter {
+    buf: String,
+}
+
+impl TabWriter {
+    fn new() -> Self {
+        Self { buf: String::new() }
+    }
+
+    fn into_string(self) -> String {
+        let mut out_lines: Vec<String> = Vec::new();
+        let mut block: Vec<&str> = Vec::new();
+
+        for line in self.buf.split('\n') {
+            if line.contains('\t') {
+                block.push(line);
+            } else {
+                Self::align_block(&mut block, &mut out_lines);
+                out_lines.push(line.to_string());
+            }
+        }
+        Self::align_block(&mut block, &mut out_lines);
+
+        out_lines.join("\n")
+    }
+
+    /// Aligns the columns of a block of consecutive tab-containing lines and clears the block.
+    fn align_block(block: &mut Vec<&str>, out_lines: &mut Vec<String>) {
+        let rows: Vec<Vec<&str>> = block.drain(..).map(|line| line.split('\t').collect()).collect();
+
+        // Compute the width of each column. The last cell of a row is never padded,
+        // so it does not contribute to its column's width. The minimum column width of 2
+        // matches the `tabwriter` crate's default, which this replaces: most visibly, it
+        // renders the empty cell of lines starting with `\t` as a 4-space indent.
+        let column_count = rows.iter().map(|cells| cells.len()).max().unwrap_or(0);
+        let mut widths = vec![2; column_count];
+        for cells in &rows {
+            for (idx, cell) in cells.iter().enumerate() {
+                if idx + 1 < cells.len() {
+                    widths[idx] = widths[idx].max(cell.chars().count());
+                }
+            }
+        }
+
+        for cells in &rows {
+            let mut line = String::new();
+            for (idx, cell) in cells.iter().enumerate() {
+                line.push_str(cell);
+                if idx + 1 < cells.len() {
+                    let padding = widths[idx] - cell.chars().count() + 2;
+                    line.push_str(&" ".repeat(padding));
+                }
+            }
+            out_lines.push(line);
+        }
+    }
+}
+
+impl Write for TabWriter {
+    fn write_str(&mut self, s: &str) -> std::fmt::Result {
+        self.buf.push_str(s);
+        Ok(())
+    }
+}
 
 pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option<ClosestMatch>) {
     let closest_match = closest_match.expect("No request has been received by the mock server.");
@@ -51,7 +122,7 @@ pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option
 }
 
 pub fn create_mismatch_output(idx: usize, mismatch: &Mismatch) -> (String, Option<(String, String)>) {
-    let mut tw = TabWriter::new(vec![]);
+    let mut tw = TabWriter::new();
     let mut ide_diff_left = String::new();
     let mut ide_diff_right = String::new();
 
@@ -73,9 +144,7 @@ pub fn create_mismatch_output(idx: usize, mismatch: &Mismatch) -> (String, Optio
 
     write_footer(&mut tw, mismatch);
 
-    tw.flush().unwrap();
-
-    let output = String::from_utf8(tw.into_inner().unwrap()).unwrap();
+    let output = tw.into_string();
 
     if !ide_diff_left.is_empty() && !ide_diff_right.is_empty() {
         return (output, Some((ide_diff_left, ide_diff_right)));
@@ -84,14 +153,14 @@ pub fn create_mismatch_output(idx: usize, mismatch: &Mismatch) -> (String, Optio
     (output, None)
 }
 
-fn write_header(tw: &mut TabWriter<Vec<u8>>, idx: usize, mismatch: &Mismatch) {
+fn write_header(tw: &mut TabWriter, idx: usize, mismatch: &Mismatch) {
     writeln!(tw, "{}", "-".repeat(60)).unwrap();
     writeln!(tw, "{} : {} Mismatch ", idx + 1, title_case(&mismatch.entity)).unwrap();
     writeln!(tw, "{}", "-".repeat(60)).unwrap();
 }
 
 fn handle_single_value_comparison(
-    tw: &mut TabWriter<Vec<u8>>,
+    tw: &mut TabWriter,
     mismatch: &Mismatch,
     comparison: &SingleValueComparison,
 ) -> (String, String) {
@@ -108,7 +177,7 @@ fn handle_single_value_comparison(
 }
 
 fn handle_key_value_comparison(
-    tw: &mut TabWriter<Vec<u8>>,
+    tw: &mut TabWriter,
     mismatch: &Mismatch,
     comparison: &KeyValueComparison,
 ) -> (String, String) {
@@ -202,7 +271,7 @@ fn handle_key_value_comparison(
     (String::new(), String::new())
 }
 
-fn print_all_request_values(tw: &mut TabWriter<Vec<u8>>, entity: &str, all: &[KeyValueComparisonKeyValuePair]) {
+fn print_all_request_values(tw: &mut TabWriter, entity: &str, all: &[KeyValueComparisonKeyValuePair]) {
     if all.is_empty() {
         return;
     }
@@ -221,7 +290,7 @@ fn print_all_request_values(tw: &mut TabWriter<Vec<u8>>, entity: &str, all: &[Ke
     }
 }
 
-fn print_value_not_in_request(tw: &mut TabWriter<Vec<u8>>, matching_strategy: &Option<MatchingStrategy>) {
+fn print_value_not_in_request(tw: &mut TabWriter, matching_strategy: &Option<MatchingStrategy>) {
     writeln!(
         tw,
         "\n{}",
@@ -236,7 +305,7 @@ fn print_value_not_in_request(tw: &mut TabWriter<Vec<u8>>, matching_strategy: &O
     .unwrap();
 }
 
-fn handle_function_comparison(tw: &mut TabWriter<Vec<u8>>, mismatch: &Mismatch, comparison: &FunctionComparison) {
+fn handle_function_comparison(tw: &mut TabWriter, mismatch: &Mismatch, comparison: &FunctionComparison) {
     writeln!(
         tw,
         "Custom matcher function {} with index {} did not match the request",
@@ -245,7 +314,7 @@ fn handle_function_comparison(tw: &mut TabWriter<Vec<u8>>, mismatch: &Mismatch, 
     .unwrap();
 }
 
-fn write_footer(tw: &mut TabWriter<Vec<u8>>, mismatch: &Mismatch) {
+fn write_footer(tw: &mut TabWriter, mismatch: &Mismatch) {
     let mut version = env!("CARGO_PKG_VERSION");
     if version.trim().is_empty() {
         version = "latest";

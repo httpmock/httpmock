@@ -1,4 +1,5 @@
 pub(crate) mod data;
+pub(crate) mod pool;
 pub(crate) mod runtime;
 pub mod util;
 
