@@ -12,6 +12,10 @@ remains 1.88.
   `query_params().into_iter().collect()` to obtain a map, and `http::Request::from(&request)`
   to convert a request. Custom matchers written with `When::matches` may need these
   adjustments.
+- The `MockExt` trait was removed and `Mock`'s public `id` field is now private
+  ([#285](https://github.com/httpmock/httpmock/pull/285)). Remove `MockExt` imports and
+  replace direct `mock.id` field access with `mock.id()`. The inherent `Mock::new`
+  constructor remains available.
 
 ### Improvements
 

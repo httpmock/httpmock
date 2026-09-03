@@ -65,7 +65,7 @@ impl<'a> Mock<'a> {
     /// drop(original);
     ///
     /// let recreated = Mock::new(mock_id, &server);
-    /// recreated.assert_hits(0);
+    /// recreated.assert_calls(0);
     /// ```
     pub fn new(id: usize, server: &'a MockServer) -> Self {
         Self { id, server }
