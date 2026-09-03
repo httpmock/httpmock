@@ -2,8 +2,8 @@
 # integration run against a real Dockerised standalone server.
 #
 # This is too slow to block every PR, so it runs on pushes to master, on a
-# nightly schedule, and on demand. PRs get a compile-only check of the same
-# power set from ci.yml, which catches most feature-gating mistakes.
+# nightly schedule, and on demand. PRs get a compile-only check of the pairwise
+# subset from ci.yml, which catches most feature-gating mistakes.
 name: Feature Matrix
 
 on:
@@ -23,12 +23,12 @@ permissions:
 
 jobs:
   powerset-test:
-    name: Power set tests (shard ${{ matrix.partition }} of 4)
+    name: Power set tests (shard ${{ matrix.partition }} of 10)
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
       matrix:
-        partition: [1, 2, 3, 4]
+        partition: [1, 2, 3, 4, 5, 6, 7, 8, 9, 10]
     steps:
       - uses: actions/checkout@v7
 
@@ -50,13 +50,16 @@ jobs:
         with:
           tool: cargo-hack
 
-      # Test every feature alone and every feature pair. Deeper combinations
-      # add little: the features form an implication chain
-      # (record -> proxy -> remote-https -> remote, standalone -> most others),
-      # so cargo-hack collapses equivalent combos and pairs already cover the
-      # realistic interactions. --partition spreads the combinations across
-      # four parallel shards.
-      - run: cargo hack test --feature-powerset --depth 2 --partition ${{ matrix.partition }}/4
+      # Test the full feature power set: some bugs only surface when an
+      # unexpected combination of features is enabled, so no --depth limit
+      # here. cargo-hack already collapses combinations that are equivalent
+      # under feature implications (record -> proxy -> remote-https -> remote,
+      # standalone -> most others), which keeps the set at ~128 combinations.
+      # `experimental` is excluded because it is an empty marker feature that
+      # gates no code; including it would double the matrix without adding
+      # coverage (drop the exclusion once it gates real code). --partition
+      # spreads the combinations across ten parallel shards.
+      - run: cargo hack test --feature-powerset --exclude-features experimental --partition ${{ matrix.partition }}/10
 
   docker-integration:
     name: Integration against Dockerised server

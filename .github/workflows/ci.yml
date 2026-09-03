@@ -63,7 +63,8 @@ jobs:
       # catches most of what full matrix *testing* would. cargo-hack drops
       # combinations that are equivalent under feature implications (e.g.
       # record -> proxy -> remote-https -> remote), keeping the run small.
-      # The same power set is fully tested in feature-matrix.yml.
+      # The full power set (all depths, not just pairs) is tested nightly in
+      # feature-matrix.yml.
       #
       # Without dev-dependencies first: dev-dep feature unification can mask
       # gating bugs in the published crate.
