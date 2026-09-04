@@ -13,7 +13,11 @@ use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;
 #[cfg(feature = "cookies")]
 use headers::{Cookie, HeaderMapExt};
-use serde::{Deserialize, Serialize};
+use http::{
+    HeaderMap, HeaderValue, Method as HttpMethod, Uri, Version,
+    uri::{Authority, Scheme},
+};
+use serde::{Deserialize, Deserializer, Serialize, Serializer};
 use serde_json::Value;
 
 pub type ResponseCallback = Arc<dyn Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync>;
@@ -21,7 +25,7 @@ pub type RequestPredicate = Arc<dyn Fn(&HttpMockRequest) -> bool + Send + Sync>;
 
 use crate::{
     common::{
-        data::Error::{HeaderDeserialization, RequestConversion, StaticMockConversion},
+        data::Error::{HeaderDeserialization, StaticMockConversion},
         util::HttpMockBytes,
     },
     server::{RequestMetadata, matchers::generic::MatchingStrategy},
@@ -33,355 +37,564 @@ pub enum Error {
     HeaderDeserialization(String),
     #[error("cannot convert to/from static mock: {0}")]
     StaticMockConversion(String),
-    #[error("Cannot convert request to/from internal structure: {0}")]
-    RequestConversion(String),
+    #[error("cannot convert JSON: {0}")]
+    JSONConversion(#[from] serde_json::Error),
+    #[error("Invalid request data: {0}")]
+    InvalidRequestData(String),
     #[error("Response conversion error: {0}")]
     ResponseConversion(String),
 }
 
-/// A general abstraction of an HTTP request of `httpmock`.
-#[derive(Serialize, Deserialize, Debug, Clone)]
+/// An error converting an HTTP request into [`HttpMockRequest`].
+#[derive(thiserror::Error, Debug)]
+#[non_exhaustive]
+pub enum HttpMockRequestConversionError {
+    #[error("request has no URI scheme or transport metadata")]
+    MissingScheme,
+    #[error("invalid request authority: {0}")]
+    InvalidAuthority(#[source] http::uri::InvalidUri),
+}
+
+#[derive(thiserror::Error, Debug)]
+enum HttpMockRequestWireError {
+    #[error(transparent)]
+    Request(#[from] HttpMockRequestConversionError),
+    #[error("request scheme {request} does not match URI scheme {uri}")]
+    SchemeMismatch { request: Scheme, uri: Scheme },
+    #[error("invalid request scheme: {0}")]
+    InvalidScheme(#[source] http::uri::InvalidUri),
+    #[error("invalid request URI: {0}")]
+    InvalidUri(#[source] http::uri::InvalidUri),
+    #[error("invalid request method: {0}")]
+    InvalidMethod(#[source] http::method::InvalidMethod),
+    #[error("invalid request header name: {0}")]
+    InvalidHeaderName(#[source] http::header::InvalidHeaderName),
+    #[error("invalid request header value: {0}")]
+    InvalidHeaderValue(#[source] http::header::InvalidHeaderValue),
+    #[error("unsupported HTTP version: {0}")]
+    UnsupportedVersion(String),
+}
+
+/// A validated HTTP request received by `httpmock`.
+#[derive(Debug, Clone)]
 pub struct HttpMockRequest {
-    scheme: String,
-    uri: String,
-    method: String,
-    headers: Vec<(String, String)>,
-    version: String,
+    scheme: Scheme,
+    uri: Uri,
+    authority: Option<Authority>,
+    method: HttpMethod,
+    headers: HeaderMap,
+    version: Version,
     body: HttpMockBytes,
 }
 
 impl HttpMockRequest {
-    pub(crate) fn new(
-        scheme: String,
-        uri: String,
-        method: String,
-        headers: Vec<(String, String)>,
-        version: String,
+    fn from_parts(
+        scheme: Scheme,
+        uri: Uri,
+        method: HttpMethod,
+        headers: HeaderMap,
+        version: Version,
         body: HttpMockBytes,
-    ) -> Self {
-        // TODO: Many fields from the struct are exposed as structures from http package to the user.
-        //  These values here are also converted to these http crate structures every call.
-        //  ==> Convert these values here into http crate structures and allow returning an error
-        //      here instead of "unwrap" all the time later (see functions below).
-        //      Convert into http crate structures once here and store the converted
-        //          values in the struct instance here rather than only String values everywhere.
-        //     This will require to make the HttpMockRequest serde compatible
-        //     (http types are not serializable by default).
-        Self {
+    ) -> Result<Self, HttpMockRequestConversionError> {
+        let authority = match uri.authority() {
+            Some(authority) => Some(authority.clone()),
+            None => headers
+                .get(http::header::HOST)
+                .map(HeaderValue::as_bytes)
+                .map(Authority::try_from)
+                .transpose()
+                .map_err(HttpMockRequestConversionError::InvalidAuthority)?,
+        };
+
+        Ok(Self {
+            scheme,
+            uri,
+            authority,
+            method,
+            headers,
+            version,
+            body,
+        })
+    }
+
+    /// Returns the request URI.
+    pub fn uri(&self) -> &Uri {
+        &self.uri
+    }
+
+    /// Returns the request scheme, including transport-derived fallback data for origin-form URIs.
+    pub fn scheme(&self) -> &Scheme {
+        &self.scheme
+    }
+
+    /// Returns the request authority from the URI or `Host` header.
+    pub fn authority(&self) -> Option<&Authority> {
+        self.authority.as_ref()
+    }
+
+    /// Returns the request host without its port.
+    pub fn host(&self) -> Option<&str> {
+        self.authority().map(Authority::host)
+    }
+
+    /// Returns the explicit request port, 443 for HTTPS, or 80 for other schemes.
+    pub fn port(&self) -> u16 {
+        self.authority()
+            .and_then(|authority| authority.port_u16())
+            .unwrap_or_else(|| if self.scheme() == &Scheme::HTTPS { 443 } else { 80 })
+    }
+
+    /// Returns the request method.
+    pub fn method(&self) -> &HttpMethod {
+        &self.method
+    }
+
+    /// Returns the request headers.
+    pub fn headers(&self) -> &HeaderMap {
+        &self.headers
+    }
+
+    /// Returns the decoded query parameter pairs in URI order.
+    pub fn query_params(&self) -> impl Iterator<Item = (std::borrow::Cow<'_, str>, std::borrow::Cow<'_, str>)> + '_ {
+        form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes())
+    }
+
+    /// Returns the request body.
+    pub fn body(&self) -> &HttpMockBytes {
+        &self.body
+    }
+
+    /// Returns the HTTP version.
+    pub fn version(&self) -> Version {
+        self.version
+    }
+
+    #[cfg(feature = "cookies")]
+    pub(crate) fn cookies(&self) -> Vec<(String, String)> {
+        let mut result = Vec::new();
+
+        if let Some(cookie) = self.headers.typed_get::<Cookie>() {
+            for (key, value) in cookie.iter() {
+                result.push((key.to_string(), value.to_string()));
+            }
+        }
+
+        result
+    }
+}
+
+#[derive(Deserialize)]
+#[serde(untagged)]
+enum HttpHeaderValueWire {
+    Text(String),
+    Bytes(Vec<u8>),
+}
+
+#[derive(Serialize)]
+#[serde(untagged)]
+enum HttpHeaderValueWireRef<'a> {
+    Text(&'a str),
+    Bytes(&'a [u8]),
+}
+
+#[derive(Deserialize)]
+struct HttpMockRequestWire {
+    scheme: String,
+    uri: String,
+    method: String,
+    headers: Vec<(String, HttpHeaderValueWire)>,
+    version: String,
+    body: HttpMockBytes,
+}
+
+#[derive(Serialize)]
+struct HttpMockRequestWireRef<'a> {
+    scheme: &'a str,
+    uri: String,
+    method: &'a str,
+    headers: Vec<(&'a str, HttpHeaderValueWireRef<'a>)>,
+    version: &'static str,
+    body: &'a HttpMockBytes,
+}
+
+impl TryFrom<HttpMockRequestWire> for HttpMockRequest {
+    type Error = HttpMockRequestWireError;
+
+    fn try_from(request: HttpMockRequestWire) -> Result<Self, Self::Error> {
+        let HttpMockRequestWire {
             scheme,
             uri,
             method,
             headers,
             version,
             body,
-        }
-    }
-
-    /// Parses and returns the URI of the request.
-    ///
-    /// # Attention
-    ///
-    /// - This method returns the full URI of the request as an `http::Uri` object.
-    /// - The URI returned by this method does not include the `Host` part. In HTTP/1.1,
-    ///   the request line typically contains only the path and query, not the full URL with the host.
-    /// - To retrieve the host, you should use the `HttpMockRequest::host` method which extracts the `Host`
-    ///   header (for HTTP/1.1) or the `:authority` pseudo-header (for HTTP/2 and HTTP/3).
-    ///
-    /// # Returns
-    ///
-    /// An `http::Uri` object representing the full URI of the request.
-    pub fn uri(&self) -> http::Uri {
-        self.uri.parse().unwrap()
-    }
-
-    /// Parses the scheme from the request.
-    ///
-    /// This function extracts the scheme (protocol) used in the request. If the request contains a relative path,
-    /// the scheme will be inferred based on how the server received the request. For instance, if the request was
-    /// sent to the server using HTTPS, the scheme will be set to "https"; otherwise, it will be set to "http".
-    ///
-    /// # Returns
-    ///
-    /// A `String` representing the scheme of the request, either "https" or "http".
-    pub fn scheme(&self) -> String {
-        let uri = self.uri();
-        if let Some(scheme) = uri.scheme() {
-            return scheme.to_string();
-        }
-
-        self.scheme.clone()
-    }
-
-    /// Returns the URI of the request as a string slice.
-    ///
-    /// # Attention
-    ///
-    /// - This method returns the full URI as a string slice.
-    /// - The URI string returned by this method does not include the `Host` part. In HTTP/1.1,
-    ///   the request line typically contains only the path and query, not the full URL with the host.
-    /// - To retrieve the host, you should use the `host` method which extracts the `Host`
-    ///   header (for HTTP/1.1) or the `:authority` pseudo-header (for HTTP/2 and HTTP/3).
-    ///
-    /// # Returns
-    ///
-    /// A string slice representing the full URI of the request.
-    pub fn uri_str(&self) -> &str {
-        self.uri.as_ref()
-    }
-
-    /// Returns the host that the request was sent to, based on the `Host` header or `:authority` pseudo-header.
-    ///
-    /// # Attention
-    ///
-    /// - This method retrieves the host from the `Host` header of the HTTP request for HTTP/1.1 requests.
-    ///   For HTTP/2 and HTTP/3 requests, it retrieves the host from the `:authority` pseudo-header.
-    /// - If you use the `HttpMockRequest::uri` method to get the full URI, note that
-    ///   the URI might not include the host part. In HTTP/1.1, the request line
-    ///   typically contains only the path and query, not the full URL.
-    ///
-    /// # Returns
-    ///
-    /// An `Option<String>` containing the host if the `Host` header or `:authority` pseudo-header is present, or
-    /// `None` if neither is found.
-    pub fn host(&self) -> Option<String> {
-        // Check the Host header first (HTTP 1.1)
-        if let Some((_, host)) = self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("host")) {
-            return Some(host.split(':').next().unwrap().to_string());
-        }
-
-        // If Host header is not found, check the URI authority (HTTP/2 and HTTP/3)
-        let uri = self.uri();
-        if let Some(authority) = uri.authority() {
-            return Some(authority.as_str().split(':').next().unwrap().to_string());
-        }
-
-        None
-    }
-
-    /// Returns the port that the request was sent to, based on the `Host` header or `:authority` pseudo-header.
-    ///
-    /// # Attention
-    ///
-    /// 1. This method retrieves the port from the `Host` header of the HTTP request for HTTP/1.1 requests.
-    ///    For HTTP/2 and HTTP/3 requests, it retrieves the port from the `:authority` pseudo-header.
-    ///    This method attempts to parse the port as a `u16`. If the port cannot be parsed as a `u16`, this method will continue as if the port was not specified (see point 2).
-    /// 2. If the port is not specified in the `Host` header or `:authority` pseudo-header, this method will return 443 (https) or 80 (http) based on the used scheme.
-    ///
-    /// # Returns
-    ///
-    /// An `u16` containing the port if the `Host` header or `:authority` pseudo-header is present and includes a valid port,
-    /// or 443 (https) or 80 (http) based on the used scheme otherwise.
-    pub fn port(&self) -> u16 {
-        // Check the Host header first (HTTP 1.1)
-        if let Some((_, host)) = self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("host"))
-            && let Some(port_str) = host.split(':').nth(1)
-            && let Ok(port) = port_str.parse::<u16>()
+        } = request;
+        let scheme = Scheme::from_str(&scheme).map_err(HttpMockRequestWireError::InvalidScheme)?;
+        let uri = Uri::try_from(uri).map_err(HttpMockRequestWireError::InvalidUri)?;
+        if let Some(uri_scheme) = uri.scheme()
+            && uri_scheme != &scheme
         {
-            return port;
+            return Err(HttpMockRequestWireError::SchemeMismatch {
+                request: scheme,
+                uri: uri_scheme.clone(),
+            });
         }
+        let method = HttpMethod::from_bytes(method.as_bytes()).map_err(HttpMockRequestWireError::InvalidMethod)?;
+        let version = parse_http_version(&version)?;
 
-        // If Host header is not found, check the URI authority (HTTP/2 and HTTP/3)
-        let uri = self.uri();
-        if let Some(authority) = uri.authority()
-            && let Some(port_str) = authority.as_str().split(':').nth(1)
-            && let Ok(port) = port_str.parse::<u16>()
-        {
-            return port;
-        }
-
-        if self.scheme().eq("https") {
-            return 443;
-        }
-
-        80
-    }
-
-    pub fn method(&self) -> http::Method {
-        http::Method::from_bytes(self.method.as_bytes()).unwrap()
-    }
-
-    pub fn method_str(&self) -> &str {
-        self.method.as_ref()
-    }
-
-    pub fn headers(&self) -> http::HeaderMap<http::HeaderValue> {
-        let mut header_map: http::HeaderMap<http::HeaderValue> = http::HeaderMap::new();
-        for (key, value) in &self.headers {
-            let header_name = http::HeaderName::from_bytes(key.as_bytes()).unwrap();
-            let header_value = http::HeaderValue::from_str(value).unwrap();
-
-            header_map.append(header_name, header_value);
-        }
-
-        header_map
-    }
-
-    pub fn headers_vec(&self) -> &Vec<(String, String)> {
-        self.headers.as_ref()
-    }
-
-    pub fn query_params(&self) -> Vec<(String, String)> {
-        form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes())
-            .into_owned()
-            .collect()
-    }
-
-    pub fn query_param_length(&self) -> usize {
-        form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes()).count()
-    }
-
-    pub fn body(&self) -> &HttpMockBytes {
-        &self.body
-    }
-
-    pub fn body_string(&self) -> String {
-        self.body.to_string()
-    }
-
-    pub fn body_ref(&self) -> &[u8] {
-        self.body.as_ref()
-    }
-
-    // Move all body functions to HttpMockBytes
-    pub fn body_vec(&self) -> Vec<u8> {
-        self.body.to_vec()
-    }
-
-    pub fn body_bytes(&self) -> bytes::Bytes {
-        self.body.to_bytes()
-    }
-
-    pub fn version(&self) -> http::Version {
-        match self.version.as_ref() {
-            "HTTP/0.9" => http::Version::HTTP_09,
-            "HTTP/1.0" => http::Version::HTTP_10,
-            "HTTP/1.1" => http::Version::HTTP_11,
-            "HTTP/2.0" => http::Version::HTTP_2,
-            "HTTP/3.0" => http::Version::HTTP_3,
-            // Attention: This scenario is highly unlikely, so we panic here for the users
-            // convenience (user does not need to deal with errors for this reason alone).
-            _ => panic!("unknown HTTP version: {:?}", self.version),
-        }
-    }
-
-    pub fn version_ref(&self) -> &str {
-        self.version.as_ref()
-    }
-
-    #[cfg(feature = "cookies")]
-    pub(crate) fn cookies(&self) -> Result<Vec<(String, String)>, Error> {
-        let mut result = Vec::new();
-
-        if let Some(cookie) = self.headers().typed_get::<Cookie>() {
-            for (key, value) in cookie.iter() {
-                result.push((key.to_string(), value.to_string()));
+        let mut header_map = HeaderMap::with_capacity(headers.len());
+        for (name, value) in headers {
+            let name = http::HeaderName::try_from(name).map_err(HttpMockRequestWireError::InvalidHeaderName)?;
+            let value = match value {
+                HttpHeaderValueWire::Text(value) => HeaderValue::try_from(value),
+                HttpHeaderValueWire::Bytes(value) => HeaderValue::try_from(value),
             }
+            .map_err(HttpMockRequestWireError::InvalidHeaderValue)?;
+            header_map.append(name, value);
         }
 
-        Ok(result)
+        Ok(Self::from_parts(scheme, uri, method, header_map, version, body)?)
     }
 }
 
-fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)>, Error> {
-    req.headers()
-        .iter()
-        .map(|(name, value)| {
-            // Attempt to convert the HeaderValue to a &str, returning an error if it fails.
-            let value_str = value.to_str().map_err(|e| RequestConversion(e.to_string()))?;
-            Ok((name.as_str().to_string(), value_str.to_string()))
-        })
-        .collect()
+impl Serialize for HttpMockRequest {
+    fn serialize<S>(&self, serializer: S) -> Result<S::Ok, S::Error>
+    where
+        S: Serializer,
+    {
+        let headers = self
+            .headers
+            .iter()
+            .map(|(name, value)| {
+                let value = match value.to_str() {
+                    Ok(value) => HttpHeaderValueWireRef::Text(value),
+                    Err(_) => HttpHeaderValueWireRef::Bytes(value.as_bytes()),
+                };
+                (name.as_str(), value)
+            })
+            .collect();
+        HttpMockRequestWireRef {
+            scheme: self.scheme().as_str(),
+            uri: self.uri.to_string(),
+            method: self.method.as_str(),
+            headers,
+            version: http_version_str(self.version).map_err(serde::ser::Error::custom)?,
+            body: &self.body,
+        }
+        .serialize(serializer)
+    }
+}
+
+impl<'de> Deserialize<'de> for HttpMockRequest {
+    fn deserialize<D>(deserializer: D) -> Result<Self, D::Error>
+    where
+        D: Deserializer<'de>,
+    {
+        HttpMockRequestWire::deserialize(deserializer)?
+            .try_into()
+            .map_err(serde::de::Error::custom)
+    }
+}
+
+fn http_version_str(version: Version) -> Result<&'static str, HttpMockRequestWireError> {
+    match version {
+        Version::HTTP_09 => Ok("HTTP/0.9"),
+        Version::HTTP_10 => Ok("HTTP/1.0"),
+        Version::HTTP_11 => Ok("HTTP/1.1"),
+        Version::HTTP_2 => Ok("HTTP/2.0"),
+        Version::HTTP_3 => Ok("HTTP/3.0"),
+        _ => Err(HttpMockRequestWireError::UnsupportedVersion(format!("{version:?}"))),
+    }
+}
+
+fn parse_http_version(version: &str) -> Result<Version, HttpMockRequestWireError> {
+    match version {
+        "HTTP/0.9" => Ok(Version::HTTP_09),
+        "HTTP/1.0" => Ok(Version::HTTP_10),
+        "HTTP/1.1" => Ok(Version::HTTP_11),
+        "HTTP/2.0" | "HTTP/2" => Ok(Version::HTTP_2),
+        "HTTP/3.0" | "HTTP/3" => Ok(Version::HTTP_3),
+        _ => Err(HttpMockRequestWireError::UnsupportedVersion(version.to_string())),
+    }
+}
+
+fn request_scheme<B>(request: &http::Request<B>) -> Result<Scheme, HttpMockRequestConversionError> {
+    if let Some(scheme) = request.uri().scheme() {
+        return Ok(scheme.clone());
+    }
+
+    let metadata = request
+        .extensions()
+        .get::<RequestMetadata>()
+        .ok_or(HttpMockRequestConversionError::MissingScheme)?;
+
+    Ok(metadata.scheme.clone())
+}
+
+impl<B> TryFrom<http::Request<B>> for HttpMockRequest
+where
+    B: Into<HttpMockBytes>,
+{
+    type Error = HttpMockRequestConversionError;
+
+    fn try_from(request: http::Request<B>) -> Result<Self, Self::Error> {
+        let scheme = request_scheme(&request)?;
+        let (parts, body) = request.into_parts();
+
+        Self::from_parts(
+            scheme,
+            parts.uri,
+            parts.method,
+            parts.headers,
+            parts.version,
+            body.into(),
+        )
+    }
 }
 
 impl<B> TryFrom<&http::Request<B>> for HttpMockRequest
 where
-    B: Clone + IntoMockBytes,
+    B: Clone + Into<HttpMockBytes>,
 {
-    type Error = Error;
+    type Error = HttpMockRequestConversionError;
 
-    fn try_from(value: &http::Request<B>) -> Result<Self, Self::Error> {
-        let metadata = value
-            .extensions()
-            .get::<RequestMetadata>()
-            .unwrap_or_else(|| panic!("request metadata was not added to the request"));
-
-        let headers = http_headers_to_vec(value)?;
-
-        // Convert the (cloned) body into Bytes, supporting several common body types.
-        let body_bytes = value.body().clone().into_httpmock_bytes()?;
-        let body = HttpMockBytes(body_bytes);
-
-        Ok(HttpMockRequest::new(
-            metadata.scheme.to_string(),
-            value.uri().to_string(),
-            value.method().to_string(),
-            headers,
-            format!("{:?}", value.version()),
-            body,
-        ))
+    fn try_from(request: &http::Request<B>) -> Result<Self, Self::Error> {
+        Self::from_parts(
+            request_scheme(request)?,
+            request.uri().clone(),
+            request.method().clone(),
+            request.headers().clone(),
+            request.version(),
+            request.body().clone().into(),
+        )
     }
 }
 
-impl<B> From<http::Request<B>> for HttpMockRequest
-where
-    B: Clone + IntoMockBytes,
-{
-    fn from(req: http::Request<B>) -> Self {
-        // Use by-ref conversion; we still have access to extensions while owning `req`.
-        <HttpMockRequest as TryFrom<&http::Request<B>>>::try_from(&req)
-            .expect("invalid http::Request for HttpMockRequest: missing metadata or invalid headers/body")
+impl From<HttpMockRequest> for http::Request<Bytes> {
+    fn from(req: HttpMockRequest) -> Self {
+        let scheme = req.scheme.clone();
+        let mut request = http::Request::new(req.body.into());
+        *request.method_mut() = req.method;
+        *request.uri_mut() = req.uri;
+        *request.version_mut() = req.version;
+        *request.headers_mut() = req.headers;
+        request.extensions_mut().insert(RequestMetadata::new(scheme));
+        request
     }
 }
 
-impl From<&HttpMockRequest> for http::Request<bytes::Bytes> {
+impl From<&HttpMockRequest> for http::Request<Bytes> {
     fn from(req: &HttpMockRequest) -> Self {
-        let mut builder = http::Request::builder()
-            .method(req.method())
-            .uri(req.uri())
-            .version(req.version());
-
-        for (k, v) in req.headers() {
-            builder = builder.header(k.map_or(String::new(), |v| v.to_string()), v)
-        }
-
-        builder
-            .body(req.body().to_bytes())
-            .expect("failed to convert HttpMockRequest into http::Request<Bytes>")
+        req.clone().into()
     }
 }
 
-impl From<&HttpMockRequest> for http::Request<String> {
-    fn from(req: &HttpMockRequest) -> Self {
-        let mut builder = http::Request::builder()
-            .method(req.method())
-            .uri(req.uri())
-            .version(req.version());
+#[cfg(test)]
+mod http_message_tests {
+    use super::*;
 
-        for (k, v) in req.headers() {
-            builder = builder.header(k.map_or(String::new(), |v| v.to_string()), v)
-        }
+    #[test]
+    fn request_keeps_typed_http_parts() {
+        let mut request = http::Request::builder()
+            .method(http::Method::PATCH)
+            .uri("https://[::1]:8443/search?q=rust")
+            .version(http::Version::HTTP_2)
+            .body(Bytes::from_static(b"body"))
+            .unwrap();
+        request
+            .headers_mut()
+            .append(http::header::ACCEPT, HeaderValue::from_static("text/plain"));
+        request
+            .headers_mut()
+            .append(http::header::ACCEPT, HeaderValue::from_static("application/json"));
+        request
+            .headers_mut()
+            .insert("x-binary", HeaderValue::from_bytes(&[0x80]).unwrap());
 
-        let body = String::from_utf8(req.body_vec()).expect("request body is not valid UTF-8");
-        builder
-            .body(body)
-            .expect("failed to convert HttpMockRequest into http::Request<String>")
+        let request = HttpMockRequest::try_from(request).unwrap();
+
+        assert_eq!(request.scheme(), &Scheme::HTTPS);
+        assert_eq!(
+            request.uri(),
+            &"https://[::1]:8443/search?q=rust".parse::<Uri>().unwrap()
+        );
+        assert_eq!(request.method(), http::Method::PATCH);
+        assert_eq!(request.version(), Version::HTTP_2);
+        assert_eq!(request.authority().map(Authority::as_str), Some("[::1]:8443"));
+        assert_eq!(request.host(), Some("[::1]"));
+        assert_eq!(request.port(), 8443);
+        assert_eq!(request.headers().get_all(http::header::ACCEPT).iter().count(), 2);
+        assert_eq!(request.headers()["x-binary"].as_bytes(), &[0x80]);
+        assert_eq!(request.body().as_ref(), b"body");
+        assert_eq!(
+            request
+                .query_params()
+                .map(|(key, value)| (key.into_owned(), value.into_owned()))
+                .collect::<Vec<_>>(),
+            vec![("q".to_string(), "rust".to_string())]
+        );
     }
-}
 
-impl From<&HttpMockRequest> for http::Request<()> {
-    fn from(req: &HttpMockRequest) -> Self {
-        let mut builder = http::Request::builder()
-            .method(req.method())
-            .uri(req.uri())
-            .version(req.version());
+    #[test]
+    fn request_uses_ipv6_host_header_for_origin_form_uri() {
+        let mut request = http::Request::builder()
+            .uri("/resource")
+            .header(http::header::HOST, "[::1]:8080")
+            .body(Bytes::new())
+            .unwrap();
+        request.extensions_mut().insert(RequestMetadata::new(Scheme::HTTP));
 
-        for (k, v) in req.headers() {
-            builder = builder.header(k.map_or(String::new(), |v| v.to_string()), v)
+        let request = HttpMockRequest::try_from(request).unwrap();
+
+        assert_eq!(request.authority().map(Authority::as_str), Some("[::1]:8080"));
+        assert_eq!(request.host(), Some("[::1]"));
+        assert_eq!(request.port(), 8080);
+
+        let mut request = http::Request::builder()
+            .uri("/resource")
+            .header(http::header::HOST, "[::1]")
+            .body(Bytes::new())
+            .unwrap();
+        request.extensions_mut().insert(RequestMetadata::new(Scheme::HTTPS));
+
+        let request = HttpMockRequest::try_from(request).unwrap();
+
+        assert_eq!(request.host(), Some("[::1]"));
+        assert_eq!(request.port(), 443);
+    }
+
+    #[test]
+    fn request_rejects_invalid_host_authority() {
+        let mut request = http::Request::builder()
+            .uri("/resource")
+            .header(http::header::HOST, "not an authority")
+            .body(Bytes::new())
+            .unwrap();
+        request.extensions_mut().insert(RequestMetadata::new(Scheme::HTTP));
+
+        assert!(HttpMockRequest::try_from(request).is_err());
+    }
+
+    #[test]
+    fn uri_authority_takes_precedence_over_host_header() {
+        let request = http::Request::builder()
+            .uri("http://uri.example:8080/resource")
+            .header(http::header::HOST, "header.example:9090")
+            .body(Bytes::new())
+            .unwrap();
+
+        let request = HttpMockRequest::try_from(request).unwrap();
+
+        assert_eq!(request.authority().map(Authority::as_str), Some("uri.example:8080"));
+    }
+
+    #[test]
+    fn request_wire_format_matches_existing_schema() {
+        let fixture = serde_json::json!({
+            "scheme": "https",
+            "uri": "https://example.com/resource",
+            "method": "POST",
+            "headers": [["x-test", "one"], ["x-test", "two"]],
+            "version": "HTTP/1.1",
+            "body": [98, 111, 100, 121]
+        });
+
+        let request: HttpMockRequest = serde_json::from_value(fixture.clone()).unwrap();
+
+        assert_eq!(request.headers().get_all("x-test").iter().count(), 2);
+        assert_eq!(serde_json::to_value(request).unwrap(), fixture);
+    }
+
+    #[test]
+    fn request_wire_format_rejects_conflicting_schemes() {
+        let fixture = serde_json::json!({
+            "scheme": "http",
+            "uri": "https://example.com/resource",
+            "method": "GET",
+            "headers": [],
+            "version": "HTTP/1.1",
+            "body": []
+        });
+
+        assert!(serde_json::from_value::<HttpMockRequest>(fixture).is_err());
+    }
+
+    #[test]
+    fn request_wire_format_preserves_non_utf8_headers() {
+        let mut request = http::Request::builder()
+            .uri("http://example.com/")
+            .body(Bytes::new())
+            .unwrap();
+        request
+            .headers_mut()
+            .insert("x-binary", HeaderValue::from_bytes(&[0x80]).unwrap());
+        let request = HttpMockRequest::try_from(request).unwrap();
+
+        let wire = serde_json::to_value(&request).unwrap();
+        assert_eq!(wire["headers"], serde_json::json!([["x-binary", [128]]]));
+
+        let request: HttpMockRequest = serde_json::from_value(wire).unwrap();
+        assert_eq!(request.headers()["x-binary"].as_bytes(), &[0x80]);
+    }
+
+    #[test]
+    fn wire_format_maps_every_supported_http_version_explicitly() {
+        for (version, wire) in [
+            (Version::HTTP_09, "HTTP/0.9"),
+            (Version::HTTP_10, "HTTP/1.0"),
+            (Version::HTTP_11, "HTTP/1.1"),
+            (Version::HTTP_2, "HTTP/2.0"),
+            (Version::HTTP_3, "HTTP/3.0"),
+        ] {
+            let request = http::Request::builder()
+                .uri("http://example.com/")
+                .version(version)
+                .body(Bytes::new())
+                .unwrap();
+            let request = HttpMockRequest::try_from(request).unwrap();
+            let encoded = serde_json::to_value(&request).unwrap();
+
+            assert_eq!(encoded["version"], wire);
+            assert_eq!(
+                serde_json::from_value::<HttpMockRequest>(encoded).unwrap().version(),
+                version
+            );
         }
+    }
 
-        builder
-            .body(())
-            .expect("failed to convert HttpMockRequest into http::Request<()>")
+    #[test]
+    fn borrowed_request_conversion_preserves_parts_and_transport_metadata() {
+        let mut request = http::Request::builder()
+            .method(http::Method::PUT)
+            .uri("/resource")
+            .header("x-test", "value")
+            .body(Bytes::from_static(b"request"))
+            .unwrap();
+        request.extensions_mut().insert(RequestMetadata::new(Scheme::HTTPS));
+
+        let request = HttpMockRequest::try_from(&request).unwrap();
+        let request: http::Request<Bytes> = (&request).into();
+
+        assert_eq!(request.method(), http::Method::PUT);
+        assert_eq!(request.headers()["x-test"], "value");
+        assert_eq!(request.body(), &Bytes::from_static(b"request"));
+        assert_eq!(
+            request.extensions().get::<RequestMetadata>().unwrap().scheme,
+            Scheme::HTTPS
+        );
+
+        let request = HttpMockRequest::try_from(request).unwrap();
+        assert_eq!(request.scheme(), &Scheme::HTTPS);
+    }
+
+    #[test]
+    fn unit_is_an_empty_request_body() {
+        let mut request = http::Request::new(());
+        request.extensions_mut().insert(RequestMetadata::new(Scheme::HTTP));
+
+        let request = HttpMockRequest::try_from(request).unwrap();
+
+        assert!(request.body().is_empty());
     }
 }
 
@@ -449,6 +662,12 @@ impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
 /// Returns `Result` to allow fallible conversions if needed in the future.
 pub trait IntoMockBytes {
     fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error>;
+}
+
+impl IntoMockBytes for HttpMockBytes {
+    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
+        Ok(self.into())
+    }
 }
 
 impl IntoMockBytes for bytes::Bytes {

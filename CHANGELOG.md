@@ -7,6 +7,10 @@ remains 1.88.
 
 ### Breaking changes
 
+- `HttpMockRequest` now stores validated `http` types. `uri()`, `scheme()`, `method()`, and `headers()` return borrowed `Uri`, `Scheme`, `Method`, and `HeaderMap` values; `host()` returns `Option<&str>` and `query_params()` returns an iterator. The redundant `*_str`, `*_vec`, `*_ref`, and `*_bytes` accessors have been removed.
+- Converting an `http::Request` into `HttpMockRequest` now uses fallible `TryFrom` and returns the public `HttpMockRequestConversionError`. The reverse conversions to `http::Request<String>` and `http::Request<()>` have been removed; convert to `http::Request<Bytes>` instead.
+- `http::Request<Box<[u8]>>` no longer converts directly into `HttpMockRequest`. Map the body with `bytes::Bytes::from` or `Vec::from` first; both reuse the boxed allocation. `http::Request<()>` remains supported as an empty incoming request.
+- `RequestMetadata::new` and its public `scheme` field now use `http::uri::Scheme` instead of `&'static str`.
 - The methods `HttpMockRequest::query_params_map` and `HttpMockRequest::to_http_request`
   were removed ([#246](https://github.com/httpmock/httpmock/pull/246)). Use
   `query_params().into_iter().collect()` to obtain a map, and `http::Request::from(&request)`
