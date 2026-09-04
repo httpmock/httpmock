@@ -29,7 +29,7 @@ fn wrapper_test() {
         then.status(200);
     });
 
-    sw.mocks.borrow_mut().push(MyMockWrapper { id: mock.id });
+    sw.mocks.borrow_mut().push(MyMockWrapper { id: mock.id() });
 
     let mock = Mock::new(sw.mocks.borrow_mut().first().unwrap().id, &sw.server);
     mock.calls();
