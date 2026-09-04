@@ -415,8 +415,8 @@ impl MockServer {
     where
         SpecFn: FnOnce(When, Then),
     {
-        let req = Rc::new(Cell::new(RequestRequirements::new()));
-        let res = Rc::new(Cell::new(MockServerHttpResponse::new()));
+        let req = Rc::new(Cell::new(RequestRequirements::default()));
+        let res = Rc::new(Cell::new(MockServerHttpResponse::default()));
 
         spec_fn(
             When {
@@ -438,10 +438,7 @@ impl MockServer {
             .await
             .expect("Cannot deserialize mock server response");
 
-        Mock {
-            id: response.id,
-            server: self,
-        }
+        Mock::new(response.id, self)
     }
 
     /// Resets the mock server. More specifically, it deletes all [Mock](struct.Mock.html) objects
@@ -629,7 +626,7 @@ impl MockServer {
         IntoString: Into<String>,
     {
         let headers = Rc::new(Cell::new(Vec::new()));
-        let req = Rc::new(Cell::new(RequestRequirements::new()));
+        let req = Rc::new(Cell::new(RequestRequirements::default()));
 
         rule(ForwardingRuleBuilder {
             headers: headers.clone(),
@@ -785,7 +782,7 @@ impl MockServer {
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
     {
         let headers = Rc::new(Cell::new(Vec::new()));
-        let req = Rc::new(Cell::new(RequestRequirements::new()));
+        let req = Rc::new(Cell::new(RequestRequirements::default()));
 
         rule(ProxyRuleBuilder {
             headers: headers.clone(),
@@ -981,7 +978,7 @@ impl MockServer {
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
     {
         let config = Rc::new(Cell::new(RecordingRuleConfig {
-            request_requirements: RequestRequirements::new(),
+            request_requirements: RequestRequirements::default(),
             record_headers: Vec::new(),
             record_response_delays: false,
         }));

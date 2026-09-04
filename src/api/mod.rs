@@ -1,4 +1,4 @@
-pub use mock::{Mock, MockExt};
+pub use mock::Mock;
 #[cfg(feature = "proxy")]
 pub use proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder};
 #[cfg(feature = "record")]
