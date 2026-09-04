@@ -295,7 +295,7 @@ fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)
 
 impl<B> TryFrom<&http::Request<B>> for HttpMockRequest
 where
-    B: Clone + IntoMockBytes,
+    B: Clone + Into<HttpMockBytes>,
 {
     type Error = Error;
 
@@ -307,9 +307,7 @@ where
 
         let headers = http_headers_to_vec(value)?;
 
-        // Convert the (cloned) body into Bytes, supporting several common body types.
-        let body_bytes = value.body().clone().into_httpmock_bytes()?;
-        let body = HttpMockBytes(body_bytes);
+        let body = value.body().clone().into();
 
         Ok(HttpMockRequest::new(
             metadata.scheme.to_string(),
@@ -324,12 +322,26 @@ where
 
 impl<B> From<http::Request<B>> for HttpMockRequest
 where
-    B: Clone + IntoMockBytes,
+    B: Into<HttpMockBytes>,
 {
     fn from(req: http::Request<B>) -> Self {
-        // Use by-ref conversion; we still have access to extensions while owning `req`.
-        <HttpMockRequest as TryFrom<&http::Request<B>>>::try_from(&req)
-            .expect("invalid http::Request for HttpMockRequest: missing metadata or invalid headers/body")
+        let scheme = req
+            .extensions()
+            .get::<RequestMetadata>()
+            .expect("request metadata was not added to the request")
+            .scheme
+            .to_string();
+        let headers = http_headers_to_vec(&req).expect("invalid headers in http::Request");
+        let (parts, body) = req.into_parts();
+
+        HttpMockRequest::new(
+            scheme,
+            parts.uri.to_string(),
+            parts.method.to_string(),
+            headers,
+            format!("{:?}", parts.version),
+            body.into(),
+        )
     }
 }
 
@@ -443,73 +455,9 @@ impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
     }
 }
 
-/// Normalizes various response body types into `bytes::Bytes`.
-/// Used by the blanket implementation `TryFrom<http::Response<B>> for HttpMockResponse`.
-/// Implementations prefer zero-copy where possible (e.g., `bytes::Bytes` clones the Arc).
-/// Returns `Result` to allow fallible conversions if needed in the future.
-pub trait IntoMockBytes {
-    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error>;
-}
-
-impl IntoMockBytes for bytes::Bytes {
-    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
-        // Zero-copy-ish: Bytes is ref-counted; this just clones the handle.
-        Ok(self)
-    }
-}
-
-impl IntoMockBytes for Vec<u8> {
-    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
-        Ok(bytes::Bytes::from(self))
-    }
-}
-
-impl IntoMockBytes for String {
-    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
-        Ok(bytes::Bytes::from(self.into_bytes()))
-    }
-}
-
-impl IntoMockBytes for &'static str {
-    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
-        Ok(bytes::Bytes::from(self))
-    }
-}
-
-impl IntoMockBytes for Box<[u8]> {
-    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
-        Ok(bytes::Bytes::from(self))
-    }
-}
-
-impl IntoMockBytes for std::borrow::Cow<'_, [u8]> {
-    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
-        Ok(match self {
-            std::borrow::Cow::Borrowed(b) => bytes::Bytes::copy_from_slice(b),
-            std::borrow::Cow::Owned(v) => bytes::Bytes::from(v),
-        })
-    }
-}
-
-impl IntoMockBytes for std::borrow::Cow<'_, str> {
-    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
-        Ok(match self {
-            std::borrow::Cow::Borrowed(s) => bytes::Bytes::copy_from_slice(s.as_bytes()),
-            std::borrow::Cow::Owned(s) => bytes::Bytes::from(s.into_bytes()),
-        })
-    }
-}
-
-// Support empty bodies like `http::Response::builder().body(())` used in tests
-impl IntoMockBytes for () {
-    fn into_httpmock_bytes(self) -> Result<bytes::Bytes, Error> {
-        Ok(bytes::Bytes::new())
-    }
-}
-
 impl<B> TryFrom<&http::Response<B>> for HttpMockResponse
 where
-    B: Clone + IntoMockBytes, // Clone only if you need to read body/headers without moving
+    B: Clone + Into<HttpMockBytes>,
 {
     type Error = Error;
 
@@ -524,28 +472,87 @@ where
             headers.push((name, val.to_string()));
         }
 
-        // Body: need a `B` value. Since we only have `&Response<B>`, either:
-        //  - require `B: Clone` and clone it, or
-        //  - restrict this impl to specific `B` you can borrow from (e.g., Bytes)
-        let body_bytes = resp.body().clone().into_httpmock_bytes()?;
+        let body = resp.body().clone().into();
 
         Ok(HttpMockResponse {
             status: Some(resp.status().as_u16()),
             headers: Some(headers),
-            body: Some(HttpMockBytes(body_bytes)),
+            body: Some(body),
         })
     }
 }
 
 impl<B> From<http::Response<B>> for HttpMockResponse
 where
-    B: Clone + IntoMockBytes,
+    B: Into<HttpMockBytes>,
 {
     fn from(resp: http::Response<B>) -> Self {
-        // Avoid recursive TryFrom<http::Response<B>> derived from this From impl.
-        // Convert by reference using the blanket &Response<B> implementation.
-        <HttpMockResponse as TryFrom<&http::Response<B>>>::try_from(&resp)
-            .expect("invalid http::Response for HttpMockResponse")
+        let (parts, body) = resp.into_parts();
+        let headers = parts
+            .headers
+            .iter()
+            .map(|(name, value)| {
+                (
+                    name.as_str().to_string(),
+                    value
+                        .to_str()
+                        .unwrap_or_else(|_| panic!("non-UTF-8 value for response header '{name}'"))
+                        .to_string(),
+                )
+            })
+            .collect();
+
+        Self {
+            status: Some(parts.status.as_u16()),
+            headers: Some(headers),
+            body: Some(body.into()),
+        }
+    }
+}
+
+#[cfg(test)]
+mod http_body_conversion_tests {
+    use super::*;
+
+    struct NonCloneBody(&'static [u8]);
+
+    impl From<NonCloneBody> for HttpMockBytes {
+        fn from(body: NonCloneBody) -> Self {
+            body.0.into()
+        }
+    }
+
+    #[test]
+    fn owned_message_conversions_accept_non_clone_bodies() {
+        let mut request = http::Request::new(NonCloneBody(b"request"));
+        request.extensions_mut().insert(RequestMetadata::new("http"));
+        let request: HttpMockRequest = request.into();
+
+        let response = http::Response::new(NonCloneBody(b"response"));
+        let response: HttpMockResponse = response.into();
+
+        assert_eq!(request.body().as_ref(), b"request");
+        assert_eq!(response.body.as_ref().unwrap().as_ref(), b"response");
+    }
+
+    #[test]
+    fn borrowed_message_conversions_still_accept_clone_bodies() {
+        let mut request = http::Request::new(Vec::from(b"request"));
+        request.extensions_mut().insert(RequestMetadata::new("http"));
+        let request = HttpMockRequest::try_from(&request).unwrap();
+
+        let response = http::Response::new(Vec::from(b"response"));
+        let response = HttpMockResponse::try_from(&response).unwrap();
+
+        assert_eq!(request.body().as_ref(), b"request");
+        assert_eq!(response.body.as_ref().unwrap().as_ref(), b"response");
+    }
+
+    #[test]
+    fn unit_is_an_empty_http_body() {
+        let response: HttpMockResponse = http::Response::new(()).into();
+
+        assert!(response.body.unwrap().is_empty());
     }
 }
 
