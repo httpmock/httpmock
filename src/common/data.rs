@@ -837,7 +837,7 @@ impl HttpMockResponseBuilder {
 }
 
 /// A general abstraction of an HTTP response for all handlers.
-#[derive(Serialize, Deserialize, Clone)]
+#[derive(Serialize, Deserialize, Clone, Default)]
 pub struct MockServerHttpResponse {
     pub status: Option<u16>,
     pub headers: Option<Vec<(String, String)>>,
@@ -846,24 +846,6 @@ pub struct MockServerHttpResponse {
     pub delay: Option<u64>,
     #[serde(skip)]
     pub respond_with: Option<ResponseCallback>,
-}
-
-impl MockServerHttpResponse {
-    pub(crate) fn new() -> Self {
-        Self {
-            status: None,
-            headers: None,
-            body: None,
-            delay: None,
-            respond_with: None,
-        }
-    }
-}
-
-impl Default for MockServerHttpResponse {
-    fn default() -> Self {
-        Self::new()
-    }
 }
 
 impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
@@ -1098,26 +1080,11 @@ pub struct RequestRequirements {
     pub is_false: Option<Vec<RequestPredicate>>, // NEW
 }
 
-impl RequestRequirements {
-    pub fn new() -> Self {
-        Self::default()
-    }
-}
-
 /// A Request that is made to set a new mock.
 #[derive(Serialize, Deserialize, Clone)]
 pub struct MockDefinition {
     pub request: RequestRequirements,
     pub response: MockServerHttpResponse,
-}
-
-impl MockDefinition {
-    pub fn new(req: RequestRequirements, mock: MockServerHttpResponse) -> Self {
-        Self {
-            request: req,
-            response: mock,
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -1128,27 +1095,10 @@ pub struct ActiveMock {
     pub is_static: bool,
 }
 
-impl ActiveMock {
-    pub fn new(id: usize, definition: MockDefinition, call_counter: usize, is_static: bool) -> Self {
-        ActiveMock {
-            id,
-            definition,
-            call_counter,
-            is_static,
-        }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveForwardingRule {
     pub id: usize,
     pub config: ForwardingRuleConfig,
-}
-
-impl ActiveForwardingRule {
-    pub fn new(id: usize, config: ForwardingRuleConfig) -> Self {
-        ActiveForwardingRule { id, config }
-    }
 }
 
 #[derive(Serialize, Deserialize, Clone)]
@@ -1157,27 +1107,11 @@ pub struct ActiveProxyRule {
     pub config: ProxyRuleConfig,
 }
 
-impl ActiveProxyRule {
-    pub fn new(id: usize, config: ProxyRuleConfig) -> Self {
-        ActiveProxyRule { id, config }
-    }
-}
-
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveRecording {
     pub id: usize,
     pub config: RecordingRuleConfig,
     pub mocks: Vec<MockDefinition>,
-}
-
-impl ActiveRecording {
-    pub fn new(id: usize, config: RecordingRuleConfig) -> Self {
-        ActiveRecording {
-            id,
-            config,
-            mocks: vec![],
-        }
-    }
 }
 
 #[derive(Serialize, Deserialize)]
@@ -1539,6 +1473,10 @@ pub struct StaticHTTPResponse {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub body_base64: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]
+    pub json_body: Option<Value>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub body_from_file: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
     pub delay: Option<u64>,
 }
 
@@ -1548,10 +1486,27 @@ pub struct StaticMockDefinition {
     then: StaticHTTPResponse,
 }
 
+impl StaticMockDefinition {
+    /// Removes and returns the `body_from_file` reference. Resolving the reference against the
+    /// filesystem is the responsibility of the static mock directory loader; the conversion
+    /// below stays free of IO and rejects definitions that still carry the field.
+    pub(crate) fn take_body_from_file(&mut self) -> Option<String> {
+        self.then.body_from_file.take()
+    }
+}
+
 impl TryInto<MockDefinition> for StaticMockDefinition {
     type Error = Error;
 
     fn try_into(self) -> Result<MockDefinition, Self::Error> {
+        if self.then.body_from_file.is_some() {
+            return Err(StaticMockConversion(
+                "body_from_file is only supported when loading mocks from a static mock directory".to_string(),
+            ));
+        }
+
+        let response_body = response_body_bytes(self.then.body, self.then.body_base64, self.then.json_body)?;
+
         Ok(MockDefinition {
             request: RequestRequirements {
                 // Scheme-related fields
@@ -1667,7 +1622,7 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
             response: MockServerHttpResponse {
                 status: self.then.status,
                 headers: from_name_value_string_pair_vec(self.then.header),
-                body: from_string_to_bytes_choose(self.then.body, self.then.body_base64),
+                body: response_body,
                 delay: self.then.delay,
                 respond_with: None,
             },
@@ -1803,6 +1758,30 @@ fn from_string_to_bytes_choose(option_string: Option<String>, option_base64: Opt
     };
 
     request_body.map(|s| HttpMockBytes::from(Bytes::from(s)))
+}
+
+/// Converts the mutually exclusive response body fields of a static mock definition into the
+/// runtime body. Precedence: `json_body` over `body` over `body_base64` (`body_from_file` is
+/// resolved by the static mock directory loader before conversion and always wins).
+fn response_body_bytes(
+    body: Option<String>,
+    body_base64: Option<String>,
+    json_body: Option<Value>,
+) -> Result<Option<HttpMockBytes>, Error> {
+    if let Some(json_body) = json_body {
+        // A YAML string value is expected to contain JSON (see docs on `json_body` in mock
+        // definition files), so it is parsed rather than treated as a JSON string literal.
+        let json_body = match json_body {
+            Value::String(json) => {
+                serde_json::from_str::<Value>(&json).map_err(|err| StaticMockConversion(err.to_string()))?
+            }
+            value => value,
+        };
+
+        return Ok(Some(HttpMockBytes::from(json_body.to_string())));
+    }
+
+    Ok(from_string_to_bytes_choose(body, body_base64))
 }
 
 impl TryFrom<&MockDefinition> for StaticMockDefinition {
@@ -1956,6 +1935,8 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 header: to_name_value_string_pair_vec(value.response.headers),
                 body: response_body,
                 body_base64: response_body_base64,
+                json_body: None,
+                body_from_file: None,
                 // Reason for the cast to u64: The Duration::as_millis method returns the total
                 // number of milliseconds contained within the Duration as a u128. This is
                 // because Duration::as_millis needs to handle larger values that
