@@ -21,7 +21,8 @@ dead_code = "allow"
 [lints.clippy]
 # Gate all clippy lints. The allowed lints are a temporary allow list that should be removed
 # over time.
-all = { level = "deny", priority = -1 }
+all = "deny"
+redundant_clone = "deny"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

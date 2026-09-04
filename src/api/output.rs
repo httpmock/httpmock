@@ -122,7 +122,7 @@ fn handle_key_value_comparison(
     if let Some(key) = &comparison.key {
         let expected = match quote_if_whitespace(&key.expected) {
             (actual, true) => format!("{} ({})", actual, QUOTED_TEXT),
-            (actual, false) => actual.to_string(),
+            (actual, false) => actual,
         };
         writeln!(tw, "\tkey\t[{}]\t{}", key.operator, expected).unwrap();
     }
@@ -130,7 +130,7 @@ fn handle_key_value_comparison(
     if let Some(value) = &comparison.value {
         let expected = match quote_if_whitespace(&value.expected) {
             (expected, true) => format!("{} ({})", expected, QUOTED_TEXT),
-            (expected, false) => expected.to_string(),
+            (expected, false) => expected,
         };
         writeln!(tw, "\tvalue\t[{}]\t{}", value.operator, expected).unwrap();
     }
