@@ -153,10 +153,9 @@ impl HttpsConfigBuilder {
                 Arc::new(GeneratingCertificateResolverFactory::new(ca_cert, ca_key)?)
             }
             // If certificate data is directly provided, use it to create the resolver.
-            (_, _, _, Some(ca_cert), Some(ca_key)) => Arc::new(GeneratingCertificateResolverFactory::new(
-                ca_cert.clone(),
-                ca_key.clone(),
-            )?),
+            (_, _, _, Some(ca_cert), Some(ca_key)) => {
+                Arc::new(GeneratingCertificateResolverFactory::new(ca_cert, ca_key)?)
+            }
             // If no CA certificate information was configured, use the default.
             _ => Arc::new(GeneratingCertificateResolverFactory::new(
                 DEFAULT_CA_CERTIFICATE,
