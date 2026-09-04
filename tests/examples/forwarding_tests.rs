@@ -7,7 +7,7 @@ fn forwarding_test() {
     // We will create this mock server to simulate a real service (e.g., GitHub, AWS, etc.).
     let target_server = MockServer::start();
     target_server.mock(|when, then| {
-        when.any_request();
+        when.header("x-forwarded-by", "httpmock");
         then.status(200).body("Hi from fake GitHub!");
     });
 
@@ -17,11 +17,13 @@ fn forwarding_test() {
     // We configure our server to forward the request to the target host instead of
     // answering with a mocked response. The 'when' variable lets you configure
     // rules under which forwarding should take place.
-    server.forward_to(target_server.base_url(), |rule| {
-        rule.filter(|when| {
-            when.any_request(); // We want all requests to be forwarded.
-        });
-    });
+    let mut forwarding_rule = server
+        .forward_to(target_server.base_url(), |rule| {
+            rule.add_request_header("x-forwarded-by", "httpmock").filter(|when| {
+                when.any_request(); // We want all requests to be forwarded.
+            });
+        })
+        .unwrap();
 
     // Now let's send an HTTP request to the mock server. The request will be forwarded
     // to the target host, as we configured before.
@@ -31,8 +33,68 @@ fn forwarding_test() {
     let response = client.get(server.url("/get")).send().unwrap();
     assert_eq!(response.status().as_u16(), 200);
     assert_eq!(response.text().unwrap(), "Hi from fake GitHub!");
+
+    forwarding_rule.delete();
+    let response = client.get(server.url("/get")).send().unwrap();
+    assert_eq!(response.status().as_u16(), 404);
 }
 // @example-end
+
+#[test]
+fn invalid_forwarding_target_is_rejected() {
+    let server = MockServer::start();
+
+    let result = server.forward_to("/relative", |_| {});
+
+    assert!(matches!(
+        result,
+        Err(httpmock::ServerAdapterError::UpstreamError(message))
+            if message.contains("forwarding target has no scheme")
+    ));
+}
+
+#[test]
+fn unsupported_forwarding_target_scheme_is_rejected() {
+    let server = MockServer::start();
+
+    let result = server.forward_to("ftp://example.com", |_| {});
+
+    assert!(matches!(
+        result,
+        Err(httpmock::ServerAdapterError::UpstreamError(message))
+            if message.contains("expected http or https")
+    ));
+}
+
+#[test]
+fn invalid_forwarding_header_is_rejected() {
+    let server = MockServer::start();
+
+    let result = server.forward_to("http://example.com", |rule| {
+        rule.add_request_header("invalid header", "value");
+    });
+
+    assert!(matches!(
+        result,
+        Err(httpmock::ServerAdapterError::UpstreamError(message))
+            if message.contains("invalid forwarding header name")
+    ));
+}
+
+#[test]
+fn invalid_forwarding_header_value_is_rejected() {
+    let server = MockServer::start();
+
+    let result = server.forward_to("http://example.com", |rule| {
+        rule.add_request_header("x-test", "invalid\nvalue");
+    });
+
+    assert!(matches!(
+        result,
+        Err(httpmock::ServerAdapterError::UpstreamError(message))
+            if message.contains("invalid forwarding header value")
+    ));
+}
 
 #[test]
 fn forward_to_website() {
@@ -43,11 +105,13 @@ fn forward_to_website() {
     // host instead of answering with a mocked response. The 'when'
     // variable lets you configure rules under which forwarding
     // should take place.
-    server.forward_to("https://httpmock.rs", |rule| {
-        rule.filter(|when| {
-            when.any_request(); // Ensure all requests are forwarded.
-        });
-    });
+    server
+        .forward_to("https://httpmock.rs", |rule| {
+            rule.filter(|when| {
+                when.any_request(); // Ensure all requests are forwarded.
+            });
+        })
+        .unwrap();
 
     // Now let's send an HTTP request to the mock server. The request
     // will be forwarded to the GitHub API, as we configured before.
@@ -77,11 +141,13 @@ fn delete_forwarding_rule_on_remote_server_test() {
     with_standalone_server();
     let server = MockServer::connect("localhost:5050");
 
-    let mut rule = server.forward_to("http://localhost:12345", |rule| {
-        rule.filter(|when| {
-            when.any_request();
-        });
-    });
+    let mut rule = server
+        .forward_to("http://localhost:12345", |rule| {
+            rule.filter(|when| {
+                when.any_request();
+            });
+        })
+        .unwrap();
 
     // Act + Assert: panics if the server does not respond with 204.
     rule.delete();
