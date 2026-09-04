@@ -19,8 +19,6 @@ unsafe_code = "forbid"
 dead_code = "allow"
 
 [lints.clippy]
-# Gate all clippy lints. The allowed lints are a temporary allow list that should be removed
-# over time.
 all = "deny"
 redundant_clone = "deny"
 
