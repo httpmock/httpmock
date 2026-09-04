@@ -96,7 +96,7 @@
 
 mod common;
 
-pub use api::{Method, Mock, MockExt, MockServer, Regex, Then, When};
+pub use api::{Method, Mock, MockServer, Regex, Then, When};
 pub use common::data::{HttpMockRequest, HttpMockResponse};
 pub use common::util::HttpMockBytes;
 mod api;
