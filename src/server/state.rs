@@ -166,7 +166,12 @@ impl Manager {
         let mut state = self.state.lock().unwrap();
 
         let id = state.next_mock_id;
-        let active_mock = ActiveMock::new(id, definition, 0, is_static);
+        let active_mock = ActiveMock {
+            id,
+            call_counter: 0,
+            definition,
+            is_static,
+        };
 
         tracing::debug!("Adding new mock with ID={}", id);
 
@@ -721,7 +726,10 @@ mod tests {
         let manager = Manager::default();
         let active_mock = manager
             .add_mock(
-                MockDefinition::new(RequestRequirements::default(), MockServerHttpResponse::default()),
+                MockDefinition {
+                    request: RequestRequirements::default(),
+                    response: MockServerHttpResponse::default(),
+                },
                 true,
             )
             .expect("static mock should be created");

@@ -1,6 +1,6 @@
 [package]
 name = "httpmock"
-version = "0.8.3"
+version = "0.9.0"
 authors = ["Alexander Liesenfeld <alexander.liesenfeld@outlook.com>", "Falk Woldmann Lu <httpmock@woldmann.lu>"]
 edition = "2024"
 description = "HTTP mocking library for Rust"
@@ -22,7 +22,6 @@ dead_code = "allow"
 # Gate all clippy lints. The allowed lints are a temporary allow list that should be removed
 # over time.
 all = { level = "deny", priority = -1 }
-new_ret_no_self = "allow"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }
