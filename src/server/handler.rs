@@ -30,7 +30,7 @@ use crate::{
         },
         runtime,
     },
-    prelude::{HttpMockRequest, HttpMockResponse},
+    prelude::HttpMockRequest,
     server::{
         handler::Error::{
             InvalidHeader, InvalidParamFormat, MissingParam, RequestBodyDeserialization, RequestConversion,
@@ -447,7 +447,7 @@ impl Handler {
     }
 
     async fn serve_mock(&self, req: &HttpMockRequest) -> Result<http::Response<bytes::Bytes>, Error> {
-        let Some(definition) = self.state.serve_mock(req)? else {
+        let Some(mut definition) = self.state.serve_mock(req)? else {
             return response(
                 http::StatusCode::NOT_FOUND,
                 Some(ErrorResponse::new(&"Request did not match any route or mock")),
@@ -458,20 +458,12 @@ impl Handler {
             runtime::sleep(std::time::Duration::from_millis(duration)).await;
         }
 
-        // Resolve dynamic vs. static response into HttpMockResponse
-        let resp_def: HttpMockResponse = definition
-            .respond_with
-            .map(|f| f(req))
-            .unwrap_or_else(|| HttpMockResponse {
-                status: definition.status.or(Some(StatusCode::OK.as_u16())),
-                headers: definition.headers,
-                body: definition.body,
-            });
+        let response = match definition.respond_with.take() {
+            Some(responder) => responder(req),
+            None => definition.try_into().map_err(ResponseDataConversion)?,
+        };
 
-        // Convert via your TryFrom<HttpMockResponse> impl
-        let http_resp: http::Response<bytes::Bytes> = resp_def.try_into().map_err(ResponseDataConversion)?;
-
-        Ok(http_resp)
+        Ok(response.into())
     }
 }
 

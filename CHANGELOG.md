@@ -7,6 +7,9 @@ remains 1.88.
 
 ### Breaking changes
 
+- `HttpMockResponse` now has private typed fields and no longer implements Serde. Its accessors and builder use `StatusCode`, `HeaderMap`, `HeaderName`, and `HeaderValue`; `no_body()` has been removed because responses always have a body, which is empty by default.
+- `HttpMockResponse::body()` now returns `&[u8]`. Conversions now consume the wrapper or source response and use infallible `From`; the borrowed `TryFrom` conversions have been removed.
+- `http::Response<Box<[u8]>>` no longer converts directly into `HttpMockResponse`. Map the body with `bytes::Bytes::from` or `Vec::from` first; both reuse the boxed allocation.
 - The methods `HttpMockRequest::query_params_map` and `HttpMockRequest::to_http_request`
   were removed ([#246](https://github.com/httpmock/httpmock/pull/246)). Use
   `query_params().into_iter().collect()` to obtain a map, and `http::Request::from(&request)`
