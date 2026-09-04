@@ -5,7 +5,9 @@ use std::{
     sync::Arc,
 };
 
-use http::{HeaderValue, StatusCode, Uri};
+use http::StatusCode;
+#[cfg(feature = "proxy")]
+use http::{HeaderValue, Uri};
 use hyper::{Method, Request, Response, body::Bytes};
 use path_tree::{Path, PathTree};
 use serde::{Serialize, de::DeserializeOwned};
@@ -15,26 +17,26 @@ use tokio::time::Instant;
 
 #[cfg(feature = "record")]
 use crate::common::data::RecordingRuleConfig;
-#[cfg(feature = "proxy")]
-use crate::common::data::{ActiveForwardingRule, ActiveProxyRule};
 #[cfg(any(feature = "remote", feature = "proxy"))]
 use crate::common::http::Error as HttpClientError;
 #[cfg(feature = "proxy")]
 use crate::common::http::HttpClient;
+#[cfg(feature = "proxy")]
+use crate::{
+    common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig},
+    server::handler::Error::InvalidHeader,
+};
 use crate::{
     common::{
         data,
-        data::{
-            Error as DataError, ErrorResponse, ForwardingRuleConfig, MockDefinition, ProxyRuleConfig,
-            RequestRequirements,
-        },
+        data::{Error as DataError, ErrorResponse, MockDefinition, RequestRequirements},
         runtime,
     },
     prelude::{HttpMockRequest, HttpMockResponse},
     server::{
         handler::Error::{
-            InvalidHeader, InvalidParamFormat, MissingParam, RequestBodyDeserialization, RequestConversion,
-            ResponseBodyConstruction, ResponseBodySerialization, ResponseDataConversion,
+            InvalidParamFormat, MissingParam, RequestBodyDeserialization, RequestConversion, ResponseBodyConstruction,
+            ResponseBodySerialization, ResponseDataConversion,
         },
         state,
     },
@@ -262,6 +264,70 @@ impl Handler {
         response(status_code, closest_match)
     }
 
+    async fn catch_all(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
+        let internal_request: HttpMockRequest = (&req)
+            .try_into()
+            .map_err(|err: DataError| RequestConversion(err.to_string()))?;
+
+        #[cfg(feature = "record")]
+        let start = Instant::now();
+
+        #[cfg(feature = "proxy")]
+        let dispatch = if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
+            (self.forward(rule, req).await?, false)
+        } else if let Some(rule) = self.state.find_proxy_rule(&internal_request)? {
+            (self.proxy(rule, req).await?, true)
+        } else {
+            (self.serve_mock(&internal_request).await?, false)
+        };
+
+        #[cfg(not(feature = "proxy"))]
+        let dispatch = (self.serve_mock(&internal_request).await?, false);
+
+        #[cfg(feature = "record")]
+        let (response, is_proxied) = dispatch;
+
+        #[cfg(not(feature = "record"))]
+        let (response, _) = dispatch;
+
+        #[cfg(feature = "record")]
+        self.state
+            .record(is_proxied, start.elapsed(), internal_request, &response)?;
+
+        Ok(response)
+    }
+
+    async fn serve_mock(&self, req: &HttpMockRequest) -> Result<http::Response<bytes::Bytes>, Error> {
+        let Some(definition) = self.state.serve_mock(req)? else {
+            return response(
+                http::StatusCode::NOT_FOUND,
+                Some(ErrorResponse::new(&"Request did not match any route or mock")),
+            );
+        };
+
+        if let Some(duration) = definition.delay {
+            runtime::sleep(std::time::Duration::from_millis(duration)).await;
+        }
+
+        // Resolve dynamic vs. static response into HttpMockResponse
+        let resp_def: HttpMockResponse = definition
+            .respond_with
+            .map(|f| f(req))
+            .unwrap_or_else(|| HttpMockResponse {
+                status: definition.status.or(Some(StatusCode::OK.as_u16())),
+                headers: definition.headers,
+                body: definition.body,
+            });
+
+        // Convert via your TryFrom<HttpMockResponse> impl
+        let http_resp: http::Response<bytes::Bytes> = resp_def.try_into().map_err(ResponseDataConversion)?;
+
+        Ok(http_resp)
+    }
+}
+
+#[cfg(feature = "proxy")]
+impl Handler {
     fn handle_add_forwarding_rule(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let config: ForwardingRuleConfig = parse_json_body(req)?;
         let active_forwarding_rule = self.state.create_forwarding_rule(config);
@@ -304,80 +370,6 @@ impl Handler {
         response::<()>(StatusCode::NO_CONTENT, None)
     }
 
-    #[cfg(feature = "record")]
-    fn handle_add_recording_matcher(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
-        let req_req: RecordingRuleConfig = parse_json_body(req)?;
-        let active_recording = self.state.create_recording(req_req);
-        response(StatusCode::CREATED, Some(active_recording))
-    }
-
-    #[cfg(feature = "record")]
-    fn handle_delete_recording(&self, params: Path) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_recording(param("id", params)?);
-        let status_code = if deleted.is_some() {
-            StatusCode::NO_CONTENT
-        } else {
-            StatusCode::NOT_FOUND
-        };
-        response::<()>(status_code, None)
-    }
-
-    #[cfg(feature = "record")]
-    fn handle_delete_all_recording_matchers(&self) -> Result<Response<Bytes>, Error> {
-        self.state.delete_all_recordings();
-        response::<()>(StatusCode::NO_CONTENT, None)
-    }
-
-    #[cfg(feature = "record")]
-    fn handle_read_recording(&self, params: Path) -> Result<Response<Bytes>, Error> {
-        let rec = self.state.export_recording(param("id", params)?)?;
-        let status_code = rec.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
-        response(status_code, rec)
-    }
-
-    #[cfg(feature = "record")]
-    fn handle_load_recording(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
-        let recording_file_content =
-            std::str::from_utf8(req.body()).map_err(|err| RequestConversion(err.to_string()))?;
-
-        let rec = self.state.load_mocks_from_recording(recording_file_content)?;
-        response(StatusCode::OK, Some(rec))
-    }
-
-    async fn catch_all(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
-        let internal_request: HttpMockRequest = (&req)
-            .try_into()
-            .map_err(|err: DataError| RequestConversion(err.to_string()))?;
-
-        #[cfg(feature = "record")]
-        let start = Instant::now();
-
-        #[cfg(feature = "proxy")]
-        let dispatch = if let Some(rule) = self.state.find_forward_rule(&internal_request)? {
-            (self.forward(rule, req).await?, false)
-        } else if let Some(rule) = self.state.find_proxy_rule(&internal_request)? {
-            (self.proxy(rule, req).await?, true)
-        } else {
-            (self.serve_mock(&internal_request).await?, false)
-        };
-
-        #[cfg(not(feature = "proxy"))]
-        let dispatch = (self.serve_mock(&internal_request).await?, false);
-
-        #[cfg(feature = "record")]
-        let (response, is_proxied) = dispatch;
-
-        #[cfg(not(feature = "record"))]
-        let (response, _) = dispatch;
-
-        #[cfg(feature = "record")]
-        self.state
-            .record(is_proxied, start.elapsed(), internal_request, &response)?;
-
-        Ok(response)
-    }
-
-    #[cfg(feature = "proxy")]
     async fn forward(&self, rule: ActiveForwardingRule, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let to_base_uri: Uri = rule.config.target_base_url.parse().unwrap();
 
@@ -422,7 +414,6 @@ impl Handler {
         Ok(self.http_client.send(req).await?)
     }
 
-    #[cfg(feature = "proxy")]
     async fn proxy(&self, rule: ActiveProxyRule, mut req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         if !rule.config.request_header.is_empty() {
             let headers = req.headers_mut();
@@ -445,33 +436,43 @@ impl Handler {
         let req = to_origin_form(req)?;
         Ok(self.http_client.send(req).await?)
     }
+}
 
-    async fn serve_mock(&self, req: &HttpMockRequest) -> Result<http::Response<bytes::Bytes>, Error> {
-        let Some(definition) = self.state.serve_mock(req)? else {
-            return response(
-                http::StatusCode::NOT_FOUND,
-                Some(ErrorResponse::new(&"Request did not match any route or mock")),
-            );
+#[cfg(feature = "record")]
+impl Handler {
+    fn handle_add_recording_matcher(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
+        let req_req: RecordingRuleConfig = parse_json_body(req)?;
+        let active_recording = self.state.create_recording(req_req);
+        response(StatusCode::CREATED, Some(active_recording))
+    }
+
+    fn handle_delete_recording(&self, params: Path) -> Result<Response<Bytes>, Error> {
+        let deleted = self.state.delete_recording(param("id", params)?);
+        let status_code = if deleted.is_some() {
+            StatusCode::NO_CONTENT
+        } else {
+            StatusCode::NOT_FOUND
         };
+        response::<()>(status_code, None)
+    }
 
-        if let Some(duration) = definition.delay {
-            runtime::sleep(std::time::Duration::from_millis(duration)).await;
-        }
+    fn handle_delete_all_recording_matchers(&self) -> Result<Response<Bytes>, Error> {
+        self.state.delete_all_recordings();
+        response::<()>(StatusCode::NO_CONTENT, None)
+    }
 
-        // Resolve dynamic vs. static response into HttpMockResponse
-        let resp_def: HttpMockResponse = definition
-            .respond_with
-            .map(|f| f(req))
-            .unwrap_or_else(|| HttpMockResponse {
-                status: definition.status.or(Some(StatusCode::OK.as_u16())),
-                headers: definition.headers,
-                body: definition.body,
-            });
+    fn handle_read_recording(&self, params: Path) -> Result<Response<Bytes>, Error> {
+        let rec = self.state.export_recording(param("id", params)?)?;
+        let status_code = rec.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
+        response(status_code, rec)
+    }
 
-        // Convert via your TryFrom<HttpMockResponse> impl
-        let http_resp: http::Response<bytes::Bytes> = resp_def.try_into().map_err(ResponseDataConversion)?;
+    fn handle_load_recording(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
+        let recording_file_content =
+            std::str::from_utf8(req.body()).map_err(|err| RequestConversion(err.to_string()))?;
 
-        Ok(http_resp)
+        let rec = self.state.load_mocks_from_recording(recording_file_content)?;
+        response(StatusCode::OK, Some(rec))
     }
 }
 
@@ -527,6 +528,7 @@ where
 ///   set `Host` to that authority, and strip scheme/authority from the URI to yield origin-form.
 /// - Requests lacking either part are already in origin- or asterisk-form and are left untouched.
 ///   CONNECT (authority-form) is handled separately.
+#[cfg(feature = "proxy")]
 pub fn to_origin_form(mut req: Request<Bytes>) -> Result<Request<Bytes>, Error> {
     let uri = req.uri().clone();
 

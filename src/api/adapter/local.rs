@@ -1,5 +1,9 @@
 use std::{net::SocketAddr, sync::Arc};
 
+#[cfg(feature = "proxy")]
+use crate::common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig};
+#[cfg(feature = "record")]
+use crate::common::data::{ActiveRecording, RecordingRuleConfig};
 use async_trait::async_trait;
 #[cfg(feature = "record")]
 use bytes::Bytes;
@@ -9,10 +13,7 @@ use crate::{
         MockServerAdapter, ServerAdapterError,
         ServerAdapterError::{MockNotFound, UpstreamError},
     },
-    common::data::{
-        ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch, ForwardingRuleConfig,
-        MockDefinition, ProxyRuleConfig, RecordingRuleConfig, RequestRequirements,
-    },
+    common::data::{ActiveMock, ClosestMatch, MockDefinition, RequestRequirements},
     server::state,
 };
 
@@ -81,6 +82,7 @@ impl MockServerAdapter for LocalMockServerAdapter {
         Ok(closest_match)
     }
 
+    #[cfg(feature = "proxy")]
     async fn create_forwarding_rule(
         &self,
         config: ForwardingRuleConfig,
@@ -88,24 +90,29 @@ impl MockServerAdapter for LocalMockServerAdapter {
         Ok(self.state.create_forwarding_rule(config))
     }
 
+    #[cfg(feature = "proxy")]
     async fn delete_forwarding_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.state.delete_forwarding_rule(id);
         Ok(())
     }
 
+    #[cfg(feature = "proxy")]
     async fn create_proxy_rule(&self, config: ProxyRuleConfig) -> Result<ActiveProxyRule, ServerAdapterError> {
         Ok(self.state.create_proxy_rule(config))
     }
 
+    #[cfg(feature = "proxy")]
     async fn delete_proxy_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.state.delete_proxy_rule(id);
         Ok(())
     }
 
+    #[cfg(feature = "record")]
     async fn create_recording(&self, config: RecordingRuleConfig) -> Result<ActiveRecording, ServerAdapterError> {
         Ok(self.state.create_recording(config))
     }
 
+    #[cfg(feature = "record")]
     async fn delete_recording(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.state.delete_recording(id);
         Ok(())
