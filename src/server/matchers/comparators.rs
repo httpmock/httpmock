@@ -469,9 +469,9 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesExactMatchComparator
     }
 
     fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
-        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes().clone()).unwrap_or_default();
+        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes()).unwrap_or_default();
 
-        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes().clone()).unwrap_or_default();
+        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes()).unwrap_or_default();
 
         distance_for(mock_slice.as_ref(), req_slice.as_ref())
     }
@@ -500,9 +500,9 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesIncludesComparator {
     }
 
     fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
-        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes().clone()).unwrap_or_default();
+        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes()).unwrap_or_default();
 
-        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes().clone()).unwrap_or_default();
+        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes()).unwrap_or_default();
 
         distance_for(mock_slice.as_ref(), req_slice.as_ref())
     }
@@ -535,9 +535,9 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
     }
 
     fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
-        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes().clone()).unwrap_or_default();
+        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes()).unwrap_or_default();
 
-        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes().clone()).unwrap_or_default();
+        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes()).unwrap_or_default();
 
         // If mock has no requirement, distance is always 0
         if mock_value.is_none() || mock_slice.is_empty() {
@@ -587,9 +587,9 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
     }
 
     fn distance(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> usize {
-        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes().clone()).unwrap_or_default();
+        let mock_slice = mock_value.as_ref().map(|mv| mv.to_bytes()).unwrap_or_default();
 
-        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes().clone()).unwrap_or_default();
+        let req_slice = req_value.as_ref().map(|rv| rv.to_bytes()).unwrap_or_default();
 
         // If mock has no requirement, distance is always 0
         if mock_value.is_none() || mock_slice.is_empty() {

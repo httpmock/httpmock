@@ -1586,7 +1586,7 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
 
         let mut method = None;
         if let Some(method_str) = value.request.method {
-            method = Some(Method::from_str(&method_str).map_err(|err| StaticMockConversion(err.to_string()))?);
+            method = Some(Method::from_str(&method_str).map_err(StaticMockConversion)?);
         }
 
         Ok(StaticMockDefinition {
