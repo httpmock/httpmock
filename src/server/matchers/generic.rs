@@ -116,11 +116,11 @@ where
 }
 
 pub enum KeyValueOperator {
-    AND,
-    NAND,
-    NOR,
-    OR,
-    IMPLICATION,
+    And,
+    Nand,
+    Nor,
+    Or,
+    Implication,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -186,11 +186,11 @@ where
                     };
 
                     match self.operator {
-                        KeyValueOperator::NAND => !(key_matches && value_matches),
-                        KeyValueOperator::AND => key_matches && value_matches,
-                        KeyValueOperator::NOR => !(key_matches || value_matches),
-                        KeyValueOperator::OR => key_matches || value_matches,
-                        KeyValueOperator::IMPLICATION => !key_matches || value_matches,
+                        KeyValueOperator::Nand => !(key_matches && value_matches),
+                        KeyValueOperator::And => key_matches && value_matches,
+                        KeyValueOperator::Nor => !(key_matches || value_matches),
+                        KeyValueOperator::Or => key_matches || value_matches,
+                        KeyValueOperator::Implication => !key_matches || value_matches,
                     }
                 };
 

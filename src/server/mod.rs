@@ -1,6 +1,6 @@
 mod builder;
 mod handler;
-pub mod matchers;
+pub(crate) mod matchers;
 pub mod state;
 mod transport;
 

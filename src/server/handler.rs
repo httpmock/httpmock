@@ -17,10 +17,10 @@ use tokio::time::Instant;
 use crate::common::data::RecordingRuleConfig;
 #[cfg(feature = "proxy")]
 use crate::common::data::{ActiveForwardingRule, ActiveProxyRule};
+#[cfg(feature = "proxy")]
+use crate::common::http::Client;
 #[cfg(any(feature = "remote", feature = "proxy"))]
 use crate::common::http::Error as HttpClientError;
-#[cfg(feature = "proxy")]
-use crate::common::http::HttpClient;
 use crate::{
     common::{
         data,
@@ -92,13 +92,13 @@ pub(crate) struct Handler {
     path_tree: PathTree<RoutePath>,
     state: Arc<state::Manager>,
     #[cfg(feature = "proxy")]
-    http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
+    http_client: Arc<dyn Client + Send + Sync + 'static>,
 }
 
 impl Handler {
     pub(crate) fn new(
         state: Arc<state::Manager>,
-        #[cfg(feature = "proxy")] http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
+        #[cfg(feature = "proxy")] http_client: Arc<dyn Client + Send + Sync + 'static>,
     ) -> Self {
         let mut path_tree: PathTree<RoutePath> = PathTree::new();
         #[allow(unused_must_use)]
@@ -391,7 +391,7 @@ impl Handler {
         uri_parts.scheme = to_base_uri.scheme().cloned().or(uri_parts.scheme);
         req_parts.uri = Uri::from_parts(uri_parts).unwrap();
 
-        // Record the upstream scheme (http/https) so the HttpClient can reconstruct
+        // Record the upstream scheme (http/https) so the client can reconstruct
         // an absolute target URI after converting to origin-form.
         let upstream_scheme: &'static str = match to_base_uri.scheme_str() {
             Some("https") => "https",
