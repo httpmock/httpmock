@@ -1,9 +1,9 @@
 # Fast lane: runs on every pull request and every push to master.
 #
 # CI is split into three lanes:
-#   - ci.yml (this file): lint, pairwise feature compile checks, MSRV, tests
-#     for representative feature sets, coverage, dependency policy. Fast
-#     enough to block PRs.
+#   - ci.yml (this file): lint, documentation, pairwise feature compile checks,
+#     MSRV, tests for representative feature sets, coverage, dependency policy.
+#     Fast enough to block PRs.
 #   - feature-matrix.yml: full test suite across the feature power set plus
 #     Docker integration. Master pushes, nightly, and on demand.
 #   - platform.yml: macOS/Windows and beta/nightly toolchains. Weekly.
@@ -45,6 +45,18 @@ jobs:
           components: clippy
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - run: cargo clippy --all-targets --all-features
+
+  documentation:
+    name: Documentation
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions-rust-lang/setup-rust-toolchain@v1
+        with:
+          toolchain: stable
+      - run: cargo doc --all-features --no-deps
+        env:
+          RUSTDOCFLAGS: -D warnings
 
   feature-combinations:
     name: Check feature combinations
