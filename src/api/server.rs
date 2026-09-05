@@ -74,7 +74,7 @@ impl MockServer {
     /// Asynchronously connects to a remote mock server running in standalone mode.
     ///
     /// # Arguments
-    /// * `address` - A string slice representing the address in the format "<host>:<port>", e.g., "127.0.0.1:8080".
+    /// * `address` - A string slice representing the address in the format `<host>:<port>`, e.g., "127.0.0.1:8080".
     ///
     /// # Returns
     /// An instance of `Self` representing the connected mock server.
@@ -102,7 +102,7 @@ impl MockServer {
     /// Synchronously connects to a remote mock server running in standalone mode.
     ///
     /// # Arguments
-    /// * `address` - A string slice representing the address in the format "<host>:<port>", e.g., "127.0.0.1:8080".
+    /// * `address` - A string slice representing the address in the format `<host>:<port>`, e.g., "127.0.0.1:8080".
     ///
     /// # Returns
     /// An instance of `Self` representing the connected mock server.
@@ -179,7 +179,6 @@ impl MockServer {
     ///
     /// # Returns
     /// An instance of `Self` representing the started mock server.
-    /// ```
     pub async fn start_async() -> Self {
         let adapter = LOCAL_SERVER_POOL_REF
             .take_or_create(LOCAL_SERVER_ADAPTER_GENERATOR)
