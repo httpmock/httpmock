@@ -28,7 +28,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           toolchain: stable
           components: rustfmt
@@ -39,7 +39,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           toolchain: stable
           components: clippy
@@ -51,7 +51,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - uses: taiki-e/install-action@v2.87.0
@@ -78,7 +78,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - uses: taiki-e/install-action@v2.87.0
@@ -124,7 +124,7 @@ jobs:
           sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
           sudo update-ca-certificates
 
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           # Each matrix row compiles a different feature set, so each caches
           # separately.
@@ -140,7 +140,7 @@ jobs:
       id-token: write
     steps:
       - uses: actions/checkout@v7
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
       - uses: taiki-e/install-action@v2.87.0
