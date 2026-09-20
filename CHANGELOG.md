@@ -7,7 +7,6 @@ remains 1.88.
 
 ### Breaking changes
 
-- `http::Request<Box<[u8]>>` and `http::Response<Box<[u8]>>` no longer convert directly into httpmock's request and response types. Map the body with `bytes::Bytes::from` or `Vec::from` first; both reuse the boxed allocation.
 - The methods `HttpMockRequest::query_params_map` and `HttpMockRequest::to_http_request`
   were removed ([#246](https://github.com/httpmock/httpmock/pull/246)). Use
   `query_params().into_iter().collect()` to obtain a map, and `http::Request::from(&request)`
@@ -20,6 +19,9 @@ remains 1.88.
 
 ### Improvements
 
+- [#275](https://github.com/httpmock/httpmock/pull/275): Owned HTTP request and response
+  conversions avoid unnecessary body clones. Boxed byte bodies remain supported for both
+  owned and borrowed conversions; borrowed conversions retain the caller's original body.
 - [#299](https://github.com/httpmock/httpmock/pull/299): Static mock YAML files now support
   `json_body` and `body_from_file` (resolves issues
   [#118](https://github.com/httpmock/httpmock/issues/118) and
