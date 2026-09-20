@@ -38,6 +38,8 @@ remains 1.88.
   recordings instead of proxy rules (thanks [@danieleades](https://github.com/danieleades))
 - [#245](https://github.com/httpmock/httpmock/pull/245): The configured `history_limit` is
   honored instead of a hardcoded cap (thanks [@danieleades](https://github.com/danieleades))
+- The `*_prefix` and `*_suffix` matchers no longer panic with a char-boundary error when
+  building a mismatch report for a request value containing multi-byte UTF-8 characters
 
 ### Internal improvements and CI
 

@@ -114,7 +114,7 @@ pub fn distance_for_prefix(
     let mock_slice = mock_value.as_deref();
     let mock_slice_len = mock_slice.map_or(0, |v| v.len());
 
-    let req_slice = req_value.as_deref().map(|s| &s[..mock_slice_len.min(s.len())]);
+    let req_slice = req_value.as_deref().map(|s| leading_window(s, mock_slice_len));
 
     distance_for_substring(case_sensitive, negated, &mock_slice.map(|v| v.as_str()), &req_slice)
 }
@@ -166,6 +166,25 @@ mod distance_for_prefix_tests {
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
         assert_eq!(distance_for_prefix(true, false, &mock_value, &req_value), 0);
+    }
+
+    #[test]
+    fn test_distance_for_prefix_window_splits_multibyte_char() {
+        // A 1-byte expectation used to slice into the middle of the 2-byte 'é' and panic.
+        let mock_value_str = "a".to_string();
+        let req_value_str = "é".to_string();
+        let mock_value = Some(&mock_value_str);
+        let req_value = Some(&req_value_str);
+        assert!(distance_for_prefix(true, false, &mock_value, &req_value) > 0);
+    }
+
+    #[test]
+    fn test_distance_for_prefix_multibyte_request_longer_than_mock() {
+        let mock_value_str = "ab".to_string();
+        let req_value_str = "aé".to_string();
+        let mock_value = Some(&mock_value_str);
+        let req_value = Some(&req_value_str);
+        assert!(distance_for_prefix(true, false, &mock_value, &req_value) > 0);
     }
 
     #[test]
@@ -354,6 +373,30 @@ pub fn distance_for_suffix(
     // distance (both compare against the leading window of `req_value`).
     // Delegating keeps the behavior byte-for-byte identical.
     distance_for_prefix(case_sensitive, negated, mock_value, req_value)
+}
+
+#[cfg(test)]
+mod distance_for_suffix_tests {
+    use super::*;
+
+    #[test]
+    fn test_distance_for_suffix_window_splits_multibyte_char() {
+        // A 1-byte expectation used to slice into the middle of the 2-byte 'é' and panic.
+        let mock_value_str = "a".to_string();
+        let req_value_str = "é".to_string();
+        let mock_value = Some(&mock_value_str);
+        let req_value = Some(&req_value_str);
+        assert!(distance_for_suffix(true, false, &mock_value, &req_value) > 0);
+    }
+
+    #[test]
+    fn test_distance_for_suffix_ascii_unchanged() {
+        let mock_value_str = "hello".to_string();
+        let req_value_str = "hello world".to_string();
+        let mock_value = Some(&mock_value_str);
+        let req_value = Some(&req_value_str);
+        assert_eq!(distance_for_suffix(true, false, &mock_value, &req_value), 0);
+    }
 }
 
 pub fn string_contains(
@@ -904,6 +947,23 @@ mod string_distance_tests {
 // *************************************************************************************************
 // Helper functions
 // *************************************************************************************************
+/// Returns the leading window of `text`, at most `max_bytes` long.
+///
+/// The window is trimmed back to the nearest `char` boundary so that a
+/// multi-byte character is never split. Slicing on the raw byte offset would
+/// panic whenever `max_bytes` landed inside a character. For ASCII input every
+/// offset is a boundary, so the window is exactly `max_bytes` long as before.
+fn leading_window(text: &str, max_bytes: usize) -> &str {
+    if max_bytes >= text.len() {
+        return text;
+    }
+    let mut end = max_bytes;
+    while end > 0 && !text.is_char_boundary(end) {
+        end -= 1;
+    }
+    &text[..end]
+}
+
 /// Computes the unit-weight Levenshtein (edit) distance between two slices.
 ///
 /// Insertions, deletions, and substitutions each cost 1. The comparison is
