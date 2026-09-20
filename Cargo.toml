@@ -19,7 +19,10 @@ unsafe_code = "forbid"
 dead_code = "allow"
 
 [lints.clippy]
-all = "deny"
+# `priority = -1` keeps the group below the individual entries that follow it, so a specific
+# lint level always wins over the group. Without it the group shares the default priority and
+# silently overrides any entry that sorts before "all".
+all = { level = "deny", priority = -1 }
 redundant_clone = "deny"
 
 [dependencies]
