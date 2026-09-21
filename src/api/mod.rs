@@ -1,6 +1,6 @@
 #[cfg(feature = "remote")]
-pub use adapter::remote::RemoteMockServerAdapter;
-pub use adapter::{MockServerAdapter, local::LocalMockServerAdapter};
+use adapter::remote::RemoteMockServerAdapter;
+use adapter::{MockServerAdapter, local::LocalMockServerAdapter};
 pub use mock::Mock;
 #[cfg(feature = "proxy")]
 pub use proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder};

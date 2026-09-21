@@ -24,13 +24,13 @@ use crate::{
     },
 };
 
-pub struct RemoteMockServerAdapter {
+pub(in crate::api) struct RemoteMockServerAdapter {
     addr: SocketAddr,
     http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
 }
 
 impl RemoteMockServerAdapter {
-    pub fn new(addr: SocketAddr, http_client: Arc<dyn HttpClient + Send + Sync + 'static>) -> Self {
+    pub(in crate::api) fn new(addr: SocketAddr, http_client: Arc<dyn HttpClient + Send + Sync + 'static>) -> Self {
         Self { addr, http_client }
     }
 

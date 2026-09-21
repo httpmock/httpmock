@@ -7,6 +7,10 @@ remains 1.88.
 
 ### Breaking changes
 
+- `server::matchers` is now crate-private. Its matcher, comparator and reader types
+  are implementation details rather than a supported extension API; there is no
+  replacement public path.
+
 - The methods `HttpMockRequest::query_params_map` and `HttpMockRequest::to_http_request`
   were removed ([#246](https://github.com/httpmock/httpmock/pull/246)). Use
   `query_params().into_iter().collect()` to obtain a map, and `http::Request::from(&request)`
