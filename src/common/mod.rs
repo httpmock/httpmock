@@ -3,4 +3,4 @@ pub(crate) mod runtime;
 pub mod util;
 
 #[cfg(any(feature = "remote", feature = "proxy"))]
-pub(crate) mod http;
+pub(crate) mod http_client;

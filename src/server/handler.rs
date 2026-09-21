@@ -18,9 +18,7 @@ use crate::common::data::RecordingRuleConfig;
 #[cfg(feature = "proxy")]
 use crate::common::data::{ActiveForwardingRule, ActiveProxyRule};
 #[cfg(any(feature = "remote", feature = "proxy"))]
-use crate::common::http::Error as HttpClientError;
-#[cfg(feature = "proxy")]
-use crate::common::http::HttpClient;
+use crate::common::http_client;
 use crate::{
     common::{
         data,
@@ -60,7 +58,7 @@ pub enum Error {
     RequestConversion(String),
     #[cfg(any(feature = "remote", feature = "proxy"))]
     #[error("failed to send HTTP request: {0}")]
-    HttpClient(#[from] HttpClientError),
+    HttpClient(#[from] http_client::Error),
     #[error("invalid header: {0}")]
     InvalidHeader(String),
 }
@@ -92,13 +90,13 @@ pub(crate) struct Handler {
     path_tree: PathTree<RoutePath>,
     state: Arc<state::Manager>,
     #[cfg(feature = "proxy")]
-    http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
+    client: Arc<dyn http_client::Client + Send + Sync + 'static>,
 }
 
 impl Handler {
     pub(crate) fn new(
         state: Arc<state::Manager>,
-        #[cfg(feature = "proxy")] http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
+        #[cfg(feature = "proxy")] client: Arc<dyn http_client::Client + Send + Sync + 'static>,
     ) -> Self {
         let mut path_tree: PathTree<RoutePath> = PathTree::new();
         #[allow(unused_must_use)]
@@ -129,7 +127,7 @@ impl Handler {
             path_tree,
             state,
             #[cfg(feature = "proxy")]
-            http_client,
+            client,
         }
     }
 
@@ -391,7 +389,7 @@ impl Handler {
         uri_parts.scheme = to_base_uri.scheme().cloned().or(uri_parts.scheme);
         req_parts.uri = Uri::from_parts(uri_parts).unwrap();
 
-        // Record the upstream scheme (http/https) so the HttpClient can reconstruct
+        // Record the upstream scheme (http/https) so the client can reconstruct
         // an absolute target URI after converting to origin-form.
         let upstream_scheme: &'static str = match to_base_uri.scheme_str() {
             Some("https") => "https",
@@ -419,7 +417,7 @@ impl Handler {
         // upstream origin server we MUST convert to origin-form (path + query only) and provide
         // the authority via the Host header, as expected by HTTP/1.1 and HTTP/2 origin servers.
         let req = to_origin_form(req)?;
-        Ok(self.http_client.send(req).await?)
+        Ok(self.client.send(req).await?)
     }
 
     #[cfg(feature = "proxy")]
@@ -443,7 +441,7 @@ impl Handler {
         // upstream origin server we MUST convert to origin-form (path + query only) and provide
         // the authority via the Host header, as expected by HTTP/1.1 and HTTP/2 origin servers.
         let req = to_origin_form(req)?;
-        Ok(self.http_client.send(req).await?)
+        Ok(self.client.send(req).await?)
     }
 
     async fn serve_mock(&self, req: &HttpMockRequest) -> Result<http::Response<bytes::Bytes>, Error> {
