@@ -15,12 +15,12 @@ use crate::{
     },
 };
 
-pub mod comparators;
+mod comparators;
 mod comparison;
-pub mod generic;
-pub mod readers;
+pub(crate) mod generic;
+mod readers;
 
-pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
+pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
     vec![
         //*************************************************************************************
         // Scheme matchers
@@ -1030,7 +1030,7 @@ pub fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
     ]
 }
 
-pub trait Matcher {
+pub(crate) trait Matcher {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool;
     fn distance(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> usize;
     fn mismatches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> Vec<Mismatch>;
