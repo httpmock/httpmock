@@ -66,7 +66,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
-      - uses: taiki-e/install-action@v2.87.11
+      - uses: taiki-e/install-action@v2.87.15
         with:
           tool: cargo-hack
 
@@ -93,7 +93,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
-      - uses: taiki-e/install-action@v2.87.11
+      - uses: taiki-e/install-action@v2.87.15
         with:
           tool: cargo-hack
 
@@ -155,7 +155,7 @@ jobs:
       - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
-      - uses: taiki-e/install-action@v2.87.11
+      - uses: taiki-e/install-action@v2.87.15
         with:
           tool: cargo-llvm-cov
 
