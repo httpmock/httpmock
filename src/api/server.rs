@@ -37,7 +37,10 @@ use crate::{
 };
 #[cfg(feature = "proxy")]
 use crate::{
-    api::proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder},
+    api::{
+        ServerAdapterError,
+        proxy::{ForwardingRule, ForwardingRuleBuilder, ProxyRule, ProxyRuleBuilder},
+    },
     common::data::{ForwardingRuleConfig, ProxyRuleConfig},
 };
 
@@ -514,6 +517,9 @@ impl MockServer {
     /// # Returns
     /// A `ForwardingRule` object representing the configured forwarding rule.
     ///
+    /// # Errors
+    /// Returns an error when the target is not an absolute HTTP or HTTPS URL, or when the server cannot create the rule.
+    ///
     /// # Example
     /// ```rust
     /// use httpmock::prelude::*;
@@ -536,7 +542,7 @@ impl MockServer {
     ///     rule.filter(|when| {
     ///         when.any_request(); // We want all requests to be forwarded.
     ///     });
-    /// });
+    /// }).unwrap();
     ///
     /// // Now let's send an HTTP request to the mock server. The request will be forwarded
     /// // to the target host, as we configured before.
@@ -557,7 +563,7 @@ impl MockServer {
         &self,
         to_base_url: IntoString,
         rule: ForwardingRuleBuilderFn,
-    ) -> ForwardingRule<'_>
+    ) -> Result<ForwardingRule<'_>, ServerAdapterError>
     where
         ForwardingRuleBuilderFn: FnOnce(ForwardingRuleBuilder),
         IntoString: Into<String>,
@@ -575,6 +581,9 @@ impl MockServer {
     ///
     /// # Returns
     /// A `ForwardingRule` object representing the configured forwarding rule.
+    ///
+    /// # Errors
+    /// Returns an error when the target is not an absolute HTTP or HTTPS URL, or when the server cannot create the rule.
     ///
     /// # Example
     /// ```rust
@@ -600,7 +609,7 @@ impl MockServer {
     ///         rule.filter(|when| {
     ///             when.any_request(); // We want all requests to be forwarded.
     ///         });
-    ///     }).await;
+    ///     }).await.unwrap();
     ///
     ///     // Now let's send an HTTP request to the mock server. The request will be forwarded
     ///     // to the target host, as we configured before.
@@ -621,7 +630,7 @@ impl MockServer {
         &'a self,
         target_base_url: IntoString,
         rule: ForwardingRuleBuilderFn,
-    ) -> ForwardingRule<'a>
+    ) -> Result<ForwardingRule<'a>, ServerAdapterError>
     where
         ForwardingRuleBuilderFn: FnOnce(ForwardingRuleBuilder),
         IntoString: Into<String>,
@@ -643,13 +652,12 @@ impl MockServer {
                 request_requirements: req.take(),
                 request_header: headers.take(),
             })
-            .await
-            .expect("Cannot deserialize mock server response");
+            .await?;
 
-        ForwardingRule {
+        Ok(ForwardingRule {
             id: response.id,
             server: self,
-        }
+        })
     }
 
     /// Configures the mock server to proxy HTTP requests based on specified criteria.
@@ -847,7 +855,7 @@ impl MockServer {
     ///     rule.filter(|when| {
     ///         when.path("/hello"); // Forward all requests with path "/hello".
     ///     });
-    /// });
+    /// }).unwrap();
     ///
     /// // Record the target server's response.
     /// let recording = recording_server.record(|rule| {
@@ -933,7 +941,7 @@ impl MockServer {
     ///         rule.filter(|when| {
     ///             when.path("/hello"); // Forward all requests with path "/hello".
     ///         });
-    ///     }).await;
+    ///     }).await.unwrap();
     ///
     ///     // Record the target server's response.
     ///     let recording = recording_server.record_async(|rule| {
@@ -1035,7 +1043,7 @@ impl MockServer {
     ///     rule.filter(|when| {
     ///         when.path("/hello"); // Forward all requests with path "/hello".
     ///     });
-    /// });
+    /// }).unwrap();
     ///
     /// // Record the target server's response.
     /// let recording = recording_server.record(|rule| {
@@ -1115,7 +1123,7 @@ impl MockServer {
     ///         rule.filter(|when| {
     ///             when.path("/hello"); // Forward all requests with path "/hello".
     ///         });
-    ///     }).await;
+    ///     }).await.unwrap();
     ///
     ///     // Record the target server's response.
     ///     let recording = recording_server.record_async(|rule| {
