@@ -399,7 +399,7 @@ mod distance_for_suffix_tests {
     }
 }
 
-pub fn string_contains(
+pub fn string_includes(
     case_sensitive: bool,
     negated: bool,
     mock_value: &Option<&String>,
@@ -418,72 +418,72 @@ pub fn string_contains(
 }
 
 #[cfg(test)]
-mod string_contains_tests {
+mod string_includes_tests {
     use super::*;
 
     #[test]
-    fn test_case_sensitive_contains() {
+    fn test_case_sensitive_includes() {
         let mock_value = "world".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_contains(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
 
         let mock_value = "World".to_string();
-        assert!(!string_contains(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
     }
 
     #[test]
-    fn test_case_insensitive_contains() {
+    fn test_case_insensitive_includes() {
         let mock_value = "world".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_contains(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(false, false, &Some(&mock_value), &Some(&req_value),));
 
         let mock_value = "World".to_string();
-        assert!(string_contains(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(false, false, &Some(&mock_value), &Some(&req_value),));
     }
 
     #[test]
-    fn test_negated_contains() {
+    fn test_negated_includes() {
         let mock_value = "world".to_string();
         let req_value = "hello world".to_string();
-        assert!(!string_contains(true, true, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_includes(true, true, &Some(&mock_value), &Some(&req_value),));
 
         let mock_value = "World".to_string();
-        assert!(string_contains(true, true, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, true, &Some(&mock_value), &Some(&req_value),));
     }
 
     #[test]
-    fn test_contains_substring() {
+    fn test_includes_substring() {
         let mock_value = "lo wo".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_contains(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
     }
 
     #[test]
-    fn test_no_match_contains() {
+    fn test_no_match_includes() {
         let mock_value = "test".to_string();
         let req_value = "hello world".to_string();
-        assert!(!string_contains(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
     }
 
     #[test]
     fn test_empty_mock_value() {
         let mock_value = "".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_contains(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
     }
 
     #[test]
     fn test_empty_req_value() {
         let mock_value = "hello".to_string();
         let req_value = "".to_string();
-        assert!(!string_contains(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
     }
 
     #[test]
     fn test_both_empty() {
         let mock_value = "".to_string();
         let req_value = "".to_string();
-        assert!(string_contains(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
     }
 }
 
@@ -1060,7 +1060,7 @@ mod usize_equals_tests {
     }
 }
 
-pub fn bytes_equal(negated: bool, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
+pub fn bytes_equals(negated: bool, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
         (Some(_), None) => return negated,
@@ -1105,7 +1105,11 @@ mod bytes_includes_test {
     }
 }
 
-pub fn bytes_prefix(negated: bool, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
+pub fn bytes_has_prefix(
+    negated: bool,
+    mock_value: &Option<&HttpMockBytes>,
+    req_value: &Option<&HttpMockBytes>,
+) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
         (Some(_), None) => return negated,
@@ -1122,7 +1126,11 @@ pub fn bytes_prefix(negated: bool, mock_value: &Option<&HttpMockBytes>, req_valu
     if negated { !result } else { result }
 }
 
-pub fn bytes_suffix(negated: bool, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
+pub fn bytes_has_suffix(
+    negated: bool,
+    mock_value: &Option<&HttpMockBytes>,
+    req_value: &Option<&HttpMockBytes>,
+) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
         (Some(_), None) => return negated,

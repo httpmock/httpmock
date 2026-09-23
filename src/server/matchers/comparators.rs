@@ -12,8 +12,8 @@ use crate::{
         comparison,
         comparison::{
             distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix, hostname_equals,
-            regex_unmatched_length, string_contains, string_distance, string_equals, string_has_prefix,
-            string_has_suffix,
+            regex_unmatched_length, string_distance, string_equals, string_has_prefix, string_has_suffix,
+            string_includes,
         },
     },
 };
@@ -169,7 +169,7 @@ impl StringIncludes {
 
 impl ValueComparator<String, String> for StringIncludes {
     fn matches(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> bool {
-        string_contains(self.case_sensitive, self.negated, mock_value, req_value)
+        string_includes(self.case_sensitive, self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -392,7 +392,7 @@ impl BytesEquals {
 
 impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesEquals {
     fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
-        comparison::bytes_equal(self.negated, mock_value, req_value)
+        comparison::bytes_equals(self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -488,7 +488,7 @@ impl BytesPrefix {
 
 impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefix {
     fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
-        comparison::bytes_prefix(self.negated, mock_value, req_value)
+        comparison::bytes_has_prefix(self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -516,7 +516,7 @@ impl BytesSuffix {
 
 impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffix {
     fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
-        comparison::bytes_suffix(self.negated, mock_value, req_value)
+        comparison::bytes_has_suffix(self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -634,7 +634,7 @@ mod test {
     }
 
     #[test]
-    fn json_exact_match_comparator_match() {
+    fn json_equals_match() {
         run_test(
             &JsonEquals::new(),
             &json!({"name" : "Peter", "surname" : "Griffin"}),
@@ -646,7 +646,7 @@ mod test {
     }
 
     #[test]
-    fn json_exact_match_comparator_no_match() {
+    fn json_equals_no_match() {
         run_test(
             &JsonEquals::new(),
             &json!({"name" : "Peter", "surname" : "Griffin"}),
@@ -658,7 +658,7 @@ mod test {
     }
 
     #[test]
-    fn json_contains_comparator_match() {
+    fn json_includes_match() {
         run_test(
             &JsonIncludes::new(false),
             &json!({ "other" : { "human" : { "surname" : "Griffin" }}}),
@@ -670,7 +670,7 @@ mod test {
     }
 
     #[test]
-    fn json_contains_comparator_no_match() {
+    fn json_includes_no_match() {
         run_test(
             &JsonIncludes::new(false),
             &json!({ "surname" : "Griffin" }),
@@ -682,7 +682,7 @@ mod test {
     }
 
     #[test]
-    fn string_exact_comparator_match() {
+    fn string_equals_match() {
         run_test(
             &StringEquals::new(true, false),
             &"test string".to_string(),
@@ -694,7 +694,7 @@ mod test {
     }
 
     #[test]
-    fn string_exact_comparator_no_match() {
+    fn string_equals_no_match() {
         run_test(
             &StringEquals::new(true, false),
             &"test string".to_string(),
@@ -706,7 +706,7 @@ mod test {
     }
 
     #[test]
-    fn string_exact_comparator_case_sensitive_match() {
+    fn string_equals_case_insensitive_match() {
         run_test(
             &StringEquals::new(false, false),
             &"TEST string".to_string(),
@@ -718,7 +718,7 @@ mod test {
     }
 
     #[test]
-    fn string_contains_comparator_match() {
+    fn string_includes_match() {
         run_test(
             &StringIncludes::new(true, false),
             &"st st".to_string(),
@@ -730,7 +730,7 @@ mod test {
     }
 
     #[test]
-    fn string_contains_comparator_no_match() {
+    fn string_includes_no_match() {
         run_test(
             &StringIncludes::new(true, false),
             &"xxx".to_string(),
@@ -742,7 +742,7 @@ mod test {
     }
 
     #[test]
-    fn string_contains_comparator_case_sensitive_match() {
+    fn string_includes_case_insensitive_match() {
         run_test(
             &StringIncludes::new(false, false),
             &"ST st".to_string(),
@@ -754,7 +754,7 @@ mod test {
     }
 
     #[test]
-    fn regex_comparator_match() {
+    fn regex_match() {
         run_test(
             &StringMatches::new(true, false),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
@@ -766,7 +766,7 @@ mod test {
     }
 
     #[test]
-    fn regex_comparator_no_match() {
+    fn regex_no_match() {
         run_test(
             &StringMatches::new(true, false),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
@@ -778,7 +778,7 @@ mod test {
     }
 
     #[test]
-    fn any_comparator_match() {
+    fn any_value_match() {
         run_test(
             &AnyValue::new(),
             &"00000000".to_string(),
