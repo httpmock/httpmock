@@ -4,7 +4,9 @@ const BODIES: &[&[u8]] = &[b"\0boxed body\xff", b""];
 
 fn boxed_request(body: &[u8]) -> http::Request<Box<[u8]>> {
     let mut request = http::Request::new(Box::from(body));
-    request.extensions_mut().insert(RequestMetadata::new("http"));
+    request
+        .extensions_mut()
+        .insert(RequestMetadata::new(http::uri::Scheme::HTTP));
     request
 }
 
@@ -14,7 +16,7 @@ fn owned_boxed_request_reuses_body_allocation() {
         let request = boxed_request(body);
         let allocation = request.body().as_ptr();
 
-        let converted: HttpMockRequest = request.into();
+        let converted = HttpMockRequest::try_from(request).unwrap();
 
         assert_eq!(converted.body().as_ref(), body);
         if !body.is_empty() {

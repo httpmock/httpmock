@@ -5,6 +5,8 @@ use std::{
     sync::Arc,
 };
 
+#[cfg(feature = "proxy")]
+use http::uri::Scheme;
 use http::{HeaderValue, StatusCode, Uri};
 use hyper::{Method, Request, Response, body::Bytes};
 use path_tree::{Path, PathTree};
@@ -25,7 +27,7 @@ use crate::{
     common::{
         data,
         data::{
-            Error as DataError, ErrorResponse, ForwardingRuleConfig, MockDefinition, ProxyRuleConfig,
+            ErrorResponse, ForwardingRuleConfig, HttpMockRequestConversionError, MockDefinition, ProxyRuleConfig,
             RequestRequirements,
         },
         runtime,
@@ -347,7 +349,7 @@ impl Handler {
     async fn catch_all(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let internal_request: HttpMockRequest = (&req)
             .try_into()
-            .map_err(|err: DataError| RequestConversion(err.to_string()))?;
+            .map_err(|err: HttpMockRequestConversionError| RequestConversion(err.to_string()))?;
 
         #[cfg(feature = "record")]
         let start = Instant::now();
@@ -393,10 +395,7 @@ impl Handler {
 
         // Record the upstream scheme (http/https) so the HttpClient can reconstruct
         // an absolute target URI after converting to origin-form.
-        let upstream_scheme: &'static str = match to_base_uri.scheme_str() {
-            Some("https") => "https",
-            _ => "http",
-        };
+        let upstream_scheme = to_base_uri.scheme().cloned().unwrap_or(Scheme::HTTP);
         req_parts
             .extensions
             .insert(crate::server::RequestMetadata::new(upstream_scheme));

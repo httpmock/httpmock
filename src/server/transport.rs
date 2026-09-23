@@ -291,7 +291,7 @@ impl HttpMockServer {
         }
 
         tracing::trace!("TCP connection is not TLS encrypted");
-        serve_connection(self.clone(), tcp_stream, "http").await
+        serve_connection(self.clone(), tcp_stream, http::uri::Scheme::HTTP).await
     }
 }
 
@@ -330,7 +330,7 @@ where
         .await
         .map_err(|e| Error::TlsError(format!("TLS accept failed: {:?}", e)))?;
 
-    serve_connection(server, tls_stream, "https").await
+    serve_connection(server, tls_stream, http::uri::Scheme::HTTPS).await
 }
 
 // `serve_connection` cannot be a plain `async fn` (nor return an implicit/explicit
@@ -344,7 +344,7 @@ where
 fn serve_connection<S>(
     server: Arc<HttpMockServer>,
     stream: S,
-    scheme: &'static str,
+    scheme: http::uri::Scheme,
 ) -> BoxFuture<'static, Result<(), Error>>
 where
     S: AsyncRead + AsyncWrite + Unpin + Send + 'static,
@@ -360,10 +360,9 @@ where
             .serve_connection_with_upgrades(
                 TokioIo::new(stream),
                 service_fn(|mut req| {
-                    // We pass authority None here since we don't know it for non-CONNECT requests
-                    // yet. We only know it when the full request has been buffered in `service()`.
-                    // Here, we only the scheme is known from the connection type.
-                    req.extensions_mut().insert(RequestMetadata::new(scheme));
+                    // URI normalization combines this transport scheme with the buffered
+                    // request's authority.
+                    req.extensions_mut().insert(RequestMetadata::new(scheme.clone()));
                     server.clone().service(req)
                 }),
             )
@@ -409,8 +408,8 @@ fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), Error> {
     let default_scheme = req
         .extensions()
         .get::<RequestMetadata>()
-        .map(|m| m.scheme)
-        .unwrap_or("http");
+        .map(|metadata| metadata.scheme.clone())
+        .unwrap_or(http::uri::Scheme::HTTP);
 
     // If already absolute-form (scheme + authority), leave as-is
     let uri = req.uri().clone();
