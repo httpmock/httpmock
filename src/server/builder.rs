@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::{error::Error, sync::Arc};
 
 #[cfg(feature = "proxy")]
-use crate::common::http::{HttpClient, HttpMockHttpClient};
+use crate::common::http_client;
 #[cfg(feature = "record")]
 use crate::server::persistence::read_static_mock_definitions;
 use crate::server::{
@@ -180,7 +180,7 @@ pub struct HttpMockServerBuilder {
     #[cfg(feature = "https")]
     https_config_builder: HttpsConfigBuilder,
     #[cfg(feature = "proxy")]
-    http_client: Option<Arc<dyn HttpClient + Send + Sync + 'static>>,
+    client: Option<Arc<dyn http_client::Client + Send + Sync + 'static>>,
 }
 
 impl HttpMockServerBuilder {
@@ -429,9 +429,9 @@ impl HttpMockServerBuilder {
     /// A `HttpMockServer` instance or an error if the build process fails.
     pub(crate) fn build_with_state(self, state: Arc<state::Manager>) -> Result<HttpMockServer, Box<dyn Error>> {
         #[cfg(feature = "proxy")]
-        let http_client = self
-            .http_client
-            .unwrap_or_else(|| Arc::new(HttpMockHttpClient::new(None)));
+        let client = self
+            .client
+            .unwrap_or_else(|| Arc::new(http_client::HyperClient::new(None)));
 
         #[cfg(feature = "record")]
         if let Some(dir) = self.static_mock_dir {
@@ -441,7 +441,7 @@ impl HttpMockServerBuilder {
         let handler = handler::Handler::new(
             state,
             #[cfg(feature = "proxy")]
-            http_client,
+            client,
         );
 
         Ok(HttpMockServer::new(
