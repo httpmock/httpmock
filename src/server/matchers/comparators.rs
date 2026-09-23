@@ -293,17 +293,17 @@ pub struct StringMatches {
 }
 
 impl StringMatches {
-    pub fn new(negated: bool, case_sensitive: bool) -> Self {
+    pub fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
-            negated,
             case_sensitive,
+            negated,
         }
     }
 }
 
 impl ValueComparator<HttpMockRegex, String> for StringMatches {
     fn matches(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&String>) -> bool {
-        comparison::string_matches_regex(self.negated, self.case_sensitive, mock_value, req_value)
+        comparison::string_matches_regex(self.case_sensitive, self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -315,7 +315,7 @@ impl ValueComparator<HttpMockRegex, String> for StringMatches {
     }
 
     fn distance(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&String>) -> usize {
-        comparison::regex_string_distance(self.negated, self.case_sensitive, mock_value, req_value)
+        comparison::regex_string_distance(self.case_sensitive, self.negated, mock_value, req_value)
     }
 }
 
@@ -756,7 +756,7 @@ mod test {
     #[test]
     fn regex_comparator_match() {
         run_test(
-            &StringMatches::new(false, true),
+            &StringMatches::new(true, false),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
             &"2014-01-01".to_string(),
             true,
@@ -768,7 +768,7 @@ mod test {
     #[test]
     fn regex_comparator_no_match() {
         run_test(
-            &StringMatches::new(false, true),
+            &StringMatches::new(true, false),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
             &"xxx".to_string(),
             false,

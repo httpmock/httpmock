@@ -1233,8 +1233,8 @@ mod distance_for_usize_test {
 }
 
 pub fn string_matches_regex(
-    negated: bool,
     case_sensitive: bool,
+    negated: bool,
     mock_value: &Option<&HttpMockRegex>,
     req_value: &Option<&String>,
 ) -> bool {
@@ -1267,10 +1267,10 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
         let req_value = "Hello, world!".to_string();
-        assert!(string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
 
         let req_value = "Goodbye, world!".to_string();
-        assert!(!string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)));
+        assert!(!string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
     }
 
     #[test]
@@ -1289,7 +1289,7 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"").unwrap());
 
         let req_value = "Anything".to_string();
-        assert!(string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
     }
 
     #[test]
@@ -1297,7 +1297,7 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
         let req_value = "".to_string();
-        assert!(!string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)));
+        assert!(!string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
     }
 
     #[test]
@@ -1305,25 +1305,25 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"").unwrap());
 
         let req_value = "".to_string();
-        assert!(string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern() {
         let req_value = "Hello, world!".to_string();
-        assert!(string_matches_regex(false, true, &None, &Some(&req_value)));
+        assert!(string_matches_regex(true, false, &None, &Some(&req_value)));
     }
 
     #[test]
     fn test_string_matches_regex_none_request_value() {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
-        assert!(!string_matches_regex(false, true, &Some(&pattern), &None));
+        assert!(!string_matches_regex(true, false, &Some(&pattern), &None));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern_and_request_value() {
-        assert!(string_matches_regex(false, true, &None, &None));
+        assert!(string_matches_regex(true, false, &None, &None));
     }
 
     #[test]
@@ -1349,10 +1349,10 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^\d{3}-\d{2}-\d{4}$").unwrap());
 
         let req_value = "123-45-6789".to_string();
-        assert!(string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
 
         let req_value = "123-45-678".to_string();
-        assert!(!string_matches_regex(false, true, &Some(&pattern), &Some(&req_value)));
+        assert!(!string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
     }
 
     #[test]
@@ -1380,8 +1380,8 @@ mod string_matches_regex_tests {
 /// * `usize` - The computed distance. In the negated case, it returns the number of characters that did match the regex.
 ///   In the non-negated case, it returns the number of characters that did not match the regex.
 pub fn regex_string_distance(
-    negated: bool,
     case_sensitive: bool,
+    negated: bool,
     mock_value: &Option<&HttpMockRegex>,
     req_value: &Option<&String>,
 ) -> usize {
@@ -1390,7 +1390,7 @@ pub fn regex_string_distance(
     }
 
     if req_value.is_none() || req_value.unwrap().is_empty() {
-        let matches = string_matches_regex(negated, case_sensitive, mock_value, req_value);
+        let matches = string_matches_regex(case_sensitive, negated, mock_value, req_value);
         return match matches {
             true => 0,
             false => mock_value.unwrap().0.as_str().len(),
@@ -1416,7 +1416,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value_str = String::from("aaaa");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(false, true, &mock_value, &req_value), 0);
+        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 0);
     }
 
     #[test]
@@ -1434,7 +1434,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value_str = String::from("aaabbb");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(false, true, &mock_value, &req_value), 3);
+        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 3);
     }
 
     #[test]
@@ -1452,7 +1452,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value_str = String::from("aaabbb");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(false, true, &mock_value, &req_value), 6);
+        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 6);
     }
 
     #[test]
@@ -1469,7 +1469,7 @@ mod regex_string_distance_tests {
         let pattern = HttpMockRegex(Regex::new("a+").unwrap());
         let mock_value = Some(&pattern);
         let req_value: Option<&String> = None;
-        assert_eq!(regex_string_distance(false, true, &mock_value, &req_value), 2);
+        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 2);
     }
 
     #[test]
@@ -1477,7 +1477,7 @@ mod regex_string_distance_tests {
         let mock_value: Option<&HttpMockRegex> = None;
         let req_value_str = String::from("aaabbb");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(false, true, &mock_value, &req_value), 0);
+        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 0);
     }
 
     #[test]
@@ -1485,7 +1485,7 @@ mod regex_string_distance_tests {
         let pattern = HttpMockRegex(Regex::new(".*").unwrap());
         let mock_value = Some(&pattern);
         let req_value: Option<&String> = None;
-        assert_eq!(regex_string_distance(false, true, &mock_value, &req_value), 2);
+        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 2);
     }
 
     #[test]
@@ -1494,7 +1494,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value: Option<&String> = None; // This will make rv empty
         assert_eq!(
-            regex_string_distance(false, true, &mock_value, &req_value),
+            regex_string_distance(true, false, &mock_value, &req_value),
             pattern.0.as_str().len()
         );
     }

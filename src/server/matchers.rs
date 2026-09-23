@@ -153,7 +153,7 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "host",
             matcher_method: "host_matches",
             matching_strategy: MatchingStrategy::Presence,
-            comparator: Box::new(StringMatches::new(false, true)),
+            comparator: Box::new(StringMatches::new(true, false)),
             expectation: readers::expectations::host_matches_regex,
             request_value: readers::request_value::host,
             diff_with: None,
@@ -270,7 +270,7 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             entity_name: "path",
             matcher_method: "path_matches",
             matching_strategy: MatchingStrategy::Presence,
-            comparator: Box::new(StringMatches::new(false, true)),
+            comparator: Box::new(StringMatches::new(true, false)),
             expectation: readers::expectations::path_matches,
             request_value: readers::request_value::path,
             diff_with: None,
@@ -411,8 +411,8 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             request_value: readers::request_value::query_params,
             key_required: true,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
-            key_comparator: Box::new(StringMatches::new(false, true)),
-            value_comparator: Box::new(StringMatches::new(false, true)),
+            key_comparator: Box::new(StringMatches::new(true, false)),
+            value_comparator: Box::new(StringMatches::new(true, false)),
             weight: 1,
         }),
         Box::new(MultiValueCountMatcher {
@@ -421,8 +421,8 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             expectation: readers::expectations::query_param_count,
             request_value: readers::request_value::query_params,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
-            key_comparator: Box::new(StringMatches::new(false, true)),
-            value_comparator: Box::new(StringMatches::new(false, true)),
+            key_comparator: Box::new(StringMatches::new(true, false)),
+            value_comparator: Box::new(StringMatches::new(true, false)),
             weight: 1,
         }),
         //************************************************************************************
@@ -560,7 +560,7 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             key_required: true,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringMatches::new(false, false)),
-            value_comparator: Box::new(StringMatches::new(false, true)),
+            value_comparator: Box::new(StringMatches::new(true, false)),
             weight: 1,
         }),
         Box::new(MultiValueCountMatcher {
@@ -570,7 +570,7 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             request_value: readers::request_value::headers,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
             key_comparator: Box::new(StringMatches::new(false, false)),
-            value_comparator: Box::new(StringMatches::new(false, true)),
+            value_comparator: Box::new(StringMatches::new(true, false)),
             weight: 1,
         }),
         // ***********************************************************************************
@@ -719,8 +719,8 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matching_strategy: MatchingStrategy::Presence,
             key_required: true,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
-            key_comparator: Box::new(StringMatches::new(false, true)),
-            value_comparator: Box::new(StringMatches::new(false, true)),
+            key_comparator: Box::new(StringMatches::new(true, false)),
+            value_comparator: Box::new(StringMatches::new(true, false)),
             weight: 1,
         }),
         #[cfg(feature = "cookies")]
@@ -730,8 +730,8 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             expectation: readers::expectations::cookie_count,
             request_value: readers::request_value::cookies,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
-            key_comparator: Box::new(StringMatches::new(false, true)),
-            value_comparator: Box::new(StringMatches::new(false, true)),
+            key_comparator: Box::new(StringMatches::new(true, false)),
+            value_comparator: Box::new(StringMatches::new(true, false)),
             weight: 1,
         }),
         // ************************************************************************************
@@ -1011,8 +1011,8 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matching_strategy: MatchingStrategy::Presence,
             key_required: true,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
-            key_comparator: Box::new(StringMatches::new(false, true)),
-            value_comparator: Box::new(StringMatches::new(false, true)),
+            key_comparator: Box::new(StringMatches::new(true, false)),
+            value_comparator: Box::new(StringMatches::new(true, false)),
             weight: 1,
         }),
         Box::new(MultiValueCountMatcher {
@@ -1021,8 +1021,8 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             expectation: readers::expectations::form_urlencoded_key_value_count,
             request_value: readers::request_value::form_urlencoded_body,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
-            key_comparator: Box::new(StringMatches::new(false, true)),
-            value_comparator: Box::new(StringMatches::new(false, true)),
+            key_comparator: Box::new(StringMatches::new(true, false)),
+            value_comparator: Box::new(StringMatches::new(true, false)),
             weight: 1,
         }),
     ]
