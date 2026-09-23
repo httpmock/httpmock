@@ -30,11 +30,11 @@ fn owned_boxed_response_reuses_body_allocation() {
         let allocation = response.body().as_ptr();
 
         let converted: HttpMockResponse = response.into();
-        let converted_body = converted.body.unwrap();
+        let converted_body = converted.body();
 
-        assert_eq!(converted_body.as_ref(), body);
+        assert_eq!(converted_body, body);
         if !body.is_empty() {
-            assert_eq!(converted_body.as_ref().as_ptr(), allocation);
+            assert_eq!(converted_body.as_ptr(), allocation);
         }
     }
 }
@@ -56,17 +56,17 @@ fn borrowed_boxed_request_keeps_an_independent_body_copy() {
 }
 
 #[test]
-fn borrowed_boxed_response_keeps_an_independent_body_copy() {
+fn cloned_boxed_response_keeps_an_independent_body_copy() {
     for &body in BODIES {
         let mut response = http::Response::new(Box::<[u8]>::from(body));
         let allocation = response.body().as_ptr();
 
-        let converted = HttpMockResponse::try_from(&response).unwrap();
+        let converted = HttpMockResponse::from(response.clone());
 
         assert_eq!(response.body().as_ref(), body);
         assert_eq!(response.body().as_ptr(), allocation);
         response.body_mut().fill(42);
         drop(response);
-        assert_eq!(converted.body.unwrap().as_ref(), body);
+        assert_eq!(converted.body(), body);
     }
 }
