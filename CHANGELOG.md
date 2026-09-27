@@ -16,6 +16,22 @@ remains 1.88.
   ([#285](https://github.com/httpmock/httpmock/pull/285)). Remove `MockExt` imports and
   replace direct `mock.id` field access with `mock.id()`. The inherent `Mock::new`
   constructor remains available.
+- The server state types `server::state::HttpMockStateManager` and
+  `server::state::MockServerState` were merged into `server::state::Manager`
+  ([#289](https://github.com/httpmock/httpmock/pull/289)). These are server internals; code
+  using the `MockServer` API is unaffected.
+
+#### Upgrading from 0.8
+
+Most code needs no changes. Code that fails to compile after upgrading needs at most these
+replacements:
+
+| 0.8 | 0.9 |
+|---|---|
+| `use httpmock::MockExt;` | remove the import; `Mock::new(id, &server)` is still available |
+| `mock.id` | `mock.id()` |
+| `request.query_params_map()` | `request.query_params().into_iter().collect()` |
+| `request.to_http_request()` | `http::Request::from(&request)` |
 
 ### Improvements
 
