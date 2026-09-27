@@ -16,77 +16,8 @@ use crate::{
 
 const QUOTED_TEXT: &str = "quoted for better readability";
 
-/// A writer that aligns `\t`-separated columns of consecutive tab-containing lines
-/// (elastic tab stops) when the buffered text is retrieved via [`TabWriter::into_string`].
-///
-/// This is a simplified replacement for the `tabwriter` crate that produces identical
-/// output for the patterns this module generates. It measures cell width in `char`s
-/// rather than display columns, so cells containing wide characters (e.g. CJK) may
-/// align differently in terminals.
-struct TabWriter {
-    buf: String,
-}
-
-impl TabWriter {
-    fn new() -> Self {
-        Self { buf: String::new() }
-    }
-
-    fn into_string(self) -> String {
-        let mut out_lines: Vec<String> = Vec::new();
-        let mut block: Vec<&str> = Vec::new();
-
-        for line in self.buf.split('\n') {
-            if line.contains('\t') {
-                block.push(line);
-            } else {
-                Self::align_block(&mut block, &mut out_lines);
-                out_lines.push(line.to_string());
-            }
-        }
-        Self::align_block(&mut block, &mut out_lines);
-
-        out_lines.join("\n")
-    }
-
-    /// Aligns the columns of a block of consecutive tab-containing lines and clears the block.
-    fn align_block(block: &mut Vec<&str>, out_lines: &mut Vec<String>) {
-        let rows: Vec<Vec<&str>> = block.drain(..).map(|line| line.split('\t').collect()).collect();
-
-        // Compute the width of each column. The last cell of a row is never padded,
-        // so it does not contribute to its column's width. The minimum column width of 2
-        // matches the `tabwriter` crate's default, which this replaces: most visibly, it
-        // renders the empty cell of lines starting with `\t` as a 4-space indent.
-        let column_count = rows.iter().map(|cells| cells.len()).max().unwrap_or(0);
-        let mut widths = vec![2; column_count];
-        for cells in &rows {
-            for (idx, cell) in cells.iter().enumerate() {
-                if idx + 1 < cells.len() {
-                    widths[idx] = widths[idx].max(cell.chars().count());
-                }
-            }
-        }
-
-        for cells in &rows {
-            let mut line = String::new();
-            for (idx, cell) in cells.iter().enumerate() {
-                line.push_str(cell);
-                if idx + 1 < cells.len() {
-                    let padding = widths[idx] - cell.chars().count() + 2;
-                    line.push_str(&" ".repeat(padding));
-                }
-            }
-            out_lines.push(line);
-        }
-    }
-}
-
-impl Write for TabWriter {
-    fn write_str(&mut self, s: &str) -> std::fmt::Result {
-        self.buf.push_str(s);
-        Ok(())
-    }
-}
+/// Indentation of the lines listed under a heading.
+const INDENT: &str = "    ";
 
 pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option<ClosestMatch>) {
     let closest_match = closest_match.expect("No request has been received by the mock server.");
@@ -122,29 +53,27 @@ pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option
 }
 
 pub fn create_mismatch_output(idx: usize, mismatch: &Mismatch) -> (String, Option<(String, String)>) {
-    let mut tw = TabWriter::new();
+    let mut output = String::new();
     let mut ide_diff_left = String::new();
     let mut ide_diff_right = String::new();
 
-    write_header(&mut tw, idx, mismatch);
+    write_header(&mut output, idx, mismatch);
 
     if let Some(comparison) = &mismatch.comparison {
-        let (left, right) = handle_single_value_comparison(&mut tw, mismatch, comparison);
+        let (left, right) = handle_single_value_comparison(&mut output, mismatch, comparison);
 
         ide_diff_left.push_str(&left);
         ide_diff_right.push_str(&right);
     } else if let Some(comparison) = &mismatch.key_value_comparison {
-        let (left, right) = handle_key_value_comparison(&mut tw, mismatch, comparison);
+        let (left, right) = handle_key_value_comparison(&mut output, mismatch, comparison);
 
         ide_diff_left.push_str(&left);
         ide_diff_right.push_str(&right);
     } else if let Some(comparison) = &mismatch.function_comparison {
-        handle_function_comparison(&mut tw, mismatch, comparison);
+        handle_function_comparison(&mut output, mismatch, comparison);
     }
 
-    write_footer(&mut tw, mismatch);
-
-    let output = tw.into_string();
+    write_footer(&mut output, mismatch);
 
     if !ide_diff_left.is_empty() && !ide_diff_right.is_empty() {
         return (output, Some((ide_diff_left, ide_diff_right)));
@@ -153,31 +82,31 @@ pub fn create_mismatch_output(idx: usize, mismatch: &Mismatch) -> (String, Optio
     (output, None)
 }
 
-fn write_header(tw: &mut TabWriter, idx: usize, mismatch: &Mismatch) {
-    writeln!(tw, "{}", "-".repeat(60)).unwrap();
-    writeln!(tw, "{} : {} Mismatch ", idx + 1, title_case(&mismatch.entity)).unwrap();
-    writeln!(tw, "{}", "-".repeat(60)).unwrap();
+fn write_header(out: &mut String, idx: usize, mismatch: &Mismatch) {
+    writeln!(out, "{}", "-".repeat(60)).unwrap();
+    writeln!(out, "{} : {} Mismatch ", idx + 1, title_case(&mismatch.entity)).unwrap();
+    writeln!(out, "{}", "-".repeat(60)).unwrap();
 }
 
 fn handle_single_value_comparison(
-    tw: &mut TabWriter,
+    out: &mut String,
     mismatch: &Mismatch,
     comparison: &SingleValueComparison,
 ) -> (String, String) {
     writeln!(
-        tw,
+        out,
         "Expected {} {}:\n{}",
         mismatch.entity, comparison.operator, comparison.expected
     )
     .unwrap();
 
-    writeln!(tw, "\nReceived:\n{}", comparison.actual).unwrap();
+    writeln!(out, "\nReceived:\n{}", comparison.actual).unwrap();
 
     (comparison.expected.to_string(), comparison.actual.to_string())
 }
 
 fn handle_key_value_comparison(
-    tw: &mut TabWriter,
+    out: &mut String,
     mismatch: &Mismatch,
     comparison: &KeyValueComparison,
 ) -> (String, String) {
@@ -186,28 +115,39 @@ fn handle_key_value_comparison(
         false => String::from(" "),
     };
 
-    writeln!(tw, "Expected:").unwrap();
+    writeln!(out, "Expected:").unwrap();
 
-    if let Some(key) = &comparison.key {
-        let expected = match quote_if_whitespace(&key.expected) {
-            (actual, true) => format!("{} ({})", actual, QUOTED_TEXT),
-            (actual, false) => actual,
-        };
-        writeln!(tw, "\tkey\t[{}]\t{}", key.operator, expected).unwrap();
-    }
+    let expected_rows: Vec<(&str, String, String)> = [("key", &comparison.key), ("value", &comparison.value)]
+        .into_iter()
+        .filter_map(|(label, attribute)| {
+            let attribute = attribute.as_ref()?;
+            let expected = match quote_if_whitespace(&attribute.expected) {
+                (expected, true) => format!("{} ({})", expected, QUOTED_TEXT),
+                (expected, false) => expected,
+            };
+            Some((label, format!("[{}]", attribute.operator), expected))
+        })
+        .collect();
 
-    if let Some(value) = &comparison.value {
-        let expected = match quote_if_whitespace(&value.expected) {
-            (expected, true) => format!("{} ({})", expected, QUOTED_TEXT),
-            (expected, false) => expected,
-        };
-        writeln!(tw, "\tvalue\t[{}]\t{}", value.operator, expected).unwrap();
+    // Align the label and operator columns of the expected rows.
+    let label_width = expected_rows.iter().map(|(label, _, _)| label.len()).max().unwrap_or(0);
+    let operator_width = expected_rows
+        .iter()
+        .map(|(_, operator, _)| operator.chars().count())
+        .max()
+        .unwrap_or(0);
+    for (label, operator, expected) in &expected_rows {
+        writeln!(
+            out,
+            "{INDENT}{label:<label_width$}  {operator:<operator_width$}  {expected}"
+        )
+        .unwrap();
     }
 
     if let (Some(expected_count), Some(actual_count)) = (comparison.expected_count, comparison.actual_count) {
         if comparison.key.is_none() && comparison.value.is_none() {
             writeln!(
-                tw,
+                out,
                 "\n{} to appear {} {} but appeared {}",
                 mismatch.entity,
                 expected_count,
@@ -217,7 +157,7 @@ fn handle_key_value_comparison(
             .unwrap();
         } else {
             writeln!(
-                tw,
+                out,
                 "\nto appear {} {} but appeared {}",
                 expected_count,
                 times_str(expected_count),
@@ -226,7 +166,7 @@ fn handle_key_value_comparison(
             .unwrap();
         }
 
-        print_all_request_values(tw, &mismatch.entity, &comparison.all);
+        print_all_request_values(out, &mismatch.entity, &comparison.all);
 
         return (expected_count.to_string(), actual_count.to_string());
     }
@@ -234,15 +174,20 @@ fn handle_key_value_comparison(
     if let (Some(key_attr), Some(value_attr)) = (&comparison.key, &comparison.value) {
         let result = match (&key_attr.actual, &value_attr.actual) {
             (Some(key), Some(value)) => {
-                writeln!(tw, "\nReceived{}:\n\t{}={}", most_similar, key, value).unwrap();
+                writeln!(out, "\nReceived{}:\n{INDENT}{}={}", most_similar, key, value).unwrap();
                 (format!("{}\n{}", key, value), format!("{}\n{}", key, value))
             }
             (None, Some(value)) => {
-                writeln!(tw, "\nbut{}{} value was\n\t{}", most_similar, mismatch.entity, value).unwrap();
+                writeln!(
+                    out,
+                    "\nbut{}{} value was\n{INDENT}{}",
+                    most_similar, mismatch.entity, value
+                )
+                .unwrap();
                 (value.to_string(), value.to_string())
             }
             (Some(key), None) => {
-                writeln!(tw, "\nbut{}{} key was\n\t{}", most_similar, mismatch.entity, key).unwrap();
+                writeln!(out, "\nbut{}{} key was\n{INDENT}{}", most_similar, mismatch.entity, key).unwrap();
                 (key.to_string(), key.to_string())
             }
             (None, None) => {
@@ -254,29 +199,29 @@ fn handle_key_value_comparison(
                     },
                 };
 
-                writeln!(tw, "\n{}", msg).unwrap();
+                writeln!(out, "\n{}", msg).unwrap();
                 (String::new(), String::new())
             }
         };
 
-        // print_value_not_in_request(tw, &mismatch.matching_strategy);
-        print_all_request_values(tw, &mismatch.entity, &comparison.all);
+        // print_value_not_in_request(out, &mismatch.matching_strategy);
+        print_all_request_values(out, &mismatch.entity, &comparison.all);
 
         return result;
     }
 
-    print_value_not_in_request(tw, &mismatch.matching_strategy);
-    print_all_request_values(tw, &mismatch.entity, &comparison.all);
+    print_value_not_in_request(out, &mismatch.matching_strategy);
+    print_all_request_values(out, &mismatch.entity, &comparison.all);
 
     (String::new(), String::new())
 }
 
-fn print_all_request_values(tw: &mut TabWriter, entity: &str, all: &[KeyValueComparisonKeyValuePair]) {
+fn print_all_request_values(out: &mut String, entity: &str, all: &[KeyValueComparisonKeyValuePair]) {
     if all.is_empty() {
         return;
     }
 
-    writeln!(tw, "\nAll received {} values:", entity).unwrap();
+    writeln!(out, "\nAll received {} values:", entity).unwrap();
 
     for (index, pair) in all.iter().enumerate() {
         let value = if pair.value.is_some() {
@@ -286,13 +231,13 @@ fn print_all_request_values(tw: &mut TabWriter, entity: &str, all: &[KeyValueCom
         };
 
         let text = format!("{}{}", pair.key, value);
-        writeln!(tw, "\t{}. {}", index + 1, text).unwrap();
+        writeln!(out, "{INDENT}{}. {}", index + 1, text).unwrap();
     }
 }
 
-fn print_value_not_in_request(tw: &mut TabWriter, matching_strategy: &Option<MatchingStrategy>) {
+fn print_value_not_in_request(out: &mut String, matching_strategy: &Option<MatchingStrategy>) {
     writeln!(
-        tw,
+        out,
         "\n{}",
         match matching_strategy {
             None => "but none was provided",
@@ -305,16 +250,16 @@ fn print_value_not_in_request(tw: &mut TabWriter, matching_strategy: &Option<Mat
     .unwrap();
 }
 
-fn handle_function_comparison(tw: &mut TabWriter, mismatch: &Mismatch, comparison: &FunctionComparison) {
+fn handle_function_comparison(out: &mut String, mismatch: &Mismatch, comparison: &FunctionComparison) {
     writeln!(
-        tw,
+        out,
         "Custom matcher function {} with index {} did not match the request",
         mismatch.matcher_method, comparison.index
     )
     .unwrap();
 }
 
-fn write_footer(tw: &mut TabWriter, mismatch: &Mismatch) {
+fn write_footer(out: &mut String, mismatch: &Mismatch) {
     let mut version = env!("CARGO_PKG_VERSION");
     if version.trim().is_empty() {
         version = "latest";
@@ -325,16 +270,16 @@ fn write_footer(tw: &mut TabWriter, mismatch: &Mismatch) {
         version, mismatch.matcher_method
     );
 
-    writeln!(tw).unwrap();
+    writeln!(out).unwrap();
 
     if let Some(diff_result) = &mismatch.diff {
-        writeln!(tw, "{}", create_diff_result_output(diff_result)).unwrap();
-        writeln!(tw).unwrap();
+        writeln!(out, "{}", create_diff_result_output(diff_result)).unwrap();
+        writeln!(out).unwrap();
     }
 
-    writeln!(tw, "Matcher:\t{}", mismatch.matcher_method).unwrap();
-    writeln!(tw, "Docs:\t{}", link).unwrap();
-    writeln!(tw, " ").unwrap();
+    writeln!(out, "{:<10}{}", "Matcher:", mismatch.matcher_method).unwrap();
+    writeln!(out, "{:<10}{}", "Docs:", link).unwrap();
+    writeln!(out, "\u{2002}").unwrap();
 }
 
 fn create_diff_result_output(dd: &DiffResult) -> String {
@@ -399,4 +344,199 @@ fn remove_trailing_linebreak(s: &str) -> String {
         }
     }
     result
+}
+
+#[cfg(test)]
+mod test {
+    use super::create_mismatch_output;
+    use crate::{
+        common::data::{
+            Diff, DiffResult, KeyValueComparison, KeyValueComparisonAttribute, KeyValueComparisonKeyValuePair,
+            Mismatch, SingleValueComparison, Tokenizer,
+        },
+        server::matchers::generic::MatchingStrategy,
+    };
+
+    fn docs_link(method: &str) -> String {
+        format!(
+            "https://docs.rs/httpmock/{}/httpmock/struct.When.html#method.{}",
+            env!("CARGO_PKG_VERSION"),
+            method
+        )
+    }
+
+    fn attribute(operator: &str, expected: &str, actual: Option<&str>) -> KeyValueComparisonAttribute {
+        KeyValueComparisonAttribute {
+            operator: operator.to_string(),
+            expected: expected.to_string(),
+            actual: actual.map(str::to_string),
+        }
+    }
+
+    fn pair(key: &str, value: &str) -> KeyValueComparisonKeyValuePair {
+        KeyValueComparisonKeyValuePair {
+            key: key.to_string(),
+            value: Some(value.to_string()),
+        }
+    }
+
+    fn key_value_mismatch(comparison: KeyValueComparison) -> Mismatch {
+        Mismatch {
+            entity: "header".to_string(),
+            matcher_method: "header".to_string(),
+            comparison: None,
+            key_value_comparison: Some(comparison),
+            function_comparison: None,
+            matching_strategy: Some(MatchingStrategy::Presence),
+            best_match: true,
+            diff: None,
+        }
+    }
+
+    #[test]
+    fn key_value_mismatch_aligns_expected_rows() {
+        let mismatch = key_value_mismatch(KeyValueComparison {
+            key: Some(attribute("equals", "content-type", Some("content-type"))),
+            value: Some(attribute(
+                "equals_case_insensitive",
+                "application/json",
+                Some("text/plain"),
+            )),
+            expected_count: None,
+            actual_count: None,
+            all: vec![pair("content-type", "text/plain"), pair("accept", "*/*")],
+        });
+
+        let (output, _) = create_mismatch_output(0, &mismatch);
+
+        let expected = [
+            "-".repeat(60),
+            "1 : Header Mismatch ".to_string(),
+            "-".repeat(60),
+            "Expected:".to_string(),
+            "    key    [equals]                   content-type".to_string(),
+            "    value  [equals_case_insensitive]  application/json".to_string(),
+            String::new(),
+            "Received (most similar header):".to_string(),
+            "    content-type=text/plain".to_string(),
+            String::new(),
+            "All received header values:".to_string(),
+            "    1. content-type=text/plain".to_string(),
+            "    2. accept=*/*".to_string(),
+            String::new(),
+            "Matcher:  header".to_string(),
+            format!("Docs:     {}", docs_link("header")),
+            "\u{2002}".to_string(),
+            String::new(),
+        ]
+        .join("\n");
+        assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn key_only_count_mismatch_aligns_single_row() {
+        let mismatch = key_value_mismatch(KeyValueComparison {
+            key: Some(attribute("equals", "x-id", None)),
+            value: None,
+            expected_count: Some(2),
+            actual_count: Some(1),
+            all: vec![pair("x-id", "1")],
+        });
+
+        let (output, diff) = create_mismatch_output(1, &mismatch);
+
+        let expected = [
+            "-".repeat(60),
+            "2 : Header Mismatch ".to_string(),
+            "-".repeat(60),
+            "Expected:".to_string(),
+            "    key  [equals]  x-id".to_string(),
+            String::new(),
+            "to appear 2 times but appeared 1".to_string(),
+            String::new(),
+            "All received header values:".to_string(),
+            "    1. x-id=1".to_string(),
+            String::new(),
+            "Matcher:  header".to_string(),
+            format!("Docs:     {}", docs_link("header")),
+            "\u{2002}".to_string(),
+            String::new(),
+        ]
+        .join("\n");
+        assert_eq!(output, expected);
+        assert_eq!(diff, Some(("2".to_string(), "1".to_string())));
+    }
+
+    #[test]
+    fn single_value_mismatch_prints_diff() {
+        let mismatch = Mismatch {
+            entity: "body".to_string(),
+            matcher_method: "body".to_string(),
+            comparison: Some(SingleValueComparison {
+                operator: "equals".to_string(),
+                expected: "hello".to_string(),
+                actual: "hello".to_string(),
+            }),
+            key_value_comparison: None,
+            function_comparison: None,
+            matching_strategy: None,
+            best_match: false,
+            diff: Some(DiffResult {
+                differences: vec![Diff::Same("hello".to_string())],
+                distance: 0.0,
+                tokenizer: Tokenizer::Line,
+            }),
+        };
+
+        let (output, _) = create_mismatch_output(0, &mismatch);
+
+        let expected = [
+            "-".repeat(60),
+            "1 : Body Mismatch ".to_string(),
+            "-".repeat(60),
+            "Expected body equals:".to_string(),
+            "hello".to_string(),
+            String::new(),
+            "Received:".to_string(),
+            "hello".to_string(),
+            String::new(),
+            "Diff:".to_string(),
+            "   | hello".to_string(),
+            String::new(),
+            "Matcher:  body".to_string(),
+            format!("Docs:     {}", docs_link("body")),
+            "\u{2002}".to_string(),
+            String::new(),
+        ]
+        .join("\n");
+        assert_eq!(output, expected);
+    }
+
+    #[test]
+    fn request_data_containing_tabs_is_printed_verbatim() {
+        let mismatch = Mismatch {
+            entity: "body".to_string(),
+            matcher_method: "body".to_string(),
+            comparison: Some(SingleValueComparison {
+                operator: "equals".to_string(),
+                expected: "id\tname\n1\tAlice".to_string(),
+                actual: "id\tname\n1\tBob".to_string(),
+            }),
+            key_value_comparison: None,
+            function_comparison: None,
+            matching_strategy: None,
+            best_match: false,
+            diff: Some(DiffResult {
+                differences: vec![Diff::Same("id\tname\n".to_string())],
+                distance: 0.0,
+                tokenizer: Tokenizer::Line,
+            }),
+        };
+
+        let (output, _) = create_mismatch_output(0, &mismatch);
+
+        assert!(output.contains("id\tname\n1\tAlice\n"), "{output}");
+        assert!(output.contains("id\tname\n1\tBob\n"), "{output}");
+        assert!(output.contains("   | id\tname\n"), "{output}");
+    }
 }
