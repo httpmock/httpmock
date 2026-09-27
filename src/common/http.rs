@@ -26,11 +26,11 @@ pub enum Error {
 }
 
 #[async_trait]
-pub trait HttpClient {
+pub(crate) trait HttpClient {
     async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error>;
 }
 
-pub struct HttpMockHttpClient {
+pub(crate) struct HttpMockHttpClient {
     runtime: Option<Arc<Runtime>>,
     #[cfg(any(feature = "remote-https", feature = "https"))]
     client: Arc<Client<HttpsConnector<HttpConnector>, Full<Bytes>>>,
@@ -40,7 +40,7 @@ pub struct HttpMockHttpClient {
 
 impl HttpMockHttpClient {
     #[cfg(any(feature = "remote-https", feature = "https"))]
-    pub fn new(runtime: Option<Arc<Runtime>>) -> Self {
+    pub(crate) fn new(runtime: Option<Arc<Runtime>>) -> Self {
         // see https://github.com/rustls/rustls/issues/1938
         // `install_default` fails if a default provider is already installed, including
         // when a concurrently created client wins the race to install it. Either way a
@@ -67,7 +67,7 @@ impl HttpMockHttpClient {
     }
 
     #[cfg(not(any(feature = "remote-https", feature = "https")))]
-    pub fn new(runtime: Option<Arc<Runtime>>) -> Self {
+    pub(crate) fn new(runtime: Option<Arc<Runtime>>) -> Self {
         Self {
             runtime,
             client: Arc::new(Client::builder(TokioExecutor::new()).build(HttpConnector::new())),

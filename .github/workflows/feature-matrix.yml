@@ -39,14 +39,14 @@ jobs:
           sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
           sudo update-ca-certificates
 
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           # Each shard compiles a different slice of the power set, so give
           # each its own cache key.
           cache-key: shard-${{ matrix.partition }}
           rustflags: ""
 
-      - uses: taiki-e/install-action@v2.86.5
+      - uses: taiki-e/install-action@v2.87.15
         with:
           tool: cargo-hack
 
@@ -69,7 +69,7 @@ jobs:
           sudo cp certs/ca.pem /usr/local/share/ca-certificates/httpmock-test-ca.crt
           sudo update-ca-certificates
 
-      - uses: actions-rust-lang/setup-rust-toolchain@v1
+      - uses: actions-rust-lang/setup-rust-toolchain@v2
         with:
           rustflags: ""  # clears default "-D warnings" to ensure consistency between local dev and CI
 

@@ -556,7 +556,7 @@ pub mod request_value {
 
     #[inline]
     pub fn host(req: &HttpMockRequest) -> Option<String> {
-        req.host().map(|h| h.to_string())
+        req.host()
     }
 
     #[inline]

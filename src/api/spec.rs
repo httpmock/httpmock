@@ -2956,7 +2956,12 @@ impl When {
     /// Sets the required HTTP request body content.
     /// This method specifies that the HTTP request body must match the provided content exactly.
     ///
-    /// **Note**: The body content is case-sensitive and must be an exact match.
+    /// **Note**: The body content is compared byte-by-byte and is therefore case-sensitive
+    /// and must be an exact match.
+    ///
+    /// **Attention**: Up to and including version 0.7 of this library, this matcher performed a
+    /// case-insensitive string comparison. Since version 0.8, the request body is compared
+    /// byte-by-byte and the comparison is case-sensitive.
     ///
     /// # Parameters
     /// - `body`: The required HTTP request body content. This parameter accepts any type that can be converted into a `String`.
@@ -2999,7 +3004,8 @@ impl When {
     /// Sets the condition that the HTTP request body content must not match the specified value.
     /// This method ensures that the request body does not contain the provided content exactly.
     ///
-    /// **Note**: The body content is case-sensitive and must be an exact mismatch.
+    /// **Note**: The body content is compared byte-by-byte and is therefore case-sensitive
+    /// and must be an exact mismatch.
     ///
     /// # Parameters
     /// - `body`: The body content that the HTTP request must not contain. This parameter accepts any type that can be converted into a `String`.

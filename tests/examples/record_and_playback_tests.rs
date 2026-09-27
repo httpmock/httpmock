@@ -48,6 +48,7 @@ fn record_with_forwarding_test() {
     assert_eq!(response.text().unwrap(), "Hi from fake GitHub!");
 }
 
+#[ignore = "hits the live https://httpmock.rs; run with `cargo test -- --ignored`"]
 // @example-start: record-proxy-website
 #[cfg(all(feature = "proxy", feature = "https", feature = "record"))]
 #[test]
@@ -127,6 +128,7 @@ fn record_with_proxy_example_test() {
 }
 // @example-end
 
+#[ignore = "hits the live https://httpmock.rs; run with `cargo test -- --ignored`"]
 // @example-start: record-forwarding-website
 #[cfg(feature = "record")]
 #[test]
@@ -190,6 +192,7 @@ fn record_with_forwarding_example_test() {
 }
 // @example-end
 
+#[ignore = "hits the live https://httpmock.rs; run with `cargo test -- --ignored`"]
 // @example-start: playback-forwarding-website
 #[cfg(feature = "record")]
 #[test]
@@ -253,6 +256,7 @@ fn playback_github_api() {
 }
 // @example-end
 
+#[ignore = "hits the live https://httpmock.rs; run with `cargo test -- --ignored`"]
 #[cfg(feature = "record")]
 #[test]
 fn record_with_forwarding_all_request_parts_test() {

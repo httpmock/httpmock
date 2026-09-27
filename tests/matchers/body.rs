@@ -34,6 +34,18 @@ fn body_fail_message() {
     )
 }
 
+// The body matcher compares byte-by-byte and hence is case-sensitive since v0.8.0
+// (see https://github.com/httpmock/httpmock/issues/224).
+#[test]
+fn body_case_sensitive() {
+    run_test(
+        "case sensitivity",
+        |when| when.body("test"),
+        "TEST",
+        Some(vec!["Expected body equals:", "test", "", "Received:", "TEST"]),
+    )
+}
+
 #[test]
 fn body_not() {
     for (idx, data) in generate_data().attribute_not.iter().enumerate() {

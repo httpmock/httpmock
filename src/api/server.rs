@@ -52,7 +52,7 @@ use crate::{
 /// - Monitor and verify that the expected requests are made by the client under test.
 /// - Simulate various network conditions and server responses, including errors and latencies.
 pub struct MockServer {
-    pub(crate) server_adapter: Option<Arc<dyn MockServerAdapter + Send + Sync>>,
+    pub(in crate::api) server_adapter: Option<Arc<dyn MockServerAdapter + Send + Sync>>,
     pool: Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>,
 }
 
@@ -74,7 +74,7 @@ impl MockServer {
     /// Asynchronously connects to a remote mock server running in standalone mode.
     ///
     /// # Arguments
-    /// * `address` - A string slice representing the address in the format "<host>:<port>", e.g., "127.0.0.1:8080".
+    /// * `address` - A string slice representing the address in the format `<host>:<port>`, e.g., "127.0.0.1:8080".
     ///
     /// # Returns
     /// An instance of `Self` representing the connected mock server.
@@ -102,7 +102,7 @@ impl MockServer {
     /// Synchronously connects to a remote mock server running in standalone mode.
     ///
     /// # Arguments
-    /// * `address` - A string slice representing the address in the format "<host>:<port>", e.g., "127.0.0.1:8080".
+    /// * `address` - A string slice representing the address in the format `<host>:<port>`, e.g., "127.0.0.1:8080".
     ///
     /// # Returns
     /// An instance of `Self` representing the connected mock server.
@@ -179,7 +179,6 @@ impl MockServer {
     ///
     /// # Returns
     /// An instance of `Self` representing the started mock server.
-    /// ```
     pub async fn start_async() -> Self {
         let adapter = LOCAL_SERVER_POOL_REF
             .take_or_create(LOCAL_SERVER_ADAPTER_GENERATOR)
@@ -417,8 +416,8 @@ impl MockServer {
     where
         SpecFn: FnOnce(When, Then),
     {
-        let req = Rc::new(Cell::new(RequestRequirements::new()));
-        let res = Rc::new(Cell::new(MockServerHttpResponse::new()));
+        let req = Rc::new(Cell::new(RequestRequirements::default()));
+        let res = Rc::new(Cell::new(MockServerHttpResponse::default()));
 
         spec_fn(
             When {
@@ -440,10 +439,7 @@ impl MockServer {
             .await
             .expect("Cannot deserialize mock server response");
 
-        Mock {
-            id: response.id,
-            server: self,
-        }
+        Mock::new(response.id, self)
     }
 
     /// Resets the mock server. More specifically, it deletes all [Mock](struct.Mock.html) objects
@@ -631,7 +627,7 @@ impl MockServer {
         IntoString: Into<String>,
     {
         let headers = Rc::new(Cell::new(Vec::new()));
-        let req = Rc::new(Cell::new(RequestRequirements::new()));
+        let req = Rc::new(Cell::new(RequestRequirements::default()));
 
         rule(ForwardingRuleBuilder {
             headers: headers.clone(),
@@ -787,7 +783,7 @@ impl MockServer {
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
     {
         let headers = Rc::new(Cell::new(Vec::new()));
-        let req = Rc::new(Cell::new(RequestRequirements::new()));
+        let req = Rc::new(Cell::new(RequestRequirements::default()));
 
         rule(ProxyRuleBuilder {
             headers: headers.clone(),
@@ -983,7 +979,7 @@ impl MockServer {
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
     {
         let config = Rc::new(Cell::new(RecordingRuleConfig {
-            request_requirements: RequestRequirements::new(),
+            request_requirements: RequestRequirements::default(),
             record_headers: Vec::new(),
             record_response_delays: false,
         }));

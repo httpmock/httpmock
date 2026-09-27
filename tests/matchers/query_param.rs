@@ -87,6 +87,18 @@ fn query_param_prefix() {
 }
 
 #[test]
+fn query_param_prefix_mismatch_with_multibyte_value_reports_instead_of_panicking() {
+    // A 1-byte expected prefix used to slice into the middle of the 2-byte 'é' while building
+    // the mismatch report, panicking with a char-boundary error instead of a mismatch diff.
+    run_test(
+        "Multi-byte request value with shorter expected prefix",
+        |when| when.query_param_prefix("word", "a"),
+        vec![("word", "é")],
+        Some(vec!["Query Parameter Mismatch"]),
+    )
+}
+
+#[test]
 fn query_param_suffix() {
     for (idx, data) in generate_data().attribute_suffix.iter().enumerate() {
         run_test(

@@ -115,6 +115,8 @@ where
     }
 }
 
+// Preserve existing names while visibility and naming changes are reviewed separately.
+#[allow(clippy::upper_case_acronyms)]
 pub enum KeyValueOperator {
     AND,
     NAND,

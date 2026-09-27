@@ -1,10 +1,18 @@
 name: Deploy to GitHub Pages
 
 on:
-  # Trigger the workflow every time you push to the `main` branch
-  # Using a different branch name? Replace `main` with your branch’s name
-  push:
-    branches: [ master ]
+  # Deploy the website only when a GitHub release is published, so the docs
+  # always reflect the latest release rather than every change on master.
+  #
+  # "published" is NOT a branch — it is an activity type of the "release"
+  # event. The release event also fires for other activities (created,
+  # edited, deleted, prereleased, released), e.g. when release notes are
+  # edited; filtering on "published" makes the workflow run exactly once,
+  # at the moment a release (or a previously drafted release) goes public.
+  # GitHub then checks out the commit the release tag points to, so the
+  # site is built from the released state of the repository.
+  release:
+    types: [ published ]
   # Allows you to run this workflow manually from the Actions tab on GitHub.
   workflow_dispatch:
 
@@ -20,6 +28,8 @@ concurrency:
 
 jobs:
   build:
+    # Skip pre-releases; only full releases (and manual runs) update the website.
+    if: ${{ github.event_name == 'workflow_dispatch' || !github.event.release.prerelease }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout your repository using git
