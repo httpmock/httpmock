@@ -32,6 +32,13 @@ remains 1.88.
   using the `MockServer` API is unaffected.
 - The `experimental` cargo feature was removed. It did not enable anything; remove it from
   your feature list.
+- `When`, `Then`, `ForwardingRuleBuilder`, `ProxyRuleBuilder` and `RecordingRuleBuilder` now
+  borrow the mock or rule they configure and carry a lifetime parameter
+  ([#257](https://github.com/httpmock/httpmock/pull/257)). Closures passed to `mock`,
+  `forward_to`, `proxy` and `record` need no changes, and neither do helpers like
+  `fn f(when: When) -> When` or `Box<dyn Fn(When, Then)>`. Where these types are named in a
+  struct field or a type alias, add a lifetime, e.g. `When<'a>`. A builder can no longer be
+  moved out of its closure; calls made on it afterwards were silently ignored before.
 
 #### Upgrading from 0.8
 
@@ -44,6 +51,7 @@ replacements:
 | `mock.id` | `mock.id()` |
 | `request.query_params_map()` | `request.query_params().into_iter().collect()` |
 | `request.to_http_request()` | `http::Request::from(&request)` |
+| `When` / `Then` in a struct field or type alias | add a lifetime: `When<'a>` / `Then<'a>` |
 
 Tests whose clients speak cleartext HTTP/2 to the mock server additionally need the `http2`
 feature.
