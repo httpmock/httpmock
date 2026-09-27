@@ -128,7 +128,7 @@ pub async fn write_file<P: AsRef<Path>>(
         create_dir_all(parent)?;
     }
 
-    let mut file = File::create(&path)?;
+    let mut file = File::create_new(&path)?;
     file.write_all(content)?;
     file.flush()?;
 
