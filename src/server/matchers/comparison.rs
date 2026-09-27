@@ -1,4 +1,4 @@
-use std::{convert::TryInto, ops::Deref};
+use std::ops::Deref;
 
 use regex::Regex;
 
@@ -1261,7 +1261,6 @@ pub fn string_matches_regex(
 #[cfg(test)]
 mod string_matches_regex_tests {
     use super::*;
-    use crate::common::data::HttpMockRegex;
 
     #[test]
     fn test_string_matches_regex() {
@@ -1409,8 +1408,6 @@ pub fn regex_string_distance(
 
 #[cfg(test)]
 mod regex_string_distance_tests {
-    use regex::Regex;
-
     use super::*;
 
     #[test]
