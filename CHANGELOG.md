@@ -20,6 +20,12 @@ remains 1.88.
   ([#285](https://github.com/httpmock/httpmock/pull/285)). Remove `MockExt` imports and
   replace direct `mock.id` field access with `mock.id()`. The inherent `Mock::new`
   constructor remains available.
+- The mock server only accepts HTTP/2 connections when the `http2` cargo feature is enabled
+  ([#297](https://github.com/httpmock/httpmock/pull/297)). Previously, cleartext HTTP/2 with
+  prior knowledge (e.g. gRPC clients) was accepted without it, because an internal dependency
+  enabled HTTP/2 unconditionally. This fails at runtime, not at compile time: enable the
+  `http2` feature to keep serving such clients. HTTPS is unaffected, as `h2` was already only
+  offered via ALPN with the feature enabled.
 - The server state types `server::state::HttpMockStateManager` and
   `server::state::MockServerState` were merged into `server::state::Manager`
   ([#289](https://github.com/httpmock/httpmock/pull/289)). These are server internals; code
@@ -37,8 +43,14 @@ replacements:
 | `request.query_params_map()` | `request.query_params().into_iter().collect()` |
 | `request.to_http_request()` | `http::Request::from(&request)` |
 
+Tests whose clients speak cleartext HTTP/2 to the mock server additionally need the `http2`
+feature.
+
 ### Improvements
 
+- [#297](https://github.com/httpmock/httpmock/pull/297): The dependency tree is about 30% smaller
+  (74 to 52 crates without default features, 86 to 64 with them), resolving
+  [#46](https://github.com/httpmock/httpmock/issues/46)
 - [#275](https://github.com/httpmock/httpmock/pull/275): Owned HTTP request and response
   conversions avoid unnecessary body clones. Boxed byte bodies remain supported for both
   owned and borrowed conversions; borrowed conversions retain the caller's original body.
