@@ -75,6 +75,8 @@ feature.
   honored instead of a hardcoded cap (thanks [@danieleades](https://github.com/danieleades))
 - The `*_prefix` and `*_suffix` matchers no longer panic with a char-boundary error when
   building a mismatch report for a request value containing multi-byte UTF-8 characters
+- Mismatch reports print request and mock values containing tab characters (e.g. TSV bodies)
+  verbatim instead of re-aligning them into columns
 
 ### Internal improvements and CI
 
