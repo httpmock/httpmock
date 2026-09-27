@@ -1,4 +1,4 @@
-use std::{cell::Cell, convert::TryInto, path::Path, rc::Rc, str::FromStr, sync::Arc, time::Duration};
+use std::{cell::Cell, path::Path, rc::Rc, str::FromStr, sync::Arc, time::Duration};
 
 use bytes::Bytes;
 use serde::Serialize;

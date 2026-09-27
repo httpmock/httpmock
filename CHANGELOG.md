@@ -30,6 +30,8 @@ remains 1.88.
   `server::state::MockServerState` were merged into `server::state::Manager`
   ([#289](https://github.com/httpmock/httpmock/pull/289)). These are server internals; code
   using the `MockServer` API is unaffected.
+- The `experimental` cargo feature was removed. It did not enable anything; remove it from
+  your feature list.
 
 #### Upgrading from 0.8
 

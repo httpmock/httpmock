@@ -1,5 +1,3 @@
-extern crate httpmock;
-
 use httpmock::prelude::*;
 use reqwest::blocking::get;
 

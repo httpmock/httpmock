@@ -3,7 +3,6 @@ use std::{
     cell::Cell,
     env,
     fs::{File, create_dir_all},
-    future::Future,
     io::{Read, Write},
     path::{Path, PathBuf},
     sync::Arc,

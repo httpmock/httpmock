@@ -1,17 +1,10 @@
-use std::{
-    future::{Future, pending},
-    io,
-    net::SocketAddr,
-    pin::Pin,
-    sync::Arc,
-};
+use std::{future::pending, io, net::SocketAddr, pin::Pin, sync::Arc};
 
 use http::{Request, StatusCode};
 use http_body_util::{BodyExt, Empty, Full, combinators::BoxBody};
 use hyper::{
     Method, Response,
     body::{Bytes, Incoming},
-    http,
     service::service_fn,
 };
 use hyper_util::rt::tokio::TokioIo;
