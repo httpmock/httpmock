@@ -14,8 +14,6 @@ use crate::{
     server::matchers::generic::MatchingStrategy,
 };
 
-const QUOTED_TEXT: &str = "quoted for better readability";
-
 /// Indentation of the lines listed under a heading.
 const INDENT: &str = "    ";
 
@@ -117,26 +115,20 @@ fn handle_key_value_comparison(
 
     writeln!(out, "Expected:").unwrap();
 
-    let expected_rows: Vec<(&str, String, String)> = [("key", &comparison.key), ("value", &comparison.value)]
+    let rows: Vec<_> = [("key", &comparison.key), ("value", &comparison.value)]
         .into_iter()
-        .filter_map(|(label, attribute)| {
-            let attribute = attribute.as_ref()?;
-            let expected = match quote_if_whitespace(&attribute.expected) {
-                (expected, true) => format!("{} ({})", expected, QUOTED_TEXT),
-                (expected, false) => expected,
-            };
-            Some((label, format!("[{}]", attribute.operator), expected))
+        .filter_map(|(label, attr)| {
+            let attr = attr.as_ref()?;
+            Some((
+                label,
+                format!("[{}]", attr.operator),
+                quote_if_whitespace(&attr.expected),
+            ))
         })
         .collect();
-
-    // Align the label and operator columns of the expected rows.
-    let label_width = expected_rows.iter().map(|(label, _, _)| label.len()).max().unwrap_or(0);
-    let operator_width = expected_rows
-        .iter()
-        .map(|(_, operator, _)| operator.chars().count())
-        .max()
-        .unwrap_or(0);
-    for (label, operator, expected) in &expected_rows {
+    let label_width = rows.iter().map(|(label, _, _)| label.len()).max().unwrap_or(0);
+    let operator_width = rows.iter().map(|(_, operator, _)| operator.len()).max().unwrap_or(0);
+    for (label, operator, expected) in &rows {
         writeln!(
             out,
             "{INDENT}{label:<label_width$}  {operator:<operator_width$}  {expected}"
@@ -327,11 +319,11 @@ fn times_str<'a>(v: usize) -> &'a str {
     if v == 1 { "time" } else { "times" }
 }
 
-fn quote_if_whitespace(s: &str) -> (String, bool) {
+fn quote_if_whitespace(s: &str) -> String {
     if s.is_empty() || s.starts_with(char::is_whitespace) || s.ends_with(char::is_whitespace) {
-        (format!("\"{}\"", s), true)
+        format!("\"{}\" (quoted for better readability)", s)
     } else {
-        (s.to_string(), false)
+        s.to_string()
     }
 }
 
@@ -357,20 +349,29 @@ mod test {
         server::matchers::generic::MatchingStrategy,
     };
 
-    fn docs_link(method: &str) -> String {
-        format!(
-            "https://docs.rs/httpmock/{}/httpmock/struct.When.html#method.{}",
-            env!("CARGO_PKG_VERSION"),
-            method
-        )
+    /// The full expected report: header, the given body lines, and the footer.
+    fn report(number: usize, entity: &str, method: &str, body: &[&str]) -> String {
+        let rule = "-".repeat(60);
+        let version = env!("CARGO_PKG_VERSION");
+        let docs = format!("https://docs.rs/httpmock/{version}/httpmock/struct.When.html#method.{method}");
+        let mut lines = vec![rule.clone(), format!("{number} : {entity} Mismatch "), rule];
+        lines.extend(body.iter().map(|line| line.to_string()));
+        lines.extend([
+            String::new(),
+            format!("Matcher:  {method}"),
+            format!("Docs:     {docs}"),
+            "\u{2002}".to_string(),
+            String::new(),
+        ]);
+        lines.join("\n")
     }
 
-    fn attribute(operator: &str, expected: &str, actual: Option<&str>) -> KeyValueComparisonAttribute {
-        KeyValueComparisonAttribute {
+    fn attribute(operator: &str, expected: &str, actual: Option<&str>) -> Option<KeyValueComparisonAttribute> {
+        Some(KeyValueComparisonAttribute {
             operator: operator.to_string(),
             expected: expected.to_string(),
             actual: actual.map(str::to_string),
-        }
+        })
     }
 
     fn pair(key: &str, value: &str) -> KeyValueComparisonKeyValuePair {
@@ -380,7 +381,7 @@ mod test {
         }
     }
 
-    fn key_value_mismatch(comparison: KeyValueComparison) -> Mismatch {
+    fn header_mismatch(comparison: KeyValueComparison) -> Mismatch {
         Mismatch {
             entity: "header".to_string(),
             matcher_method: "header".to_string(),
@@ -393,15 +394,32 @@ mod test {
         }
     }
 
+    fn body_mismatch(expected: &str, actual: &str, same: &str) -> Mismatch {
+        Mismatch {
+            entity: "body".to_string(),
+            matcher_method: "body".to_string(),
+            comparison: Some(SingleValueComparison {
+                operator: "equals".to_string(),
+                expected: expected.to_string(),
+                actual: actual.to_string(),
+            }),
+            key_value_comparison: None,
+            function_comparison: None,
+            matching_strategy: None,
+            best_match: false,
+            diff: Some(DiffResult {
+                differences: vec![Diff::Same(same.to_string())],
+                distance: 0.0,
+                tokenizer: Tokenizer::Line,
+            }),
+        }
+    }
+
     #[test]
     fn key_value_mismatch_aligns_expected_rows() {
-        let mismatch = key_value_mismatch(KeyValueComparison {
-            key: Some(attribute("equals", "content-type", Some("content-type"))),
-            value: Some(attribute(
-                "equals_case_insensitive",
-                "application/json",
-                Some("text/plain"),
-            )),
+        let mismatch = header_mismatch(KeyValueComparison {
+            key: attribute("equals", "content-type", Some("content-type")),
+            value: attribute("equals_case_insensitive", "application/json", Some("text/plain")),
             expected_count: None,
             actual_count: None,
             all: vec![pair("content-type", "text/plain"), pair("accept", "*/*")],
@@ -409,34 +427,30 @@ mod test {
 
         let (output, _) = create_mismatch_output(0, &mismatch);
 
-        let expected = [
-            "-".repeat(60),
-            "1 : Header Mismatch ".to_string(),
-            "-".repeat(60),
-            "Expected:".to_string(),
-            "    key    [equals]                   content-type".to_string(),
-            "    value  [equals_case_insensitive]  application/json".to_string(),
-            String::new(),
-            "Received (most similar header):".to_string(),
-            "    content-type=text/plain".to_string(),
-            String::new(),
-            "All received header values:".to_string(),
-            "    1. content-type=text/plain".to_string(),
-            "    2. accept=*/*".to_string(),
-            String::new(),
-            "Matcher:  header".to_string(),
-            format!("Docs:     {}", docs_link("header")),
-            "\u{2002}".to_string(),
-            String::new(),
-        ]
-        .join("\n");
+        let expected = report(
+            1,
+            "Header",
+            "header",
+            &[
+                "Expected:",
+                "    key    [equals]                   content-type",
+                "    value  [equals_case_insensitive]  application/json",
+                "",
+                "Received (most similar header):",
+                "    content-type=text/plain",
+                "",
+                "All received header values:",
+                "    1. content-type=text/plain",
+                "    2. accept=*/*",
+            ],
+        );
         assert_eq!(output, expected);
     }
 
     #[test]
     fn key_only_count_mismatch_aligns_single_row() {
-        let mismatch = key_value_mismatch(KeyValueComparison {
-            key: Some(attribute("equals", "x-id", None)),
+        let mismatch = header_mismatch(KeyValueComparison {
+            key: attribute("equals", "x-id", None),
             value: None,
             expected_count: Some(2),
             actual_count: Some(1),
@@ -445,93 +459,49 @@ mod test {
 
         let (output, diff) = create_mismatch_output(1, &mismatch);
 
-        let expected = [
-            "-".repeat(60),
-            "2 : Header Mismatch ".to_string(),
-            "-".repeat(60),
-            "Expected:".to_string(),
-            "    key  [equals]  x-id".to_string(),
-            String::new(),
-            "to appear 2 times but appeared 1".to_string(),
-            String::new(),
-            "All received header values:".to_string(),
-            "    1. x-id=1".to_string(),
-            String::new(),
-            "Matcher:  header".to_string(),
-            format!("Docs:     {}", docs_link("header")),
-            "\u{2002}".to_string(),
-            String::new(),
-        ]
-        .join("\n");
+        let expected = report(
+            2,
+            "Header",
+            "header",
+            &[
+                "Expected:",
+                "    key  [equals]  x-id",
+                "",
+                "to appear 2 times but appeared 1",
+                "",
+                "All received header values:",
+                "    1. x-id=1",
+            ],
+        );
         assert_eq!(output, expected);
         assert_eq!(diff, Some(("2".to_string(), "1".to_string())));
     }
 
     #[test]
     fn single_value_mismatch_prints_diff() {
-        let mismatch = Mismatch {
-            entity: "body".to_string(),
-            matcher_method: "body".to_string(),
-            comparison: Some(SingleValueComparison {
-                operator: "equals".to_string(),
-                expected: "hello".to_string(),
-                actual: "hello".to_string(),
-            }),
-            key_value_comparison: None,
-            function_comparison: None,
-            matching_strategy: None,
-            best_match: false,
-            diff: Some(DiffResult {
-                differences: vec![Diff::Same("hello".to_string())],
-                distance: 0.0,
-                tokenizer: Tokenizer::Line,
-            }),
-        };
+        let (output, _) = create_mismatch_output(0, &body_mismatch("hello", "hello", "hello"));
 
-        let (output, _) = create_mismatch_output(0, &mismatch);
-
-        let expected = [
-            "-".repeat(60),
-            "1 : Body Mismatch ".to_string(),
-            "-".repeat(60),
-            "Expected body equals:".to_string(),
-            "hello".to_string(),
-            String::new(),
-            "Received:".to_string(),
-            "hello".to_string(),
-            String::new(),
-            "Diff:".to_string(),
-            "   | hello".to_string(),
-            String::new(),
-            "Matcher:  body".to_string(),
-            format!("Docs:     {}", docs_link("body")),
-            "\u{2002}".to_string(),
-            String::new(),
-        ]
-        .join("\n");
+        let expected = report(
+            1,
+            "Body",
+            "body",
+            &[
+                "Expected body equals:",
+                "hello",
+                "",
+                "Received:",
+                "hello",
+                "",
+                "Diff:",
+                "   | hello",
+            ],
+        );
         assert_eq!(output, expected);
     }
 
     #[test]
     fn request_data_containing_tabs_is_printed_verbatim() {
-        let mismatch = Mismatch {
-            entity: "body".to_string(),
-            matcher_method: "body".to_string(),
-            comparison: Some(SingleValueComparison {
-                operator: "equals".to_string(),
-                expected: "id\tname\n1\tAlice".to_string(),
-                actual: "id\tname\n1\tBob".to_string(),
-            }),
-            key_value_comparison: None,
-            function_comparison: None,
-            matching_strategy: None,
-            best_match: false,
-            diff: Some(DiffResult {
-                differences: vec![Diff::Same("id\tname\n".to_string())],
-                distance: 0.0,
-                tokenizer: Tokenizer::Line,
-            }),
-        };
+        let mismatch = body_mismatch("id\tname\n1\tAlice", "id\tname\n1\tBob", "id\tname\n");
 
         let (output, _) = create_mismatch_output(0, &mismatch);
 
