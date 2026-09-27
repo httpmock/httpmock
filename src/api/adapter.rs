@@ -7,7 +7,7 @@ use crate::common::data::{
     RequestRequirements,
 };
 
-pub mod local;
+pub(super) mod local;
 
 #[cfg(feature = "record")]
 use bytes::Bytes;
@@ -16,7 +16,7 @@ use thiserror::Error;
 use crate::common::data::{ForwardingRuleConfig, ProxyRuleConfig, RecordingRuleConfig};
 
 #[derive(Error, Debug)]
-pub enum ServerAdapterError {
+pub(super) enum ServerAdapterError {
     #[error("mock with ID {0} not found")]
     MockNotFound(usize),
     #[error("invalid mock definition: {0}")]
@@ -30,10 +30,10 @@ pub enum ServerAdapterError {
 }
 
 #[cfg(feature = "remote")]
-pub mod remote;
+pub(super) mod remote;
 
 #[async_trait]
-pub trait MockServerAdapter {
+pub(super) trait MockServerAdapter {
     fn host(&self) -> String;
     fn port(&self) -> u16;
     fn address(&self) -> &SocketAddr;

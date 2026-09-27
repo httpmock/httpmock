@@ -52,7 +52,7 @@ use crate::{
 /// - Monitor and verify that the expected requests are made by the client under test.
 /// - Simulate various network conditions and server responses, including errors and latencies.
 pub struct MockServer {
-    pub(crate) server_adapter: Option<Arc<dyn MockServerAdapter + Send + Sync>>,
+    pub(in crate::api) server_adapter: Option<Arc<dyn MockServerAdapter + Send + Sync>>,
     pool: Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>,
 }
 
