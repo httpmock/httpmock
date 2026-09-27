@@ -1,13 +1,4 @@
-extern crate serde_regex;
-
-use std::{
-    cmp::Ordering,
-    convert::{TryFrom, TryInto},
-    fmt,
-    fmt::Debug,
-    str::FromStr,
-    sync::Arc,
-};
+use std::{cmp::Ordering, fmt, fmt::Debug, str::FromStr, sync::Arc};
 
 use bytes::Bytes;
 #[cfg(feature = "cookies")]
@@ -724,9 +715,23 @@ impl fmt::Debug for MockServerHttpResponse {
     }
 }
 
+/// (De)serializes a [`regex::Regex`] as its pattern string.
+mod regex_string {
+    use serde::{Deserialize, Deserializer, Serializer, de::Error};
+
+    pub fn serialize<S: Serializer>(value: &regex::Regex, serializer: S) -> Result<S::Ok, S::Error> {
+        serializer.serialize_str(value.as_str())
+    }
+
+    pub fn deserialize<'de, D: Deserializer<'de>>(deserializer: D) -> Result<regex::Regex, D::Error> {
+        let pattern = std::borrow::Cow::<str>::deserialize(deserializer)?;
+        pattern.parse().map_err(Error::custom)
+    }
+}
+
 /// A general abstraction of an HTTP request for all handlers.
 #[derive(Serialize, Deserialize, Clone, Debug)]
-pub struct HttpMockRegex(#[serde(with = "serde_regex")] pub regex::Regex);
+pub struct HttpMockRegex(#[serde(with = "regex_string")] pub regex::Regex);
 
 impl Ord for HttpMockRegex {
     fn cmp(&self, other: &Self) -> Ordering {

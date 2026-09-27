@@ -3,7 +3,6 @@ use std::{
     cell::Cell,
     env,
     fs::File,
-    future::Future,
     io::Read,
     path::{Path, PathBuf},
     sync::Arc,
@@ -18,7 +17,6 @@ use std::{fs::create_dir_all, io::Write};
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;
 use futures_timer::Delay;
-use futures_util::pin_mut;
 use serde::{Deserialize, Serialize};
 
 // ===============================================================================================
@@ -90,8 +88,7 @@ impl<F: Future> Join for F {
         let waker = Waker::from(Arc::new(ThreadWaker(thread::current())));
         let mut context = Context::from_waker(&waker);
 
-        let future = self;
-        pin_mut!(future);
+        let mut future = std::pin::pin!(self);
 
         loop {
             match future.as_mut().poll(&mut context) {

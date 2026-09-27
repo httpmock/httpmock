@@ -2,7 +2,7 @@
 //!
 //! Recordings and file-based mock files are stored as `StaticMockDefinition` documents.
 
-use std::{convert::TryInto, str::FromStr};
+use std::str::FromStr;
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;

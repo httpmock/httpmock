@@ -12,10 +12,10 @@ use crate::common::data::{ActiveMock, ClosestMatch, MockDefinition, RequestRequi
 #[cfg(feature = "record")]
 use crate::common::data::{ActiveRecording, RecordingRuleConfig};
 
-pub mod local;
+pub(super) mod local;
 
 #[derive(Error, Debug)]
-pub enum ServerAdapterError {
+pub(super) enum ServerAdapterError {
     #[error("mock with ID {0} not found")]
     MockNotFound(usize),
     #[cfg(feature = "remote")]
@@ -32,10 +32,10 @@ pub enum ServerAdapterError {
 }
 
 #[cfg(feature = "remote")]
-pub mod remote;
+pub(super) mod remote;
 
 #[async_trait]
-pub trait MockServerAdapter {
+pub(super) trait MockServerAdapter {
     fn host(&self) -> String;
     fn port(&self) -> u16;
     fn address(&self) -> &SocketAddr;

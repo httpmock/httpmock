@@ -10,10 +10,7 @@ mod query_param;
 mod scheme;
 mod urlencoded_body;
 
-use std::{
-    convert::TryInto,
-    panic::{self, AssertUnwindSafe, UnwindSafe},
-};
+use std::panic::{self, AssertUnwindSafe, UnwindSafe};
 
 pub fn expect_fails_with<F>(f: F, expected_texts: Vec<&str>)
 where

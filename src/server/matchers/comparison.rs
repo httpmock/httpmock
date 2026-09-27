@@ -1,4 +1,4 @@
-use std::{convert::TryInto, ops::Deref};
+use std::ops::Deref;
 
 use regex::Regex;
 
@@ -973,7 +973,50 @@ pub fn distance_for<T>(expected: &[T], actual: &[T]) -> usize
 where
     T: PartialEq + Sized,
 {
-    stringmetrics::levenshtein_limit_iter(expected.iter(), actual.iter(), u32::MAX) as usize
+    // Trim the common prefix and suffix first: distances are often computed between
+    // large, mostly identical values (e.g. request bodies), where trimming reduces the
+    // quadratic algorithm below to the small differing middle part. Trimming does not
+    // change the result, because an optimal edit sequence never touches equal
+    // leading/trailing parts.
+    let prefix_len = expected.iter().zip(actual).take_while(|(e, a)| e == a).count();
+    let (expected, actual) = (&expected[prefix_len..], &actual[prefix_len..]);
+
+    let suffix_len = expected
+        .iter()
+        .rev()
+        .zip(actual.iter().rev())
+        .take_while(|(e, a)| e == a)
+        .count();
+    let (a, b) = (
+        &expected[..expected.len() - suffix_len],
+        &actual[..actual.len() - suffix_len],
+    );
+
+    // The distance is symmetric, so let `b` be the shorter sequence to bound the DP row
+    // allocation below by the shorter operand (e.g. a small expected value compared
+    // against a large request body).
+    let (a, b) = if a.len() < b.len() { (b, a) } else { (a, b) };
+
+    // The classic single-row dynamic programming algorithm. row[j] holds the distance
+    // between the first `i` elements of `a` (0 before the outer loop's first iteration)
+    // and the first `j` elements of `b`.
+    let mut row: Vec<usize> = (0..=b.len()).collect();
+
+    for (i, a_elem) in a.iter().enumerate() {
+        let mut diagonal = row[0];
+        row[0] = i + 1;
+
+        for (j, b_elem) in b.iter().enumerate() {
+            let substitution = diagonal + usize::from(a_elem != b_elem);
+            let insertion = row[j] + 1;
+            let deletion = row[j + 1] + 1;
+
+            diagonal = row[j + 1];
+            row[j + 1] = substitution.min(insertion).min(deletion);
+        }
+    }
+
+    row[b.len()]
 }
 
 pub fn regex_unmatched_length(text: &str, re: &HttpMockRegex) -> usize {
@@ -1218,7 +1261,6 @@ pub fn string_matches_regex(
 #[cfg(test)]
 mod string_matches_regex_tests {
     use super::*;
-    use crate::common::data::HttpMockRegex;
 
     #[test]
     fn test_string_matches_regex() {
@@ -1366,8 +1408,6 @@ pub fn regex_string_distance(
 
 #[cfg(test)]
 mod regex_string_distance_tests {
-    use regex::Regex;
-
     use super::*;
 
     #[test]
