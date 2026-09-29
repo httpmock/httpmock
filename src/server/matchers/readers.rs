@@ -4,6 +4,7 @@ pub mod expectations {
     use serde_json::Value;
 
     pub type KeyValue<'a> = (&'a String, Option<&'a String>);
+    #[cfg(feature = "cookies")]
     pub type RegexKeyValue<'a> = (&'a HttpMockRegex, Option<&'a HttpMockRegex>);
     pub type RegexKeyValueCount<'a> = (Option<&'a HttpMockRegex>, Option<&'a HttpMockRegex>, usize);
     pub type RequestPredicate = Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>;
@@ -305,6 +306,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie(mock: &RequestRequirements) -> Option<Vec<KeyValue<'_>>> {
         mock.cookie
             .as_ref()
@@ -312,6 +314,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_not
             .as_ref()
@@ -319,6 +322,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_exists(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_exists
             .as_ref()
@@ -326,6 +330,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_missing(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_missing
             .as_ref()
@@ -333,6 +338,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_includes(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_includes
             .as_ref()
@@ -340,6 +346,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_excludes(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_excludes
             .as_ref()
@@ -347,6 +354,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_prefix(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_prefix
             .as_ref()
@@ -354,6 +362,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_prefix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_prefix_not
             .as_ref()
@@ -361,6 +370,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_suffix(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_suffix
             .as_ref()
@@ -368,6 +378,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_suffix_not(mock: &RequestRequirements) -> Option<Vec<(&String, Option<&String>)>> {
         mock.cookie_suffix_not
             .as_ref()
@@ -375,6 +386,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_matches(mock: &RequestRequirements) -> Option<Vec<RegexKeyValue<'_>>> {
         mock.cookie_matches
             .as_ref()
@@ -382,6 +394,7 @@ pub mod expectations {
     }
 
     #[inline]
+    #[cfg(feature = "cookies")]
     pub fn cookie_count(mock: &RequestRequirements) -> Option<Vec<RegexKeyValueCount<'_>>> {
         mock.cookie_count
             .as_ref()

@@ -119,9 +119,6 @@ where
 #[allow(clippy::upper_case_acronyms)]
 pub enum KeyValueOperator {
     AND,
-    NAND,
-    NOR,
-    OR,
     IMPLICATION,
 }
 
@@ -188,10 +185,7 @@ where
                     };
 
                     match self.operator {
-                        KeyValueOperator::NAND => !(key_matches && value_matches),
                         KeyValueOperator::AND => key_matches && value_matches,
-                        KeyValueOperator::NOR => !(key_matches || value_matches),
-                        KeyValueOperator::OR => key_matches || value_matches,
                         KeyValueOperator::IMPLICATION => !key_matches || value_matches,
                     }
                 };

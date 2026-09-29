@@ -5,6 +5,10 @@ use bytes::Bytes;
 use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
 
+#[cfg(feature = "proxy")]
+use crate::common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig};
+#[cfg(feature = "record")]
+use crate::common::data::{ActiveRecording, RecordingRuleConfig};
 use crate::{
     api::{
         MockServerAdapter,
@@ -16,10 +20,7 @@ use crate::{
         },
     },
     common::{
-        data::{
-            ActiveForwardingRule, ActiveMock, ActiveProxyRule, ActiveRecording, ClosestMatch, ForwardingRuleConfig,
-            MockDefinition, MockServerHttpResponse, ProxyRuleConfig, RecordingRuleConfig, RequestRequirements,
-        },
+        data::{ActiveMock, ClosestMatch, MockDefinition, MockServerHttpResponse, RequestRequirements},
         http::HttpClient,
     },
 };
@@ -220,6 +221,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         Ok(Some(response))
     }
 
+    #[cfg(feature = "proxy")]
     async fn create_forwarding_rule(
         &self,
         config: ForwardingRuleConfig,
@@ -238,6 +240,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
+    #[cfg(feature = "proxy")]
     async fn delete_forwarding_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.request_empty(
             "DELETE",
@@ -249,6 +252,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
+    #[cfg(feature = "proxy")]
     async fn create_proxy_rule(&self, config: ProxyRuleConfig) -> Result<ActiveProxyRule, ServerAdapterError> {
         self.validate_request_requirements(&config.request_requirements)?;
 
@@ -264,6 +268,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
+    #[cfg(feature = "proxy")]
     async fn delete_proxy_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.request_empty(
             "DELETE",
@@ -275,6 +280,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
+    #[cfg(feature = "record")]
     async fn create_recording(&self, config: RecordingRuleConfig) -> Result<ActiveRecording, ServerAdapterError> {
         self.validate_request_requirements(&config.request_requirements)?;
 
@@ -290,6 +296,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         .await
     }
 
+    #[cfg(feature = "record")]
     async fn delete_recording(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.request_empty(
             "DELETE",
