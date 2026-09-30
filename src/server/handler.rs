@@ -6,7 +6,7 @@ use std::{
 
 use http::StatusCode;
 #[cfg(feature = "proxy")]
-use http::{HeaderValue, Uri};
+use http::{HeaderValue, Uri, uri::Scheme};
 use hyper::{Method, Request, Response, body::Bytes};
 use path_tree::{Path, PathTree};
 use serde::{Serialize, de::DeserializeOwned};
@@ -28,7 +28,7 @@ use crate::{
 use crate::{
     common::{
         data,
-        data::{Error as DataError, ErrorResponse, MockDefinition, RequestRequirements},
+        data::{ErrorResponse, HttpMockRequestConversionError, MockDefinition, RequestRequirements},
         runtime,
     },
     prelude::{HttpMockRequest, HttpMockResponse},
@@ -266,7 +266,7 @@ impl Handler {
     async fn catch_all(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let internal_request: HttpMockRequest = (&req)
             .try_into()
-            .map_err(|err: DataError| RequestConversion(err.to_string()))?;
+            .map_err(|err: HttpMockRequestConversionError| RequestConversion(err.to_string()))?;
 
         #[cfg(feature = "record")]
         let start = Instant::now();
@@ -384,10 +384,7 @@ impl Handler {
 
         // Record the upstream scheme (http/https) so the HttpClient can reconstruct
         // an absolute target URI after converting to origin-form.
-        let upstream_scheme: &'static str = match to_base_uri.scheme_str() {
-            Some("https") => "https",
-            _ => "http",
-        };
+        let upstream_scheme = to_base_uri.scheme().cloned().unwrap_or(Scheme::HTTP);
         req_parts
             .extensions
             .insert(crate::server::RequestMetadata::new(upstream_scheme));

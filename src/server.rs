@@ -18,14 +18,13 @@ pub use transport::{Error, HttpMockServer};
 /// Per-request metadata propagated through Hyper services.
 #[derive(Clone)]
 pub struct RequestMetadata {
-    /// The scheme ("http" or "https") associated with this request, used by the
-    /// upstream client to reconstruct the absolute target when needed.
-    pub scheme: &'static str,
+    /// The transport scheme used to reconstruct an absolute request target.
+    pub scheme: http::uri::Scheme,
 }
 
 impl RequestMetadata {
-    /// Create new RequestMetadata for a request with the given scheme.
-    pub fn new(scheme: &'static str) -> Self {
+    /// Creates request metadata for a transport scheme.
+    pub fn new(scheme: http::uri::Scheme) -> Self {
         Self { scheme }
     }
 }
