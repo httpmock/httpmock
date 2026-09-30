@@ -96,6 +96,8 @@
 
 mod common;
 
+#[cfg(feature = "proxy")]
+pub use api::ServerAdapterError;
 pub use api::{Method, Mock, MockServer, Regex, Then, When};
 pub use common::data::{HttpMockRequest, HttpMockResponse};
 mod api;

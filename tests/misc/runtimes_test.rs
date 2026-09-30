@@ -64,7 +64,8 @@ async fn test_fn() -> u16 {
                 when.any_request();
             });
         })
-        .await;
+        .await
+        .unwrap();
 
     // Outer proxy
     let server1 = MockServer::start_async().await;

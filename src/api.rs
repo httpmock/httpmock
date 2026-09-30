@@ -1,3 +1,5 @@
+#[cfg(feature = "proxy")]
+pub use adapter::ServerAdapterError;
 #[cfg(feature = "remote")]
 use adapter::remote::RemoteMockServerAdapter;
 use adapter::{MockServerAdapter, local::LocalMockServerAdapter};
