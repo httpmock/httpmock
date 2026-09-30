@@ -2,6 +2,7 @@
 
 use std::{
     cell::Cell,
+    io::ErrorKind,
     path::{Path, PathBuf},
     rc::Rc,
 };
@@ -100,6 +101,7 @@ impl<'a> Recording<'a> {
 
     /// Synchronously saves the recording to a specified directory with a timestamped filename.
     /// The file is named using a combination of the provided scenario name and a UNIX timestamp, formatted as YAML.
+    /// If that file already exists, a counter is appended instead of overwriting it.
     ///
     /// # Parameters
     /// - `dir`: The directory path where the file will be saved.
@@ -138,14 +140,27 @@ impl<'a> Recording<'a> {
         let timestamp = std::time::SystemTime::now()
             .duration_since(std::time::UNIX_EPOCH)?
             .as_secs();
-        let filename = format!("{}_{}.yaml", scenario, timestamp);
-        let filepath = dir.join(filename);
+        let bytes = rec.ok_or("No recording data available")?;
 
-        if let Some(bytes) = rec {
-            return write_file(&filepath, &bytes, true).await;
+        // Saves within the same second would get the same name, so add a
+        // counter instead of overwriting an existing recording.
+        for n in 0.. {
+            let filename = match n {
+                0 => format!("{}_{}.yaml", scenario, timestamp),
+                n => format!("{}_{}_{}.yaml", scenario, timestamp, n),
+            };
+            match write_file(dir.join(filename), &bytes, true).await {
+                Err(e)
+                    if e.downcast_ref::<std::io::Error>()
+                        .is_some_and(|e| e.kind() == ErrorKind::AlreadyExists) =>
+                {
+                    continue;
+                }
+                result => return result,
+            }
         }
 
-        Err("No recording data available".into())
+        unreachable!()
     }
 
     /// Synchronously saves the recording to the default directory (`target/httpmock/recordings`) with the scenario name.
