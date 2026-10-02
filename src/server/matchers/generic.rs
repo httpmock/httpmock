@@ -115,11 +115,9 @@ where
     }
 }
 
-// Preserve existing names while visibility and naming changes are reviewed separately.
-#[allow(clippy::upper_case_acronyms)]
 pub enum KeyValueOperator {
-    AND,
-    IMPLICATION,
+    And,
+    Implication,
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -185,8 +183,8 @@ where
                     };
 
                     match self.operator {
-                        KeyValueOperator::AND => key_matches && value_matches,
-                        KeyValueOperator::IMPLICATION => !key_matches || value_matches,
+                        KeyValueOperator::And => key_matches && value_matches,
+                        KeyValueOperator::Implication => !key_matches || value_matches,
                     }
                 };
 
