@@ -11,39 +11,19 @@ remains 1.88.
   are implementation details rather than a supported extension API; there is no
   replacement public path.
 
-- The methods `HttpMockRequest::query_params_map` and `HttpMockRequest::to_http_request`
-  were removed ([#246](https://github.com/httpmock/httpmock/pull/246)). Use
-  `query_params().into_iter().collect()` to obtain a map, and `http::Request::from(&request)`
-  to convert a request. Custom matchers written with `When::matches` may need these
-  adjustments.
-- The `MockExt` trait was removed and `Mock`'s public `id` field is now private
-  ([#285](https://github.com/httpmock/httpmock/pull/285)). Remove `MockExt` imports and
-  replace direct `mock.id` field access with `mock.id()`. The inherent `Mock::new`
-  constructor remains available.
 - The mock server only accepts HTTP/2 connections when the `http2` cargo feature is enabled
   ([#297](https://github.com/httpmock/httpmock/pull/297)). Previously, cleartext HTTP/2 with
   prior knowledge (e.g. gRPC clients) was accepted without it, because an internal dependency
   enabled HTTP/2 unconditionally. This fails at runtime, not at compile time: enable the
   `http2` feature to keep serving such clients. HTTPS is unaffected, as `h2` was already only
   offered via ALPN with the feature enabled.
-- The server state types `server::state::HttpMockStateManager` and
-  `server::state::MockServerState` were merged into `server::state::Manager`
-  ([#289](https://github.com/httpmock/httpmock/pull/289)). These are server internals; code
-  using the `MockServer` API is unaffected.
-- The `experimental` cargo feature was removed. It did not enable anything; remove it from
-  your feature list.
 
 #### Upgrading from 0.8
 
-Most code needs no changes. Code that fails to compile after upgrading needs at most these
-replacements:
-
-| 0.8 | 0.9 |
-|---|---|
-| `use httpmock::MockExt;` | remove the import; `Mock::new(id, &server)` is still available |
-| `mock.id` | `mock.id()` |
-| `request.query_params_map()` | `request.query_params().into_iter().collect()` |
-| `request.to_http_request()` | `http::Request::from(&request)` |
+Most code needs no changes. The request/body inspection helpers, `MockExt`, public
+`Mock.id`, old state type names and empty `experimental` feature remain available.
+Direct imports from `server::matchers` must be removed; use the `When` API to configure
+matchers instead.
 
 Tests whose clients speak cleartext HTTP/2 to the mock server additionally need the `http2`
 feature.
@@ -67,10 +47,19 @@ feature.
 
 ### Bug fixes
 
+- Preserve the 0.8.3 request/body helpers, mock extension trait and mutable ID, state
+  collections, low-level server constructor, and reachable conversion-error API.
+  These remain supported alongside the newer inherent methods and internal implementation.
+- Retain the empty `experimental` feature for existing dependency declarations.
+- Server TLS respects an application-installed rustls crypto provider. Ring is the
+  explicit fallback when no provider is installed, avoiding ambiguous feature detection.
+- File, method and certificate panic diagnostics retain their underlying error causes.
+- Preserve the Docker image's `/httpmock` working directory, Rust toolchain/source tree,
+  and `/usr/local/cargo/bin/httpmock` path. This retains the larger Rust-based runtime image.
 - [#229](https://github.com/httpmock/httpmock/pull/229): The `https` feature builds correctly
   again (hyper-rustls/ring is enabled) (thanks [@danieleades](https://github.com/danieleades))
-- [#242](https://github.com/httpmock/httpmock/pull/242): The ring crypto provider is selected
-  explicitly for server TLS (thanks [@danieleades](https://github.com/danieleades))
+- [#242](https://github.com/httpmock/httpmock/pull/242): Server TLS uses an explicit ring
+  fallback when no crypto provider is installed (thanks [@danieleades](https://github.com/danieleades))
 - [#243](https://github.com/httpmock/httpmock/pull/243): `DELETE /recordings/:id` now deletes
   recordings instead of proxy rules (thanks [@danieleades](https://github.com/danieleades))
 - [#245](https://github.com/httpmock/httpmock/pull/245): The configured `history_limit` is

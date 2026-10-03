@@ -180,6 +180,27 @@ impl HttpMockBytes {
         self.0.is_empty()
     }
 
+    /// Checks whether the body is empty or contains only ASCII whitespace.
+    pub fn is_blank(&self) -> bool {
+        self.0.iter().all(u8::is_ascii_whitespace)
+    }
+
+    /// Checks whether the body contains the UTF-8 bytes of `substring`.
+    pub fn contains_str(&self, substring: &str) -> bool {
+        substring.is_empty() || self.contains_slice(substring.as_bytes())
+    }
+
+    /// Checks whether the body contains `slice`. Panics if `slice` is empty.
+    pub fn contains_slice(&self, slice: &[u8]) -> bool {
+        self.0.windows(slice.len()).any(|window| window == slice)
+    }
+
+    /// Checks whether the body contains `vec`. Panics if `vec` is empty.
+    #[allow(clippy::ptr_arg)] // Preserve the released method signature, including function pointers.
+    pub fn contains_vec(&self, vec: &Vec<u8>) -> bool {
+        self.contains_slice(vec)
+    }
+
     /// Converts the bytes to a UTF-8 string, potentially lossy.
     /// Tries to parse input as a UTF-8 string first to avoid copying and creating an owned instance.
     /// If the bytes are not valid UTF-8, it creates a lossy string by replacing invalid characters

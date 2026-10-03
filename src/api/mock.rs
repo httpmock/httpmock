@@ -42,7 +42,7 @@ use crate::{
 /// assert_eq!(response2.status(), 404); // Expect a 404 status after the mock is deleted
 /// ```
 pub struct Mock<'a> {
-    id: usize,
+    pub id: usize,
     pub(crate) server: &'a MockServer,
 }
 
@@ -619,6 +619,23 @@ impl<'a> Mock<'a> {
     /// ```
     pub fn server_address(&self) -> &SocketAddr {
         self.server.server_adapter.as_ref().unwrap().address()
+    }
+}
+
+/// Additional operations for reconstructing a mock handle and reading its ID.
+pub trait MockExt<'a> {
+    #[allow(clippy::new_ret_no_self)] // Retain the released trait contract for downstream implementations.
+    fn new(id: usize, mock_server: &'a MockServer) -> Mock<'a>;
+    fn id(&self) -> usize;
+}
+
+impl<'a> MockExt<'a> for Mock<'a> {
+    fn new(id: usize, mock_server: &'a MockServer) -> Mock<'a> {
+        Mock::new(id, mock_server)
+    }
+
+    fn id(&self) -> usize {
+        self.id
     }
 }
 

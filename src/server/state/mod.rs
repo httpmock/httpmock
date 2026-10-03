@@ -73,6 +73,34 @@ pub struct Manager {
     state: Mutex<Inner>,
 }
 
+/// The released name for the mock server's state manager.
+pub type HttpMockStateManager = Manager;
+
+/// Raw state collections retained for compatibility with existing callers.
+/// Running servers manage their own state through [`Manager`].
+pub struct MockServerState {
+    pub mocks: BTreeMap<usize, ActiveMock>,
+    pub history: Vec<Arc<HttpMockRequest>>,
+    pub matchers: Vec<Box<dyn Matcher + Sync + Send>>,
+    pub forwarding_rules: BTreeMap<usize, crate::common::data::ActiveForwardingRule>,
+    pub proxy_rules: BTreeMap<usize, crate::common::data::ActiveProxyRule>,
+    pub recordings: BTreeMap<usize, crate::common::data::ActiveRecording>,
+}
+
+impl MockServerState {
+    /// Creates empty collections with the built-in matchers, as in 0.8.3.
+    pub fn new(_history_limit: usize) -> Self {
+        Self {
+            mocks: BTreeMap::new(),
+            history: Vec::new(),
+            matchers: matchers::all(),
+            forwarding_rules: BTreeMap::new(),
+            proxy_rules: BTreeMap::new(),
+            recordings: BTreeMap::new(),
+        }
+    }
+}
+
 impl Manager {
     pub fn new(history_limit: usize) -> Self {
         Self {

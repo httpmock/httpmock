@@ -1157,10 +1157,11 @@ impl MockServer {
         use std::fs;
 
         let path = path.into();
-        let content = fs::read_to_string(&path).unwrap_or_else(|_| {
+        let content = fs::read_to_string(&path).unwrap_or_else(|error| {
             panic!(
-                "could not read from file {}",
-                path.as_os_str().to_str().map_or(String::new(), |p| p.to_string())
+                "could not read from file {}: {:?}",
+                path.as_os_str().to_str().map_or(String::new(), |p| p.to_string()),
+                error
             )
         });
 

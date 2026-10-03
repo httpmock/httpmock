@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, fmt, fmt::Debug, str::FromStr, sync::Arc};
+use std::{cmp::Ordering, collections::HashMap, fmt, fmt::Debug, str::FromStr, sync::Arc};
 
 use bytes::Bytes;
 #[cfg(feature = "cookies")]
@@ -11,22 +11,29 @@ pub type RequestPredicate = Arc<dyn Fn(&HttpMockRequest) -> bool + Send + Sync>;
 
 use crate::{
     common::{
-        data::Error::{HeaderDeserialization, RequestConversion},
+        data::Error::{HeaderDeserializationError, RequestConversionError},
         util::HttpMockBytes,
     },
     server::{RequestMetadata, matchers::generic::MatchingStrategy},
 };
 
 #[derive(thiserror::Error, Debug)]
+#[allow(clippy::enum_variant_names)] // These variants are reachable through public TryFrom::Error types.
 pub enum Error {
     #[error("Cannot deserialize header: {0}")]
-    HeaderDeserialization(String),
+    HeaderDeserializationError(String),
     #[error("cannot convert to/from static mock: {0}")]
-    StaticMockConversion(String),
+    StaticMockConversionError(String),
     #[error("Cannot convert request to/from internal structure: {0}")]
-    RequestConversion(String),
+    RequestConversionError(String),
     #[error("Response conversion error: {0}")]
-    ResponseConversion(String),
+    ResponseConversionError(String),
+    #[error("Cookie parser error: {0}")]
+    CookieParserError(String),
+    #[error("JSONConversionError: {0}")]
+    JSONConversionError(#[from] serde_json::Error),
+    #[error("Invalid request data: {0}")]
+    InvalidRequestData(String),
 }
 
 /// A general abstraction of an HTTP request of `httpmock`.
@@ -216,6 +223,16 @@ impl HttpMockRequest {
             .collect()
     }
 
+    /// Returns the query parameters as a map, keeping the last value for duplicate keys.
+    pub fn query_params_map(&self) -> HashMap<String, String> {
+        self.query_params().into_iter().collect()
+    }
+
+    /// Converts this request to an HTTP request with a byte body.
+    pub fn to_http_request(&self) -> http::Request<Bytes> {
+        self.into()
+    }
+
     pub fn query_param_length(&self) -> usize {
         form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes()).count()
     }
@@ -277,7 +294,7 @@ fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)
         .iter()
         .map(|(name, value)| {
             // Attempt to convert the HeaderValue to a &str, returning an error if it fails.
-            let value_str = value.to_str().map_err(|e| RequestConversion(e.to_string()))?;
+            let value_str = value.to_str().map_err(|e| RequestConversionError(e.to_string()))?;
             Ok((name.as_str().to_string(), value_str.to_string()))
         })
         .collect()
@@ -417,20 +434,20 @@ impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
     fn try_from(res: &HttpMockResponse) -> Result<Self, Self::Error> {
         let raw_status = res
             .status
-            .ok_or_else(|| Error::ResponseConversion("missing status".into()))?;
+            .ok_or_else(|| Error::ResponseConversionError("missing status".into()))?;
 
         let status = http::StatusCode::from_u16(raw_status)
-            .map_err(|_| Error::ResponseConversion(format!("invalid status: {}", raw_status)))?;
+            .map_err(|_| Error::ResponseConversionError(format!("invalid status: {}", raw_status)))?;
 
         let mut builder = http::Response::builder().status(status);
 
         if let Some(headers) = &res.headers {
             for (name, value) in headers {
                 let header_name = http::header::HeaderName::try_from(name.clone())
-                    .map_err(|_| Error::ResponseConversion(format!("invalid header name: {}", name)))?;
+                    .map_err(|_| Error::ResponseConversionError(format!("invalid header name: {}", name)))?;
 
                 let header_value = http::header::HeaderValue::try_from(value.clone()).map_err(|_| {
-                    Error::ResponseConversion(format!("invalid header value for '{}': {}", name, value))
+                    Error::ResponseConversionError(format!("invalid header value for '{}': {}", name, value))
                 })?;
 
                 builder = builder.header(header_name, header_value);
@@ -441,7 +458,7 @@ impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
 
         builder
             .body(body)
-            .map_err(|e| Error::ResponseConversion(format!("http build error: {}", e)))
+            .map_err(|e| Error::ResponseConversionError(format!("http build error: {}", e)))
     }
 }
 
@@ -458,7 +475,7 @@ where
             let name = name.as_str().to_string();
             let val = value
                 .to_str()
-                .map_err(|_| Error::ResponseConversion(format!("non-utf8 header value for '{}'", name)))?;
+                .map_err(|_| Error::ResponseConversionError(format!("non-utf8 header value for '{}'", name)))?;
             headers.push((name, val.to_string()));
         }
 
@@ -633,7 +650,9 @@ impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
         let mut headers = Vec::with_capacity(value.headers().len());
 
         for (key, value) in value.headers() {
-            let value = value.to_str().map_err(|err| HeaderDeserialization(err.to_string()))?;
+            let value = value
+                .to_str()
+                .map_err(|err| HeaderDeserializationError(err.to_string()))?;
 
             headers.push((key.as_str().to_string(), value.to_string()))
         }
@@ -887,21 +906,18 @@ pub struct ActiveMock {
     pub is_static: bool,
 }
 
-#[cfg(feature = "proxy")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveForwardingRule {
     pub id: usize,
     pub config: ForwardingRuleConfig,
 }
 
-#[cfg(feature = "proxy")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveProxyRule {
     pub id: usize,
     pub config: ProxyRuleConfig,
 }
 
-#[cfg(feature = "record")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveRecording {
     pub id: usize,
@@ -1007,7 +1023,6 @@ pub struct Mismatch {
 // Configs and Builders
 // *************************************************************************************************
 
-#[cfg(feature = "record")]
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct RecordingRuleConfig {
     pub request_requirements: RequestRequirements,
@@ -1015,14 +1030,12 @@ pub struct RecordingRuleConfig {
     pub record_response_delays: bool,
 }
 
-#[cfg(feature = "proxy")]
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct ProxyRuleConfig {
     pub request_requirements: RequestRequirements,
     pub request_header: Vec<(String, String)>,
 }
 
-#[cfg(feature = "proxy")]
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct ForwardingRuleConfig {
     pub target_base_url: String,
@@ -1073,7 +1086,7 @@ impl From<&str> for Method {
     fn from(value: &str) -> Self {
         value
             .parse()
-            .unwrap_or_else(|_| panic!("Cannot parse HTTP method from string {:?}", value))
+            .unwrap_or_else(|error| panic!("Cannot parse HTTP method from string {:?}: {:?}", value, error))
     }
 }
 

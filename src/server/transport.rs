@@ -83,7 +83,12 @@ impl HttpMockServer {
     /// # Parameters
     /// - `handler`: The request handler.
     /// - `config`: The configuration settings for the mock server.
-    pub(crate) fn new(handler: handler::Handler, config: MockServerConfig) -> Self {
+    #[allow(clippy::boxed_local)] // Preserve the released constructor's parameter type.
+    pub fn new(handler: Box<handler::Handler>, config: MockServerConfig) -> Result<Self, Error> {
+        Ok(Self::from_parts(*handler, config))
+    }
+
+    pub(crate) fn from_parts(handler: handler::Handler, config: MockServerConfig) -> Self {
         HttpMockServer { handler, config }
     }
 
@@ -301,12 +306,12 @@ where
 {
     // Build the TLS acceptor for this connection.
     let cert_resolver = server.config.https.cert_resolver_factory.build(authority);
-    // Select the ring crypto provider explicitly rather than relying on
-    // `ServerConfig::builder`'s crate-feature auto-detection: dev-dependencies
-    // (e.g. reqwest) can enable rustls' `aws-lc-rs` feature alongside our `ring`
-    // feature, which makes auto-detection ambiguous and panics.
-    // See https://github.com/rustls/rustls/issues/1938
-    let mut server_config = ServerConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
+    // Respect the application's provider. An explicit fallback avoids ambiguous
+    // crate-feature auto-detection when both ring and aws-lc-rs are enabled.
+    let provider = rustls::crypto::CryptoProvider::get_default()
+        .cloned()
+        .unwrap_or_else(|| Arc::new(rustls::crypto::ring::default_provider()));
+    let mut server_config = ServerConfig::builder_with_provider(provider)
         .with_safe_default_protocol_versions()
         .map_err(|e| Error::TlsError(format!("cannot build TLS server config: {:?}", e)))?
         .with_no_client_auth()

@@ -4585,13 +4585,18 @@ impl Then {
         let path = Path::new(&resource_file_path);
         let absolute_path = match path.is_absolute() {
             true => path.to_path_buf(),
-            false => get_test_resource_file_path(&resource_file_path)
-                .unwrap_or_else(|_| panic!("Cannot create absolute path from string '{}'", resource_file_path)),
+            false => get_test_resource_file_path(&resource_file_path).unwrap_or_else(|error| {
+                panic!(
+                    "Cannot create absolute path from string '{}': {:?}",
+                    resource_file_path, error
+                )
+            }),
         };
-        let content = crate::common::util::read_file(&absolute_path).unwrap_or_else(|_| {
+        let content = crate::common::util::read_file(&absolute_path).unwrap_or_else(|error| {
             panic!(
-                "Cannot read from file {}",
-                absolute_path.to_str().expect("Invalid OS path")
+                "Cannot read from file {}: {:?}",
+                absolute_path.to_str().expect("Invalid OS path"),
+                error
             )
         });
         self.body(content)

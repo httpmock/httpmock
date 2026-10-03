@@ -1030,7 +1030,7 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
     ]
 }
 
-pub(crate) trait Matcher {
+pub trait Matcher {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool;
     fn distance(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> usize;
     fn mismatches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> Vec<Mismatch>;
