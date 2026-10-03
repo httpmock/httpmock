@@ -1,5 +1,6 @@
 #[cfg(feature = "record")]
 use std::path::{Path, PathBuf};
+use std::{cell::Cell, rc::Rc};
 
 #[cfg(feature = "record")]
 use bytes::Bytes;
@@ -11,7 +12,7 @@ use crate::{
     api::server::MockServer,
     common::{
         data::{RecordingRuleConfig, RequestRequirements},
-        util::Join,
+        util::{Join, update_cell},
     },
 };
 
@@ -274,14 +275,14 @@ impl<'a> Recording<'a> {
     }
 }
 
-pub struct ForwardingRuleBuilder<'a> {
-    pub(crate) request_requirements: &'a mut RequestRequirements,
-    pub(crate) headers: &'a mut Vec<(String, String)>,
+pub struct ForwardingRuleBuilder {
+    pub(crate) request_requirements: Rc<Cell<RequestRequirements>>,
+    pub(crate) headers: Rc<Cell<Vec<(String, String)>>>,
 }
 
-impl<'a> ForwardingRuleBuilder<'a> {
+impl ForwardingRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
-        self.headers.push((key.into(), value.into()));
+        update_cell(&self.headers, |headers| headers.push((key.into(), value.into())));
         self
     }
 
@@ -290,21 +291,21 @@ impl<'a> ForwardingRuleBuilder<'a> {
         WhenSpecFn: FnOnce(When),
     {
         when(When {
-            expectations: self.request_requirements,
+            expectations: self.request_requirements.clone(),
         });
         self
     }
 }
 
-pub struct ProxyRuleBuilder<'a> {
+pub struct ProxyRuleBuilder {
     // TODO: These fields are visible to the user, make them not public
-    pub(crate) request_requirements: &'a mut RequestRequirements,
-    pub(crate) headers: &'a mut Vec<(String, String)>,
+    pub(crate) request_requirements: Rc<Cell<RequestRequirements>>,
+    pub(crate) headers: Rc<Cell<Vec<(String, String)>>>,
 }
 
-impl<'a> ProxyRuleBuilder<'a> {
+impl ProxyRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
-        self.headers.push((key.into(), value.into()));
+        update_cell(&self.headers, |headers| headers.push((key.into(), value.into())));
         self
     }
 
@@ -313,25 +314,27 @@ impl<'a> ProxyRuleBuilder<'a> {
         WhenSpecFn: FnOnce(When),
     {
         when(When {
-            expectations: self.request_requirements,
+            expectations: self.request_requirements.clone(),
         });
 
         self
     }
 }
 
-pub struct RecordingRuleBuilder<'a> {
-    pub config: &'a mut RecordingRuleConfig,
+pub struct RecordingRuleBuilder {
+    pub config: Rc<Cell<RecordingRuleConfig>>,
 }
 
-impl<'a> RecordingRuleBuilder<'a> {
+impl RecordingRuleBuilder {
     pub fn record_request_header<IntoString: Into<String>>(self, header: IntoString) -> Self {
-        self.config.record_headers.push(header.into());
+        update_cell(&self.config, |config| config.record_headers.push(header.into()));
         self
     }
 
     pub fn record_request_headers<IntoString: Into<String>>(self, headers: Vec<IntoString>) -> Self {
-        self.config.record_headers.extend(headers.into_iter().map(Into::into));
+        update_cell(&self.config, |config| {
+            config.record_headers.extend(headers.into_iter().map(Into::into))
+        });
         self
     }
 
@@ -339,15 +342,36 @@ impl<'a> RecordingRuleBuilder<'a> {
     where
         WhenSpecFn: FnOnce(When),
     {
-        when(When {
-            expectations: &mut self.config.request_requirements,
+        struct RestoreRequirements<'a> {
+            target: &'a mut RequestRequirements,
+            source: Rc<Cell<RequestRequirements>>,
+        }
+
+        impl Drop for RestoreRequirements<'_> {
+            fn drop(&mut self) {
+                *self.target = self.source.take();
+            }
+        }
+
+        update_cell(&self.config, |config| {
+            let request_requirements = Rc::new(Cell::new(std::mem::take(&mut config.request_requirements)));
+            // Restore the nested filter before restoring the outer config, including on unwind.
+            let guard = RestoreRequirements {
+                target: &mut config.request_requirements,
+                source: request_requirements,
+            };
+
+            when(When {
+                expectations: guard.source.clone(),
+            });
         });
 
         self
     }
 
     pub fn record_response_delays(self, record: bool) -> Self {
-        self.config.record_response_delays = record;
+        update_cell(&self.config, |config| config.record_response_delays = record);
+
         self
     }
 }

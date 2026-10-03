@@ -1,5 +1,6 @@
 use std::{
     borrow::Cow,
+    cell::Cell,
     env,
     fs::{File, create_dir_all},
     io::{Read, Write},
@@ -14,6 +15,31 @@ use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;
 use futures_timer::Delay;
 use serde::{Deserialize, Serialize};
+
+// ===============================================================================================
+// Misc
+// ===============================================================================================
+pub(crate) fn update_cell<T: Sized + Default, F: FnOnce(&mut T)>(v: &Cell<T>, f: F) {
+    struct RestoreOnDrop<'a, T> {
+        cell: &'a Cell<T>,
+        value: Option<T>,
+    }
+
+    impl<T> Drop for RestoreOnDrop<'_, T> {
+        fn drop(&mut self) {
+            if let Some(value) = self.value.take() {
+                self.cell.set(value);
+            }
+        }
+    }
+
+    // A caught setter panic must not erase the configuration taken from the cell.
+    let mut guard = RestoreOnDrop {
+        cell: v,
+        value: Some(v.take()),
+    };
+    f(guard.value.as_mut().unwrap());
+}
 
 // ===============================================================================================
 // Retry
