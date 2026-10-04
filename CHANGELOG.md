@@ -15,6 +15,9 @@ remains 1.88.
   were removed ([#246](https://github.com/httpmock/httpmock/pull/246)). Use
   `request.body_ref()` to inspect the bytes directly, or `When::body_includes`
   for substring matching.
+- `HttpMockRequest::query_params_map()` was removed
+  ([#246](https://github.com/httpmock/httpmock/pull/246)). Collect `query_params()` into a
+  `HashMap<String, String>` instead; see the [README migration example](README.md#upgrading-from-08).
 - The `MockExt` trait was removed and `Mock`'s public `id` field is now private
   ([#285](https://github.com/httpmock/httpmock/pull/285)). Remove `MockExt` imports and
   replace direct `mock.id` field access with `mock.id()`. The inherent `Mock::new`
@@ -33,7 +36,7 @@ ID; reconstructing handles with `Mock::new(id, &server)` remains supported. Repl
 `body().is_blank()` with `body_ref().iter().all(u8::is_ascii_whitespace)` and use byte-slice
 operations for the removed `contains_*` helpers.
 
-The request conversion and query helpers, old state type names and empty `experimental`
+`HttpMockRequest::to_http_request()`, old state type names and the empty `experimental`
 feature remain available.
 Direct imports from `server::matchers` must be removed; use the `When` API to configure
 matchers instead.
@@ -62,7 +65,7 @@ feature.
 
 ### Bug fixes
 
-- Preserve the 0.8.3 request conversion and query helpers, state collections, low-level
+- Preserve the 0.8.3 request conversion helper, state collections, low-level
   server constructor, and reachable conversion-error API.
 - Retain the empty `experimental` feature for existing dependency declarations.
 - Server TLS respects an application-installed rustls crypto provider. Ring is the

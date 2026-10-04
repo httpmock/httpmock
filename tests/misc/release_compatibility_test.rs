@@ -13,11 +13,8 @@ fn make_request(body: Vec<u8>) -> HttpMockRequest {
 }
 
 #[test]
-fn request_helpers_preserve_query_and_binary_body() {
+fn request_conversion_preserves_uri_headers_and_binary_body() {
     let request = make_request(vec![0, 255, 128]);
-    let query = request.query_params_map();
-    assert_eq!(query["name"], "last value");
-    assert_eq!(query["encoded"], "&");
     let converted = request.to_http_request();
     assert_eq!(converted.uri(), &request.uri());
     assert_eq!(converted.headers()["x-test"], "retained");

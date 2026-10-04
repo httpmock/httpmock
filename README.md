@@ -159,6 +159,15 @@ when.is_true(|request| {
 The byte example treats an empty needle as a match; the removed byte helpers panicked
 for empty needles.
 
+`HttpMockRequest::query_params_map()` was also removed. Collect the pairs into a map:
+
+```rust
+let params: std::collections::HashMap<String, String> =
+    request.query_params().into_iter().collect();
+```
+
+As before, the last value is kept when a query parameter appears multiple times.
+
 ## License
 
 `httpmock` is free software: you can redistribute it and/or modify it under the terms of the MIT Public License.

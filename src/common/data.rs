@@ -1,4 +1,4 @@
-use std::{cmp::Ordering, collections::HashMap, fmt, fmt::Debug, str::FromStr, sync::Arc};
+use std::{cmp::Ordering, fmt, fmt::Debug, str::FromStr, sync::Arc};
 
 use bytes::Bytes;
 #[cfg(feature = "cookies")]
@@ -221,11 +221,6 @@ impl HttpMockRequest {
         form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes())
             .into_owned()
             .collect()
-    }
-
-    /// Returns the query parameters as a map, keeping the last value for duplicate keys.
-    pub fn query_params_map(&self) -> HashMap<String, String> {
-        self.query_params().into_iter().collect()
     }
 
     /// Converts this request to an HTTP request with a byte body.
