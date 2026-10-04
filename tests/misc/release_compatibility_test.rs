@@ -1,6 +1,6 @@
 use std::panic::{AssertUnwindSafe, catch_unwind};
 
-use httpmock::{HttpMockRequest, HttpMockResponse, Mock, MockExt, MockServer};
+use httpmock::{HttpMockRequest, MockServer};
 
 fn make_request(body: Vec<u8>) -> HttpMockRequest {
     http::Request::builder()
@@ -13,22 +13,6 @@ fn make_request(body: Vec<u8>) -> HttpMockRequest {
 }
 
 #[test]
-fn body_helpers_remain_available_on_requests_and_responses() {
-    let request = make_request(b"\xffready\0".to_vec());
-    let body = request.body();
-    assert!(body.contains_str("ready"));
-    assert!(body.contains_str(""));
-    assert!(body.contains_slice(b"\xffready"));
-    assert!(body.contains_vec(&b"ready\0".to_vec()));
-    assert!(!body.contains_str("missing"));
-    assert!(!body.is_blank());
-
-    let response = HttpMockResponse::builder().body(" \r\n\t").build();
-    assert!(response.body.as_ref().unwrap().is_blank());
-    assert!(make_request(Vec::new()).body().is_blank());
-}
-
-#[test]
 fn request_helpers_preserve_query_and_binary_body() {
     let request = make_request(vec![0, 255, 128]);
     let query = request.query_params_map();
@@ -38,33 +22,6 @@ fn request_helpers_preserve_query_and_binary_body() {
     assert_eq!(converted.uri(), &request.uri());
     assert_eq!(converted.headers()["x-test"], "retained");
     assert_eq!(converted.body().as_ref(), &[0, 255, 128]);
-}
-
-fn legacy_id<'a, T: MockExt<'a>>(mock: &T) -> usize {
-    mock.id()
-}
-
-#[test]
-fn mock_extension_trait_and_mutable_id_remain_usable() {
-    let server = MockServer::start();
-    let mut first = server.mock(|when, then| {
-        when.path("/first");
-        then.status(201);
-    });
-    let second = server.mock(|when, then| {
-        when.path("/second");
-        then.status(202);
-    });
-    let recreated = <Mock<'_> as MockExt<'_>>::new(legacy_id(&first), &server);
-    assert_eq!(recreated.id(), first.id);
-
-    first.id = second.id;
-    assert_eq!(reqwest::blocking::get(server.url("/second")).unwrap().status(), 202);
-    first.assert();
-    second.assert();
-    recreated.assert_calls(0);
-    let Mock { id, .. } = first;
-    assert_eq!(id, second.id);
 }
 
 type ConversionError = <HttpMockRequest as TryFrom<&'static http::Request<String>>>::Error;

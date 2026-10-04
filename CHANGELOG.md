@@ -11,6 +11,14 @@ remains 1.88.
   are implementation details rather than a supported extension API; there is no
   replacement public path.
 
+- The body helpers `is_blank`, `contains_str`, `contains_slice` and `contains_vec`
+  were removed ([#246](https://github.com/httpmock/httpmock/pull/246)). Use
+  `request.body_ref()` to inspect the bytes directly, or `When::body_includes`
+  for substring matching.
+- The `MockExt` trait was removed and `Mock`'s public `id` field is now private
+  ([#285](https://github.com/httpmock/httpmock/pull/285)). Remove `MockExt` imports and
+  replace direct `mock.id` field access with `mock.id()`. The inherent `Mock::new`
+  constructor remains available.
 - The mock server only accepts HTTP/2 connections when the `http2` cargo feature is enabled
   ([#297](https://github.com/httpmock/httpmock/pull/297)). Previously, cleartext HTTP/2 with
   prior knowledge (e.g. gRPC clients) was accepted without it, because an internal dependency
@@ -20,8 +28,13 @@ remains 1.88.
 
 #### Upgrading from 0.8
 
-Most code needs no changes. The request/body inspection helpers, `MockExt`, public
-`Mock.id`, old state type names and empty `experimental` feature remain available.
+Most code needs no changes. Remove `MockExt` imports and use `mock.id()` to read a mock's
+ID; reconstructing handles with `Mock::new(id, &server)` remains supported. Replace
+`body().is_blank()` with `body_ref().iter().all(u8::is_ascii_whitespace)` and use byte-slice
+operations for the removed `contains_*` helpers.
+
+The request conversion and query helpers, old state type names and empty `experimental`
+feature remain available.
 Direct imports from `server::matchers` must be removed; use the `When` API to configure
 matchers instead.
 
@@ -47,9 +60,8 @@ feature.
 
 ### Bug fixes
 
-- Preserve the 0.8.3 request/body helpers, mock extension trait and mutable ID, state
-  collections, low-level server constructor, and reachable conversion-error API.
-  These remain supported alongside the newer inherent methods and internal implementation.
+- Preserve the 0.8.3 request conversion and query helpers, state collections, low-level
+  server constructor, and reachable conversion-error API.
 - Retain the empty `experimental` feature for existing dependency declarations.
 - Server TLS respects an application-installed rustls crypto provider. Ring is the
   explicit fallback when no provider is installed, avoiding ambiguous feature detection.
