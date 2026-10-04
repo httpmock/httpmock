@@ -164,26 +164,26 @@ impl Manager {
     pub(crate) fn verify(&self, requirements: &RequestRequirements) -> Result<Option<ClosestMatch>, Error> {
         let state = self.state.lock().unwrap();
 
+        // Finish filtering before scoring, since custom predicates run in both phases.
         let non_matching_requests: Vec<&Arc<HttpMockRequest>> = state
             .history
             .iter()
             .filter(|req| !request_matches(&state.matchers, req, requirements))
             .collect();
 
-        let request_distances = get_distances(&non_matching_requests, &state.matchers, requirements);
-        let best_matches = get_min_distance_requests(&request_distances);
-
-        let closes_match_request_idx = match best_matches.first() {
-            None => return Ok(None),
-            Some(idx) => *idx,
+        let Some((request_index, req)) = non_matching_requests
+            .into_iter()
+            .enumerate()
+            .min_by_key(|(_, req)| get_request_distance(req, requirements, &state.matchers))
+        else {
+            return Ok(None);
         };
 
-        let req = non_matching_requests.get(closes_match_request_idx).unwrap();
         let mismatches = get_request_mismatches(req, requirements, &state.matchers);
 
         Ok(Some(ClosestMatch {
             request: HttpMockRequest::clone(req),
-            request_index: closes_match_request_idx,
+            request_index,
             mismatches,
         }))
     }
@@ -247,18 +247,6 @@ fn request_matches(
     matchers.iter().all(|x| x.matches(req, request_requirements))
 }
 
-fn get_distances(
-    history: &[&Arc<HttpMockRequest>],
-    matchers: &[Box<dyn Matcher + Sync + Send>],
-    mock_rr: &RequestRequirements,
-) -> BTreeMap<usize, usize> {
-    history
-        .iter()
-        .enumerate()
-        .map(|(idx, req)| (idx, get_request_distance(req, mock_rr, matchers)))
-        .collect()
-}
-
 fn get_request_distance(
     req: &Arc<HttpMockRequest>,
     mock_request_requirements: &RequestRequirements,
@@ -268,24 +256,6 @@ fn get_request_distance(
         .iter()
         .map(|matcher| matcher.distance(req, mock_request_requirements))
         .sum()
-}
-
-fn get_min_distance_requests(request_distances: &BTreeMap<usize, usize>) -> Vec<usize> {
-    // Find the element with the maximum matches
-    let min_elem = request_distances
-        .iter()
-        .min_by(|(_idx1, d1), (_idx2, d2)| (**d1).cmp(d2));
-
-    let max = match min_elem {
-        None => return Vec::new(),
-        Some((_, n)) => *n,
-    };
-
-    request_distances
-        .iter()
-        .filter(|(_idx, distance)| **distance == max)
-        .map(|(idx, _)| *idx)
-        .collect()
 }
 
 fn get_request_mismatches(
@@ -302,14 +272,76 @@ mod tests {
     use crate::common::util::HttpMockBytes;
 
     fn dummy_request() -> HttpMockRequest {
+        request("/test")
+    }
+
+    fn request(path: &str) -> HttpMockRequest {
         HttpMockRequest::new(
             "http".to_string(),
-            "/test".to_string(),
+            path.to_string(),
             "GET".to_string(),
             Vec::new(),
             "HTTP/1.1".to_string(),
             HttpMockBytes::from(bytes::Bytes::new()),
         )
+    }
+
+    #[test]
+    fn verify_returns_none_without_non_matching_requests() {
+        let manager = Manager::default();
+        let requirements = RequestRequirements::default();
+
+        assert!(manager.verify(&requirements).unwrap().is_none());
+
+        manager.serve_mock(&dummy_request()).unwrap();
+
+        assert!(manager.verify(&requirements).unwrap().is_none());
+    }
+
+    #[test]
+    fn verify_selects_first_closest_request_and_uses_filtered_index() {
+        let manager = Manager::default();
+        let requirements = RequestRequirements {
+            path: Some("/target".to_string()),
+            ..Default::default()
+        };
+
+        for path in ["/target", "/distant", "/targea", "/target", "/targeb"] {
+            manager.serve_mock(&request(path)).unwrap();
+        }
+
+        let closest = manager.verify(&requirements).unwrap().unwrap();
+
+        assert_eq!(closest.request.uri_str(), "/targea");
+        assert_eq!(closest.request_index, 1);
+        assert_eq!(closest.mismatches.len(), 1);
+        assert_eq!(closest.mismatches[0].matcher_method, "path");
+    }
+
+    #[test]
+    fn verify_filters_all_requests_before_scoring_custom_predicates() {
+        let manager = Manager::default();
+        let calls = Arc::new(Mutex::new(Vec::new()));
+        let predicate_calls = Arc::clone(&calls);
+        let requirements = RequestRequirements {
+            is_true: Some(vec![Arc::new(move |req| {
+                predicate_calls.lock().unwrap().push(req.uri_str().to_string());
+                req.uri_str() == "/matching"
+            })]),
+            ..Default::default()
+        };
+
+        for path in ["/first", "/matching", "/second"] {
+            manager.serve_mock(&request(path)).unwrap();
+        }
+
+        let closest = manager.verify(&requirements).unwrap().unwrap();
+
+        assert_eq!(closest.request.uri_str(), "/first");
+        assert_eq!(
+            *calls.lock().unwrap(),
+            ["/first", "/matching", "/second", "/first", "/second", "/first"]
+        );
     }
 
     #[test]
