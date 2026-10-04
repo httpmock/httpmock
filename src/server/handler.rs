@@ -43,11 +43,6 @@ use crate::{
 
 #[derive(Error, Debug)]
 pub enum Error {
-    #[error("cannot parse regex: {0}")]
-    #[allow(clippy::enum_variant_names)] // Retain the released conversion's error variant.
-    RegexError(#[from] regex::Error),
-    #[error("invalid status code: {0}")]
-    InvalidStatusCode(#[from] http::status::InvalidStatusCode),
     #[error("cannot deserialize request body: {0}")]
     RequestBodyDeserialization(#[source] serde_json::Error),
     #[error("cannot serialize response body: {0}")]

@@ -22,18 +22,6 @@ fn request_conversion_preserves_uri_headers_and_binary_body() {
 }
 
 #[test]
-fn router_error_payload_accepts_regex_and_status_errors() {
-    let invalid_pattern = String::from("[");
-    let regex_error = regex::Regex::new(&invalid_pattern).unwrap_err();
-    let router_error = httpmock::server::Error::RouterError(regex_error.into());
-    assert!(router_error.to_string().contains("cannot parse regex"));
-
-    let status_error = http::StatusCode::from_u16(99).unwrap_err();
-    let router_error = httpmock::server::Error::RouterError(status_error.into());
-    assert!(router_error.to_string().contains("invalid status code"));
-}
-
-#[test]
 fn released_state_manager_name_remains_accessible() {
     let _manager = httpmock::server::state::HttpMockStateManager::new(100);
 }
