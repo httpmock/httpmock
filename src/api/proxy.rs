@@ -322,7 +322,7 @@ impl ProxyRuleBuilder {
 }
 
 pub struct RecordingRuleBuilder {
-    pub config: Arc<Mutex<RecordingRuleConfig>>,
+    pub(crate) config: Arc<Mutex<RecordingRuleConfig>>,
 }
 
 impl RecordingRuleBuilder {
@@ -372,5 +372,45 @@ struct RestoreRequirements<'a> {
 impl Drop for RestoreRequirements<'_> {
     fn drop(&mut self) {
         lock(self.target).request_requirements = take(&self.source);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+
+    use super::*;
+
+    struct InvalidPath;
+
+    impl TryFrom<InvalidPath> for String {
+        type Error = &'static str;
+
+        fn try_from(_: InvalidPath) -> Result<Self, Self::Error> {
+            Err("invalid path")
+        }
+    }
+
+    #[test]
+    fn caught_recording_filter_panic_preserves_configuration() {
+        let rule = RecordingRuleBuilder {
+            config: Default::default(),
+        }
+        .record_response_delays(true)
+        .filter(|when| {
+            when.path("/retained");
+        });
+        let config = rule.config.clone();
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            rule.filter(|when| {
+                when.path("/updated").path(InvalidPath);
+            });
+        }));
+
+        assert!(result.is_err());
+        let config = lock(&config);
+        assert!(config.record_response_delays);
+        assert_eq!(config.request_requirements.path.as_deref(), Some("/updated"));
     }
 }

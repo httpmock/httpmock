@@ -176,45 +176,6 @@ fn caught_setter_panic_preserves_earlier_matchers() {
     mock.assert();
 }
 
-#[cfg(feature = "record")]
-fn fresh_recording_builder() -> httpmock::RecordingRuleBuilder {
-    httpmock::RecordingRuleBuilder {
-        config: Default::default(),
-    }
-}
-
-#[cfg(feature = "record")]
-#[test]
-fn recording_builders_can_own_and_share_configuration() {
-    let first = fresh_recording_builder();
-    let second = httpmock::RecordingRuleBuilder {
-        config: first.config.clone(),
-    };
-
-    second.record_response_delays(true);
-    assert!(first.config.lock().unwrap().record_response_delays);
-}
-
-#[cfg(feature = "record")]
-#[test]
-fn caught_recording_filter_panic_preserves_configuration() {
-    let rule = fresh_recording_builder().record_response_delays(true).filter(|when| {
-        when.path("/retained");
-    });
-    let config = rule.config.clone();
-
-    let result = catch_unwind(AssertUnwindSafe(|| {
-        rule.filter(|when| {
-            when.path("/updated").path(InvalidPath);
-        });
-    }));
-
-    assert!(result.is_err());
-    let config = config.lock().unwrap();
-    assert!(config.record_response_delays);
-    assert_eq!(config.request_requirements.path.as_deref(), Some("/updated"));
-}
-
 fn assert_send_sync<T: Send + Sync>() {}
 
 #[test]
