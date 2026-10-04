@@ -18,7 +18,6 @@ warnings = { level = "deny", priority = -1 }
 redundant_imports = "warn"
 unused_extern_crates = "warn"
 unsafe_code = "forbid"
-dead_code = "allow"
 
 [lints.clippy]
 # `priority = -1` keeps the group below the individual entries that follow it, so a specific

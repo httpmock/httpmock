@@ -87,6 +87,9 @@ feature.
   building a mismatch report for a request value containing multi-byte UTF-8 characters
 - Mismatch reports print request and mock values containing tab characters (e.g. TSV bodies)
   verbatim instead of re-aligning them into columns
+- `Recording::save` and `save_to` no longer overwrite a recording saved under the same
+  scenario name in the same second; the second file gets a counter suffix
+  (`<scenario>_<timestamp>_1.yaml`)
 
 ### Internal improvements and CI
 

@@ -15,7 +15,7 @@ use crate::api::RemoteMockServerAdapter;
 use crate::api::{
     common::data::RecordingRuleConfig,
     mock::MockSet,
-    proxy::{Recording, RecordingRuleBuilder},
+    record::{Recording, RecordingRuleBuilder},
 };
 #[cfg(feature = "remote")]
 use crate::common::http::HttpMockHttpClient;
@@ -67,96 +67,6 @@ impl MockServer {
         server.reset_async().await;
 
         server
-    }
-
-    /// Asynchronously connects to a remote mock server running in standalone mode.
-    ///
-    /// # Arguments
-    /// * `address` - A string slice representing the address in the format `<host>:<port>`, e.g., "127.0.0.1:8080".
-    ///
-    /// # Returns
-    /// An instance of `Self` representing the connected mock server.
-    ///
-    /// # Panics
-    /// This method will panic if the address cannot be parsed, resolved to an IPv4 address, or if the mock server is unreachable.
-    ///
-    /// # Note
-    /// This method requires the `remote` feature to be enabled.
-    #[cfg(feature = "remote")]
-    pub async fn connect_async(address: &str) -> Self {
-        use std::net::ToSocketAddrs;
-        let addr = address
-            .to_socket_addrs()
-            .expect("Cannot parse address")
-            .find(|addr| addr.is_ipv4())
-            .expect("Not able to resolve the provided host name to an IPv4 address");
-
-        let adapter = REMOTE_SERVER_POOL_REF
-            .take_or_create(|| Arc::new(RemoteMockServerAdapter::new(addr, REMOTE_SERVER_CLIENT.clone())))
-            .await;
-        Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await
-    }
-
-    /// Synchronously connects to a remote mock server running in standalone mode.
-    ///
-    /// # Arguments
-    /// * `address` - A string slice representing the address in the format `<host>:<port>`, e.g., "127.0.0.1:8080".
-    ///
-    /// # Returns
-    /// An instance of `Self` representing the connected mock server.
-    ///
-    /// # Panics
-    /// This method will panic if the address cannot be parsed, resolved to an IPv4 address, or if the mock server is unreachable.
-    ///
-    /// # Note
-    /// This method requires the `remote` feature to be enabled.
-    #[cfg(feature = "remote")]
-    pub fn connect(address: &str) -> Self {
-        Self::connect_async(address).join()
-    }
-
-    /// Asynchronously connects to a remote mock server running in standalone mode
-    /// using connection parameters stored in the `HTTPMOCK_HOST` and `HTTPMOCK_PORT`
-    /// environment variables.
-    ///
-    /// # Returns
-    /// An instance of `Self` representing the connected mock server.
-    ///
-    /// # Panics
-    /// This method will panic if the `HTTPMOCK_PORT` environment variable cannot be
-    /// parsed to an integer or if the connection fails.
-    ///
-    /// # Note
-    /// This method requires the `remote` feature to be enabled.
-    ///
-    /// # Environment Variables
-    /// * `HTTPMOCK_HOST` - The hostname or IP address of the mock server (default: "127.0.0.1").
-    /// * `HTTPMOCK_PORT` - The port number of the mock server (default: "5050").
-    #[cfg(feature = "remote")]
-    pub async fn connect_from_env_async() -> Self {
-        let host = read_env("HTTPMOCK_HOST", "127.0.0.1");
-        let port = read_env("HTTPMOCK_PORT", "5050")
-            .parse::<u16>()
-            .expect("Cannot parse environment variable HTTPMOCK_PORT to an integer");
-        Self::connect_async(&format!("{}:{}", host, port)).await
-    }
-
-    /// Synchronously connects to a remote mock server running in standalone mode
-    /// using connection parameters stored in the `HTTPMOCK_HOST` and `HTTPMOCK_PORT`
-    /// environment variables.
-    ///
-    /// # Returns
-    /// An instance of `Self` representing the connected mock server.
-    ///
-    /// # Panics
-    /// This method will panic if the `HTTPMOCK_PORT` environment variable cannot be
-    /// parsed to an integer or if the connection fails.
-    ///
-    /// # Note
-    /// This method requires the `remote` feature to be enabled.
-    #[cfg(feature = "remote")]
-    pub fn connect_from_env() -> Self {
-        Self::connect_from_env_async().join()
     }
 
     /// Starts a new `MockServer` asynchronously.
@@ -500,7 +410,99 @@ impl MockServer {
                 .expect("Cannot reset mock server (task: delete mocks).");
         }
     }
+}
 
+#[cfg(feature = "remote")]
+impl MockServer {
+    /// Asynchronously connects to a remote mock server running in standalone mode.
+    ///
+    /// # Arguments
+    /// * `address` - A string slice representing the address in the format `<host>:<port>`, e.g., "127.0.0.1:8080".
+    ///
+    /// # Returns
+    /// An instance of `Self` representing the connected mock server.
+    ///
+    /// # Panics
+    /// This method will panic if the address cannot be parsed, resolved to an IPv4 address, or if the mock server is unreachable.
+    ///
+    /// # Note
+    /// This method requires the `remote` feature to be enabled.
+    pub async fn connect_async(address: &str) -> Self {
+        use std::net::ToSocketAddrs;
+        let addr = address
+            .to_socket_addrs()
+            .expect("Cannot parse address")
+            .find(|addr| addr.is_ipv4())
+            .expect("Not able to resolve the provided host name to an IPv4 address");
+
+        let adapter = REMOTE_SERVER_POOL_REF
+            .take_or_create(|| Arc::new(RemoteMockServerAdapter::new(addr, REMOTE_SERVER_CLIENT.clone())))
+            .await;
+        Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await
+    }
+
+    /// Synchronously connects to a remote mock server running in standalone mode.
+    ///
+    /// # Arguments
+    /// * `address` - A string slice representing the address in the format `<host>:<port>`, e.g., "127.0.0.1:8080".
+    ///
+    /// # Returns
+    /// An instance of `Self` representing the connected mock server.
+    ///
+    /// # Panics
+    /// This method will panic if the address cannot be parsed, resolved to an IPv4 address, or if the mock server is unreachable.
+    ///
+    /// # Note
+    /// This method requires the `remote` feature to be enabled.
+    pub fn connect(address: &str) -> Self {
+        Self::connect_async(address).join()
+    }
+
+    /// Asynchronously connects to a remote mock server running in standalone mode
+    /// using connection parameters stored in the `HTTPMOCK_HOST` and `HTTPMOCK_PORT`
+    /// environment variables.
+    ///
+    /// # Returns
+    /// An instance of `Self` representing the connected mock server.
+    ///
+    /// # Panics
+    /// This method will panic if the `HTTPMOCK_PORT` environment variable cannot be
+    /// parsed to an integer or if the connection fails.
+    ///
+    /// # Note
+    /// This method requires the `remote` feature to be enabled.
+    ///
+    /// # Environment Variables
+    /// * `HTTPMOCK_HOST` - The hostname or IP address of the mock server (default: "127.0.0.1").
+    /// * `HTTPMOCK_PORT` - The port number of the mock server (default: "5050").
+    pub async fn connect_from_env_async() -> Self {
+        let host = read_env("HTTPMOCK_HOST", "127.0.0.1");
+        let port = read_env("HTTPMOCK_PORT", "5050")
+            .parse::<u16>()
+            .expect("Cannot parse environment variable HTTPMOCK_PORT to an integer");
+        Self::connect_async(&format!("{}:{}", host, port)).await
+    }
+
+    /// Synchronously connects to a remote mock server running in standalone mode
+    /// using connection parameters stored in the `HTTPMOCK_HOST` and `HTTPMOCK_PORT`
+    /// environment variables.
+    ///
+    /// # Returns
+    /// An instance of `Self` representing the connected mock server.
+    ///
+    /// # Panics
+    /// This method will panic if the `HTTPMOCK_PORT` environment variable cannot be
+    /// parsed to an integer or if the connection fails.
+    ///
+    /// # Note
+    /// This method requires the `remote` feature to be enabled.
+    pub fn connect_from_env() -> Self {
+        Self::connect_from_env_async().join()
+    }
+}
+
+#[cfg(feature = "proxy")]
+impl MockServer {
     /// Configures the mock server to forward the request to the target host by replacing the host name,
     /// but only if the request expectations are met. If the request is recorded, the recording will
     /// **NOT** contain the host name as an expectation to allow the recording to be reused.
@@ -550,7 +552,6 @@ impl MockServer {
     ///
     /// # Feature
     /// This method is only available when the `proxy` feature is enabled.
-    #[cfg(feature = "proxy")]
     pub fn forward_to<IntoString, ForwardingRuleBuilderFn>(
         &self,
         to_base_url: IntoString,
@@ -614,7 +615,6 @@ impl MockServer {
     ///
     /// # Feature
     /// This method is only available when the `proxy` feature is enabled.
-    #[cfg(feature = "proxy")]
     pub async fn forward_to_async<'a, IntoString, ForwardingRuleBuilderFn>(
         &'a self,
         target_base_url: IntoString,
@@ -707,7 +707,6 @@ impl MockServer {
     ///
     /// # Feature
     /// This method is only available when the `proxy` feature is enabled.
-    #[cfg(feature = "proxy")]
     pub fn proxy<ProxyRuleBuilderFn>(&self, rule: ProxyRuleBuilderFn) -> ProxyRule<'_>
     where
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
@@ -775,7 +774,6 @@ impl MockServer {
     ///
     /// # Feature
     /// This method is only available when the `proxy` feature is enabled.
-    #[cfg(feature = "proxy")]
     pub async fn proxy_async<'a, ProxyRuleBuilderFn>(&'a self, rule: ProxyRuleBuilderFn) -> ProxyRule<'a>
     where
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
@@ -804,7 +802,10 @@ impl MockServer {
             server: self,
         }
     }
+}
 
+#[cfg(feature = "record")]
+impl MockServer {
     /// Records all requests matching a given rule and the corresponding responses
     /// sent back by the mock server. If requests are forwarded or proxied to another
     /// host, the original responses from those target hosts will also be recorded.
@@ -882,7 +883,6 @@ impl MockServer {
     /// # Feature
     ///
     /// This method is only available when the `record` feature is enabled.
-    #[cfg(feature = "record")]
     pub fn record<RecordingRuleBuilderFn>(&self, rule: RecordingRuleBuilderFn) -> Recording<'_>
     where
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
@@ -971,7 +971,6 @@ impl MockServer {
     /// # Feature
     ///
     /// This method is only available when the `record` feature is enabled.
-    #[cfg(feature = "record")]
     pub async fn record_async<'a, RecordingRuleBuilderFn>(&'a self, rule: RecordingRuleBuilderFn) -> Recording<'a>
     where
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
@@ -1071,7 +1070,6 @@ impl MockServer {
     /// # Feature
     ///
     /// This method is only available when the `record` feature is enabled.
-    #[cfg(feature = "record")]
     pub fn playback<IntoPathBuf: Into<PathBuf>>(&self, path: IntoPathBuf) -> MockSet<'_> {
         self.playback_async(path).join()
     }
@@ -1153,7 +1151,6 @@ impl MockServer {
     /// # Feature
     ///
     /// This method is only available when the `record` feature is enabled.
-    #[cfg(feature = "record")]
     pub async fn playback_async<IntoPathBuf: Into<PathBuf>>(&self, path: IntoPathBuf) -> MockSet<'_> {
         use std::fs;
 
@@ -1221,7 +1218,6 @@ impl MockServer {
     /// # Feature
     ///
     /// This method is only available when the `record` feature is enabled.
-    #[cfg(feature = "record")]
     pub fn playback_from_yaml<AsStrRef: AsRef<str>>(&self, content: AsStrRef) -> MockSet<'_> {
         self.playback_from_yaml_async(content).join()
     }
@@ -1280,7 +1276,6 @@ impl MockServer {
     /// # Feature
     ///
     /// This method is only available when the `record` feature is enabled.
-    #[cfg(feature = "record")]
     pub async fn playback_from_yaml_async<AsStrRef: AsRef<str>>(&self, content: AsStrRef) -> MockSet<'_> {
         let response = self
             .server_adapter
@@ -1342,6 +1337,7 @@ static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send
     Arc::new(Pool::new(max_servers))
 });
 
+#[cfg(feature = "remote")]
 static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>> =
     LazyLock::new(|| Arc::new(Pool::new(1)));
 
