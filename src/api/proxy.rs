@@ -1,11 +1,14 @@
 //! Client-side API for forwarding and proxy rules.
 
-use std::{cell::Cell, rc::Rc};
+use std::sync::{Arc, Mutex};
 
 use crate::{
     When,
     api::server::MockServer,
-    common::{data::RequestRequirements, util::Join},
+    common::{
+        data::RequestRequirements,
+        util::{Join, update_mutex},
+    },
 };
 
 /// Represents a forwarding rule on a [MockServer](struct.MockServer.html), allowing HTTP requests
@@ -98,15 +101,15 @@ impl<'a> ProxyRule<'a> {
 }
 
 pub struct ForwardingRuleBuilder {
-    pub(crate) request_requirements: Rc<Cell<RequestRequirements>>,
-    pub(crate) headers: Rc<Cell<Vec<(String, String)>>>,
+    // Arc lets setup and this owned builder share state without lifetime parameters.
+    // Mutex allows mutation of that state while keeping the builder Send + Sync for spawned tasks.
+    pub(crate) request_requirements: Arc<Mutex<RequestRequirements>>,
+    pub(crate) headers: Arc<Mutex<Vec<(String, String)>>>,
 }
 
 impl ForwardingRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
-        let mut headers = self.headers.take();
-        headers.push((key.into(), value.into()));
-        self.headers.set(headers);
+        update_mutex(&self.headers, |headers| headers.push((key.into(), value.into())));
         self
     }
 
@@ -123,15 +126,15 @@ impl ForwardingRuleBuilder {
 
 pub struct ProxyRuleBuilder {
     // TODO: These fields are visible to the user, make them not public
-    pub(crate) request_requirements: Rc<Cell<RequestRequirements>>,
-    pub(crate) headers: Rc<Cell<Vec<(String, String)>>>,
+    // Arc lets setup and this owned builder share state without lifetime parameters.
+    // Mutex allows mutation of that state while keeping the builder Send + Sync for spawned tasks.
+    pub(crate) request_requirements: Arc<Mutex<RequestRequirements>>,
+    pub(crate) headers: Arc<Mutex<Vec<(String, String)>>>,
 }
 
 impl ProxyRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
-        let mut headers = self.headers.take();
-        headers.push((key.into(), value.into()));
-        self.headers.set(headers);
+        update_mutex(&self.headers, |headers| headers.push((key.into(), value.into())));
         self
     }
 
