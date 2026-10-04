@@ -69,7 +69,6 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [features]
 default = ["cookies"]
-experimental = [] # retained for compatibility with existing dependency declarations
 standalone =  ["clap", "tokio/signal", "tracing-subscriber", "record", "http2", "cookies", "remote", "remote-https"] # enables standalone mode
 color = ["colored"] # enables colorful output in standalone mode
 cookies = ["headers"] # enables support for matching cookies

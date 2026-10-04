@@ -43,6 +43,8 @@ remains 1.88.
 - The inner error of `server::Error::RouterError` no longer supports conversions from
   `regex::Error` or `http::status::InvalidStatusCode` ([#286](https://github.com/httpmock/httpmock/pull/286)).
   These conversions were unused internally; callers wrapping their own errors this way need another error type.
+- The empty `experimental` Cargo feature was removed. Remove it from your dependency's feature list;
+  it did not enable any functionality.
 
 #### Upgrading from 0.8
 
@@ -51,8 +53,7 @@ ID; reconstructing handles with `Mock::new(id, &server)` remains supported. Repl
 `body().is_blank()` with `body_ref().iter().all(u8::is_ascii_whitespace)` and use byte-slice
 operations for the removed `contains_*` helpers.
 
-`HttpMockRequest::to_http_request()`, `server::state::HttpMockStateManager` and the empty
-`experimental` feature remain available.
+`HttpMockRequest::to_http_request()` and `server::state::HttpMockStateManager` remain available.
 Direct imports from `server::matchers` must be removed; use the `When` API to configure
 matchers instead.
 
@@ -81,7 +82,6 @@ feature.
 ### Bug fixes
 
 - Preserve the 0.8.3 request conversion helper and state manager name.
-- Retain the empty `experimental` feature for existing dependency declarations.
 - Server TLS respects an application-installed rustls crypto provider. Ring is the
   explicit fallback when no provider is installed, avoiding ambiguous feature detection.
 - File, method and certificate panic diagnostics retain their underlying error causes.
