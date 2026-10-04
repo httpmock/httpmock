@@ -16,6 +16,7 @@ struct Setup {
     then: Then,
 }
 
+// Preserves owned-builder usage in helpers, structs, Any, and immediately invoked 'static callbacks.
 #[test]
 fn owned_builders_support_existing_helpers_and_static_callbacks() {
     let server = MockServer::start();
@@ -34,6 +35,7 @@ fn owned_builders_support_existing_helpers_and_static_callbacks() {
     mock.assert();
 }
 
+// Creates and uses a mock in a spawned task so a non-Send setup future fails to compile.
 #[tokio::test]
 async fn mock_setup_can_run_in_a_send_task() {
     let server = MockServer::start_async().await;
@@ -54,6 +56,7 @@ async fn mock_setup_can_run_in_a_send_task() {
     .unwrap();
 }
 
+// Registers forwarding and proxy rules in a spawned task to guard their setup futures' Send support.
 #[cfg(feature = "proxy")]
 #[tokio::test]
 async fn forwarding_and_proxy_setup_can_run_in_a_send_task() {
@@ -83,6 +86,7 @@ async fn forwarding_and_proxy_setup_can_run_in_a_send_task() {
     .unwrap();
 }
 
+// Registers a recording in a spawned task to guard the setup future's Send support.
 #[cfg(feature = "record")]
 #[tokio::test]
 async fn recording_setup_can_run_in_a_send_task() {
@@ -102,6 +106,7 @@ async fn recording_setup_can_run_in_a_send_task() {
     .unwrap();
 }
 
+// Preserves staged setup: a saved filter must still affect forwarding before the outer callback returns.
 #[cfg(feature = "proxy")]
 #[test]
 fn forwarding_filter_can_be_staged_inside_the_outer_callback() {
@@ -123,6 +128,7 @@ fn forwarding_filter_can_be_staged_inside_the_outer_callback() {
     assert_eq!(client.get(gateway.url("/other")).send().unwrap().status(), 404);
 }
 
+// Preserves staged setup: a saved filter must still affect proxying before the outer callback returns.
 #[cfg(feature = "proxy")]
 #[test]
 fn proxy_filter_can_be_staged_inside_the_outer_callback() {
@@ -149,6 +155,7 @@ fn proxy_filter_can_be_staged_inside_the_outer_callback() {
 
 fn assert_send_sync<T: Send + Sync>() {}
 
+// Checks every public builder is Send + Sync so users can move or share them across threads.
 #[test]
 fn builders_are_send_and_sync() {
     assert_send_sync::<When>();

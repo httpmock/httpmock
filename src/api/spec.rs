@@ -32,6 +32,8 @@ fn push_to<T>(opt: &mut Option<Vec<T>>, value: T) {
 /// This structure is part of the setup process in creating a mock server, typically used before defining the response
 /// behavior with a `Then` structure.
 pub struct When {
+    // Arc lets setup and this owned builder share state without lifetime parameters.
+    // Mutex allows mutation of that state while keeping the builder Send + Sync for spawned tasks.
     pub(crate) expectations: Arc<Mutex<RequestRequirements>>,
 }
 
@@ -4453,6 +4455,8 @@ impl When {
 /// content, and delays. This structure is integral to defining how the mock server behaves when
 /// it receives a request that matches the defined expectations.
 pub struct Then {
+    // Arc lets setup and this owned builder share state without lifetime parameters.
+    // Mutex allows mutation of that state while keeping the builder Send + Sync for spawned tasks.
     pub(crate) response_template: Arc<Mutex<MockServerHttpResponse>>,
 }
 

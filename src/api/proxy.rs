@@ -276,6 +276,8 @@ impl<'a> Recording<'a> {
 }
 
 pub struct ForwardingRuleBuilder {
+    // Arc lets setup and this owned builder share state without lifetime parameters.
+    // Mutex allows mutation of that state while keeping the builder Send + Sync for spawned tasks.
     pub(crate) request_requirements: Arc<Mutex<RequestRequirements>>,
     pub(crate) headers: Arc<Mutex<Vec<(String, String)>>>,
 }
@@ -299,6 +301,8 @@ impl ForwardingRuleBuilder {
 
 pub struct ProxyRuleBuilder {
     // TODO: These fields are visible to the user, make them not public
+    // Arc lets setup and this owned builder share state without lifetime parameters.
+    // Mutex allows mutation of that state while keeping the builder Send + Sync for spawned tasks.
     pub(crate) request_requirements: Arc<Mutex<RequestRequirements>>,
     pub(crate) headers: Arc<Mutex<Vec<(String, String)>>>,
 }
@@ -322,6 +326,8 @@ impl ProxyRuleBuilder {
 }
 
 pub struct RecordingRuleBuilder {
+    // Arc lets setup and this owned builder share state without lifetime parameters.
+    // Mutex allows mutation of that state while keeping the builder Send + Sync for spawned tasks.
     pub(crate) config: Arc<Mutex<RecordingRuleConfig>>,
 }
 
