@@ -1,10 +1,9 @@
 //! Client-side API for recordings.
 
 use std::{
-    cell::Cell,
     io::ErrorKind,
     path::{Path, PathBuf},
-    rc::Rc,
+    sync::{Arc, Mutex},
 };
 
 use bytes::Bytes;
@@ -14,7 +13,7 @@ use crate::{
     api::server::MockServer,
     common::{
         data::RecordingRuleConfig,
-        util::{Join, write_file},
+        util::{Join, lock_mutex, take_from_mutex, update_mutex, write_file},
     },
 };
 
@@ -197,21 +196,21 @@ impl<'a> Recording<'a> {
 }
 
 pub struct RecordingRuleBuilder {
-    pub config: Rc<Cell<RecordingRuleConfig>>,
+    // Arc lets setup and this owned builder share state without lifetime parameters.
+    // Mutex allows mutation of that state while keeping the builder Send + Sync for spawned tasks.
+    pub(crate) config: Arc<Mutex<RecordingRuleConfig>>,
 }
 
 impl RecordingRuleBuilder {
     pub fn record_request_header<IntoString: Into<String>>(self, header: IntoString) -> Self {
-        let mut config = self.config.take();
-        config.record_headers.push(header.into());
-        self.config.set(config);
+        update_mutex(&self.config, |config| config.record_headers.push(header.into()));
         self
     }
 
     pub fn record_request_headers<IntoString: Into<String>>(self, headers: Vec<IntoString>) -> Self {
-        let mut config = self.config.take();
-        config.record_headers.extend(headers.into_iter().map(Into::into));
-        self.config.set(config);
+        update_mutex(&self.config, |config| {
+            config.record_headers.extend(headers.into_iter().map(Into::into))
+        });
         self
     }
 
@@ -219,25 +218,20 @@ impl RecordingRuleBuilder {
     where
         WhenSpecFn: FnOnce(When),
     {
-        let mut config = self.config.take();
-
-        let request_requirements = Rc::new(Cell::new(config.request_requirements));
-
+        let request_requirements = Arc::new(Mutex::new(std::mem::take(
+            &mut lock_mutex(&self.config).request_requirements,
+        )));
         when(When {
             expectations: request_requirements.clone(),
         });
 
-        config.request_requirements = request_requirements.take();
-
-        self.config.set(config);
+        lock_mutex(&self.config).request_requirements = take_from_mutex(&request_requirements);
 
         self
     }
 
     pub fn record_response_delays(self, record: bool) -> Self {
-        let mut config = self.config.take();
-        config.record_response_delays = record;
-        self.config.set(config);
+        update_mutex(&self.config, |config| config.record_response_delays = record);
 
         self
     }

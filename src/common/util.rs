@@ -1,11 +1,10 @@
 use std::{
     borrow::Cow,
-    cell::Cell,
     env,
     fs::File,
     io::Read,
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex, MutexGuard},
     task::{Context, Poll, Wake, Waker},
     thread::{self, Thread},
     time::Duration,
@@ -22,10 +21,16 @@ use serde::{Deserialize, Serialize};
 // ===============================================================================================
 // Misc
 // ===============================================================================================
-pub(crate) fn update_cell<T: Sized + Default, F: FnOnce(&mut T)>(v: &Cell<T>, f: F) {
-    let mut vv = v.take();
-    f(&mut vv);
-    v.set(vv);
+pub(crate) fn lock_mutex<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().expect("builder configuration mutex poisoned")
+}
+
+pub(crate) fn update_mutex<T, F: FnOnce(&mut T)>(mutex: &Mutex<T>, update_value: F) {
+    update_value(&mut lock_mutex(mutex));
+}
+
+pub(crate) fn take_from_mutex<T: Default>(mutex: &Mutex<T>) -> T {
+    std::mem::take(&mut *lock_mutex(mutex))
 }
 
 // ===============================================================================================
