@@ -96,14 +96,14 @@ enum RoutePath {
 /// mocking, forwarding and proxying logic.
 pub struct Handler {
     path_tree: PathTree<RoutePath>,
-    state: Arc<state::Manager>,
+    state: Arc<state::HttpMockStateManager>,
     #[cfg(feature = "proxy")]
     http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
 }
 
 impl Handler {
     pub(crate) fn new(
-        state: Arc<state::Manager>,
+        state: Arc<state::HttpMockStateManager>,
         #[cfg(feature = "proxy")] http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
     ) -> Self {
         let mut path_tree: PathTree<RoutePath> = PathTree::new();

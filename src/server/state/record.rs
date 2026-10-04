@@ -14,7 +14,7 @@ use crate::{
         state::{
             Error,
             Error::{DataConversionError, ValidationError},
-            Manager, request_matches,
+            HttpMockStateManager, request_matches,
         },
     },
 };
@@ -25,7 +25,7 @@ pub(super) struct State {
     recordings: BTreeMap<usize, ActiveRecording>,
 }
 
-impl Manager {
+impl HttpMockStateManager {
     pub(crate) fn create_recording(&self, config: RecordingRuleConfig) -> ActiveRecording {
         let mut state = self.state.lock().unwrap();
 

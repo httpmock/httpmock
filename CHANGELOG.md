@@ -28,6 +28,9 @@ remains 1.88.
   enabled HTTP/2 unconditionally. This fails at runtime, not at compile time: enable the
   `http2` feature to keep serving such clients. HTTPS is unaffected, as `h2` was already only
   offered via ALPN with the feature enabled.
+- `server::state::MockServerState` is now crate-private
+  ([#289](https://github.com/httpmock/httpmock/pull/289)). Direct construction of the raw
+  state type is no longer available; code using the `MockServer` API is unaffected.
 
 #### Upgrading from 0.8
 
@@ -36,8 +39,8 @@ ID; reconstructing handles with `Mock::new(id, &server)` remains supported. Repl
 `body().is_blank()` with `body_ref().iter().all(u8::is_ascii_whitespace)` and use byte-slice
 operations for the removed `contains_*` helpers.
 
-`HttpMockRequest::to_http_request()`, old state type names and the empty `experimental`
-feature remain available.
+`HttpMockRequest::to_http_request()`, `server::state::HttpMockStateManager` and the empty
+`experimental` feature remain available.
 Direct imports from `server::matchers` must be removed; use the `When` API to configure
 matchers instead.
 
@@ -65,7 +68,7 @@ feature.
 
 ### Bug fixes
 
-- Preserve the 0.8.3 request conversion helper, state collections, low-level
+- Preserve the 0.8.3 request conversion helper, state manager name, low-level
   server constructor, and reachable conversion-error API.
 - Retain the empty `experimental` feature for existing dependency declarations.
 - Server TLS respects an application-installed rustls crypto provider. Ring is the

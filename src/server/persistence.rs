@@ -37,7 +37,7 @@ pub enum Error {
     DataConversion(#[from] data::Error),
 }
 
-pub fn read_static_mock_definitions(path_opt: PathBuf, state: &state::Manager) -> Result<(), Error> {
+pub fn read_static_mock_definitions(path_opt: PathBuf, state: &state::HttpMockStateManager) -> Result<(), Error> {
     for def in read_static_mocks(path_opt)? {
         state.add_mock(def, true)?;
     }
@@ -234,20 +234,20 @@ then:
         let yaml_file = mocks.join("mock.yaml");
         fs::write(&yaml_file, mock_yaml("body_from_file: payload.bin")).unwrap();
 
-        let state = state::Manager::default();
+        let state = state::HttpMockStateManager::default();
         read_static_mock_definitions(mocks.clone(), &state).unwrap();
         let body = state.read_mock(0).unwrap().unwrap().definition.response.body.unwrap();
         assert_eq!(body.as_ref(), payload);
 
         fs::write(directory.path().join("outside.bin"), b"secret").unwrap();
         fs::write(&yaml_file, mock_yaml("body_from_file: ../outside.bin")).unwrap();
-        assert!(read_static_mock_definitions(mocks.clone(), &state::Manager::default()).is_err());
+        assert!(read_static_mock_definitions(mocks.clone(), &state::HttpMockStateManager::default()).is_err());
 
         #[cfg(unix)]
         {
             std::os::unix::fs::symlink(directory.path().join("outside.bin"), mocks.join("outside-link.bin")).unwrap();
             fs::write(&yaml_file, mock_yaml("body_from_file: outside-link.bin")).unwrap();
-            assert!(read_static_mock_definitions(mocks, &state::Manager::default()).is_err());
+            assert!(read_static_mock_definitions(mocks, &state::HttpMockStateManager::default()).is_err());
         }
     }
 }

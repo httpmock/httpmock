@@ -40,7 +40,7 @@ pub(crate) const DEFAULT_HISTORY_LIMIT: usize = 100;
 
 /// The mock server's mutable state: the registered mocks, the request history,
 /// and the active forwarding, proxy and recording rules.
-pub(crate) struct Inner {
+pub(crate) struct MockServerState {
     next_mock_id: usize,
     history_limit: usize,
     pub mocks: BTreeMap<usize, ActiveMock>,
@@ -52,9 +52,9 @@ pub(crate) struct Inner {
     recording: record::State,
 }
 
-impl Inner {
+impl MockServerState {
     pub fn new(history_limit: usize) -> Self {
-        Inner {
+        MockServerState {
             mocks: BTreeMap::new(),
             #[cfg(feature = "proxy")]
             proxy: Default::default(),
@@ -69,42 +69,14 @@ impl Inner {
 }
 
 /// Owns the mock server's state and serialises access to it.
-pub struct Manager {
-    state: Mutex<Inner>,
+pub struct HttpMockStateManager {
+    state: Mutex<MockServerState>,
 }
 
-/// The released name for the mock server's state manager.
-pub type HttpMockStateManager = Manager;
-
-/// Raw state collections retained for compatibility with existing callers.
-/// Running servers manage their own state through [`Manager`].
-pub struct MockServerState {
-    pub mocks: BTreeMap<usize, ActiveMock>,
-    pub history: Vec<Arc<HttpMockRequest>>,
-    pub matchers: Vec<Box<dyn Matcher + Sync + Send>>,
-    pub forwarding_rules: BTreeMap<usize, crate::common::data::ActiveForwardingRule>,
-    pub proxy_rules: BTreeMap<usize, crate::common::data::ActiveProxyRule>,
-    pub recordings: BTreeMap<usize, crate::common::data::ActiveRecording>,
-}
-
-impl MockServerState {
-    /// Creates empty collections with the built-in matchers, as in 0.8.3.
-    pub fn new(_history_limit: usize) -> Self {
-        Self {
-            mocks: BTreeMap::new(),
-            history: Vec::new(),
-            matchers: matchers::all(),
-            forwarding_rules: BTreeMap::new(),
-            proxy_rules: BTreeMap::new(),
-            recordings: BTreeMap::new(),
-        }
-    }
-}
-
-impl Manager {
+impl HttpMockStateManager {
     pub fn new(history_limit: usize) -> Self {
         Self {
-            state: Mutex::new(Inner::new(history_limit)),
+            state: Mutex::new(MockServerState::new(history_limit)),
         }
     }
 
@@ -248,9 +220,9 @@ impl Manager {
     }
 }
 
-impl Default for Manager {
+impl Default for HttpMockStateManager {
     fn default() -> Self {
-        Manager::new(DEFAULT_HISTORY_LIMIT)
+        HttpMockStateManager::new(DEFAULT_HISTORY_LIMIT)
     }
 }
 
@@ -343,7 +315,7 @@ mod tests {
     #[test]
     fn history_is_capped_at_configured_limit() {
         let history_limit = 3;
-        let manager = Manager::new(history_limit);
+        let manager = HttpMockStateManager::new(history_limit);
 
         // Serve more requests than the configured limit.
         for _ in 0..10 {
@@ -366,7 +338,7 @@ mod tests {
 
     #[test]
     fn default_history_limit_is_preserved() {
-        let manager = Manager::default();
+        let manager = HttpMockStateManager::default();
         assert_eq!(manager.state.lock().unwrap().history_limit, DEFAULT_HISTORY_LIMIT);
     }
 }

@@ -922,18 +922,21 @@ pub struct ActiveMock {
     pub is_static: bool,
 }
 
+#[cfg(feature = "proxy")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveForwardingRule {
     pub id: usize,
     pub config: ForwardingRuleConfig,
 }
 
+#[cfg(feature = "proxy")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveProxyRule {
     pub id: usize,
     pub config: ProxyRuleConfig,
 }
 
+#[cfg(feature = "record")]
 #[derive(Serialize, Deserialize, Clone)]
 pub struct ActiveRecording {
     pub id: usize,
@@ -1039,6 +1042,7 @@ pub struct Mismatch {
 // Configs and Builders
 // *************************************************************************************************
 
+#[cfg(feature = "record")]
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct RecordingRuleConfig {
     pub request_requirements: RequestRequirements,
@@ -1046,12 +1050,14 @@ pub struct RecordingRuleConfig {
     pub record_response_delays: bool,
 }
 
+#[cfg(feature = "proxy")]
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct ProxyRuleConfig {
     pub request_requirements: RequestRequirements,
     pub request_header: Vec<(String, String)>,
 }
 
+#[cfg(feature = "proxy")]
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct ForwardingRuleConfig {
     pub target_base_url: String,

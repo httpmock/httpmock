@@ -62,16 +62,8 @@ fn router_error_payload_accepts_regex_and_status_errors() {
 }
 
 #[test]
-fn released_state_names_collections_and_constructor_remain_accessible() {
+fn released_state_manager_name_and_server_constructor_remain_accessible() {
     let _manager = httpmock::server::state::HttpMockStateManager::new(100);
-    let mut state = httpmock::server::state::MockServerState::new(100);
-    assert!(!state.matchers.is_empty());
-    state.matchers.clear();
-    state.mocks.clear();
-    state.history.clear();
-    state.forwarding_rules.clear();
-    state.proxy_rules.clear();
-    state.recordings.clear();
     let _constructor = httpmock::server::HttpMockServer::new;
 }
 
