@@ -36,6 +36,10 @@ remains 1.88.
 - The conversion-error variants `Error::HeaderDeserializationError`, `Error::StaticMockConversionError`,
   `Error::RequestConversionError` and `Error::ResponseConversionError` lost their `Error` suffix
   ([#286](https://github.com/httpmock/httpmock/pull/286)). Update explicit variant construction and match patterns.
+- The internally unused conversion-error variants `Error::CookieParserError`, `Error::JSONConversionError`
+  and `Error::InvalidRequestData` were removed ([#286](https://github.com/httpmock/httpmock/pull/286)),
+  including the conversion from `serde_json::Error`. Callers constructing or matching these variants,
+  or using this error type to propagate JSON errors, must update their code.
 
 #### Upgrading from 0.8
 
@@ -73,8 +77,8 @@ feature.
 
 ### Bug fixes
 
-- Preserve the 0.8.3 request conversion helper, state manager name, and removed
-  error variants and conversions.
+- Preserve the 0.8.3 request conversion helper, state manager name, and `RouterError`
+  payload conversions.
 - Retain the empty `experimental` feature for existing dependency declarations.
 - Server TLS respects an application-installed rustls crypto provider. Ring is the
   explicit fallback when no provider is installed, avoiding ambiguous feature detection.

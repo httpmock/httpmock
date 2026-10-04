@@ -15,7 +15,6 @@ use crate::{
 };
 
 #[derive(thiserror::Error, Debug)]
-#[allow(clippy::enum_variant_names)] // These variants are reachable through public TryFrom::Error types.
 pub enum Error {
     #[error("Cannot deserialize header: {0}")]
     HeaderDeserialization(String),
@@ -25,12 +24,6 @@ pub enum Error {
     RequestConversion(String),
     #[error("Response conversion error: {0}")]
     ResponseConversion(String),
-    #[error("Cookie parser error: {0}")]
-    CookieParserError(String),
-    #[error("JSONConversionError: {0}")]
-    JSONConversionError(#[from] serde_json::Error),
-    #[error("Invalid request data: {0}")]
-    InvalidRequestData(String),
 }
 
 /// A general abstraction of an HTTP request of `httpmock`.

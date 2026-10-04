@@ -21,34 +21,6 @@ fn request_conversion_preserves_uri_headers_and_binary_body() {
     assert_eq!(converted.body().as_ref(), &[0, 255, 128]);
 }
 
-type ConversionError = <HttpMockRequest as TryFrom<&'static http::Request<String>>>::Error;
-
-#[test]
-fn conversion_error_variants_and_json_conversion_remain_usable() {
-    let json_error = serde_json::from_str::<serde_json::Value>("{").unwrap_err();
-    let errors = [
-        ConversionError::HeaderDeserialization("header".into()),
-        ConversionError::CookieParserError("cookie".into()),
-        ConversionError::StaticMockConversion("static".into()),
-        ConversionError::from(json_error),
-        ConversionError::InvalidRequestData("data".into()),
-        ConversionError::RequestConversion("request".into()),
-        ConversionError::ResponseConversion("response".into()),
-    ];
-    for error in errors {
-        // Exhaustive matching was possible against the associated error type in 0.8.3.
-        match error {
-            ConversionError::HeaderDeserialization(message)
-            | ConversionError::CookieParserError(message)
-            | ConversionError::StaticMockConversion(message)
-            | ConversionError::InvalidRequestData(message)
-            | ConversionError::RequestConversion(message)
-            | ConversionError::ResponseConversion(message) => assert!(!message.is_empty()),
-            ConversionError::JSONConversionError(source) => assert!(source.is_eof()),
-        }
-    }
-}
-
 #[test]
 fn router_error_payload_accepts_regex_and_status_errors() {
     let invalid_pattern = String::from("[");
