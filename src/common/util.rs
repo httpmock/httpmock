@@ -1,11 +1,10 @@
 use std::{
     borrow::Cow,
-    cell::Cell,
     env,
     fs::{File, create_dir_all},
     io::{Read, Write},
     path::{Path, PathBuf},
-    sync::Arc,
+    sync::{Arc, Mutex, MutexGuard, PoisonError},
     task::{Context, Poll, Wake, Waker},
     thread::{self, Thread},
     time::Duration,
@@ -19,26 +18,18 @@ use serde::{Deserialize, Serialize};
 // ===============================================================================================
 // Misc
 // ===============================================================================================
-pub(crate) fn update_cell<T: Sized + Default, F: FnOnce(&mut T)>(v: &Cell<T>, f: F) {
-    struct RestoreOnDrop<'a, T> {
-        cell: &'a Cell<T>,
-        value: Option<T>,
-    }
+/// Locks a builder's shared state. Poisoning is ignored: a setter that panicked while holding
+/// the lock never moved the value out, so everything configured before it is still intact.
+pub(crate) fn lock<T>(v: &Mutex<T>) -> MutexGuard<'_, T> {
+    v.lock().unwrap_or_else(PoisonError::into_inner)
+}
 
-    impl<T> Drop for RestoreOnDrop<'_, T> {
-        fn drop(&mut self) {
-            if let Some(value) = self.value.take() {
-                self.cell.set(value);
-            }
-        }
-    }
+pub(crate) fn update<T, F: FnOnce(&mut T)>(v: &Mutex<T>, f: F) {
+    f(&mut lock(v));
+}
 
-    // A caught setter panic must not erase the configuration taken from the cell.
-    let mut guard = RestoreOnDrop {
-        cell: v,
-        value: Some(v.take()),
-    };
-    f(guard.value.as_mut().unwrap());
+pub(crate) fn take<T: Default>(v: &Mutex<T>) -> T {
+    std::mem::take(&mut *lock(v))
 }
 
 // ===============================================================================================

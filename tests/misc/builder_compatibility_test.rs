@@ -192,7 +192,7 @@ fn recording_builders_can_own_and_share_configuration() {
     };
 
     second.record_response_delays(true);
-    assert!(first.config.take().record_response_delays);
+    assert!(first.config.lock().unwrap().record_response_delays);
 }
 
 #[cfg(feature = "record")]
@@ -210,7 +210,22 @@ fn caught_recording_filter_panic_preserves_configuration() {
     }));
 
     assert!(result.is_err());
-    let config = config.take();
+    let config = config.lock().unwrap();
     assert!(config.record_response_delays);
     assert_eq!(config.request_requirements.path.as_deref(), Some("/updated"));
+}
+
+fn assert_send_sync<T: Send + Sync>() {}
+
+#[test]
+fn builders_are_send_and_sync() {
+    assert_send_sync::<When>();
+    assert_send_sync::<Then>();
+    #[cfg(feature = "proxy")]
+    {
+        assert_send_sync::<httpmock::ForwardingRuleBuilder>();
+        assert_send_sync::<httpmock::ProxyRuleBuilder>();
+    }
+    #[cfg(feature = "record")]
+    assert_send_sync::<httpmock::RecordingRuleBuilder>();
 }
