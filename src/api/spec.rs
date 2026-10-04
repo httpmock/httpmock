@@ -125,9 +125,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let scheme = scheme.try_into().expect("cannot convert scheme into a string");
-        update_cell(&self.expectations, |e| {
-            e.scheme = Some(scheme);
-        });
+        update_cell(&self.expectations, |e| e.scheme = Some(scheme));
         self
     }
     // @docs-group: Scheme
@@ -176,9 +174,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let scheme = scheme.try_into().expect("cannot convert scheme into a string");
-        update_cell(&self.expectations, |e| {
-            e.scheme_not = Some(scheme);
-        });
+        update_cell(&self.expectations, |e| e.scheme_not = Some(scheme));
         self
     }
     // @docs-group: Scheme
@@ -863,9 +859,7 @@ impl When {
         <TryIntoString as TryInto<String>>::Error: std::fmt::Debug,
     {
         let path = path.try_into().expect("cannot convert path into a string");
-        update_cell(&self.expectations, |e| {
-            e.path = Some(path);
-        });
+        update_cell(&self.expectations, |e| e.path = Some(path));
         self
     }
     // @docs-group: Path
@@ -3389,9 +3383,7 @@ impl When {
     /// # Returns
     /// The updated `When’ instance to allow method chaining for additional configuration.
     pub fn json_body<JsonValue: Into<Value>>(self, json_value: JsonValue) -> Self {
-        update_cell(&self.expectations, |e| {
-            e.json_body = Some(json_value.into());
-        });
+        update_cell(&self.expectations, |e| e.json_body = Some(json_value.into()));
         self
     }
     // @docs-group: Body
@@ -3519,10 +3511,8 @@ impl When {
     /// It's important that the partial JSON contains the full object hierarchy necessary to reach the target attribute.
     /// Irrelevant attributes such as `parent_attribute` and `child.other_attribute` can be omitted.
     pub fn json_body_includes<IntoString: Into<String>>(self, partial: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            let value = Value::from_str(&partial.into()).expect("cannot convert JSON string to serde value");
-            push_to(&mut e.json_body_includes, value);
-        });
+        let value = Value::from_str(&partial.into()).expect("cannot convert JSON string to serde value");
+        update_cell(&self.expectations, |e| push_to(&mut e.json_body_includes, value));
         self
     }
     // @docs-group: Body
@@ -3589,10 +3579,8 @@ impl When {
     /// It's important that the partial JSON contains the full object hierarchy necessary to reach the target attribute.
     /// Irrelevant attributes such as `parent_attribute` and `child.other_attribute` in the example can be omitted.
     pub fn json_body_excludes<IntoString: Into<String>>(self, partial: IntoString) -> Self {
-        update_cell(&self.expectations, |e| {
-            let value = Value::from_str(&partial.into()).expect("cannot convert JSON string to serde value");
-            push_to(&mut e.json_body_excludes, value);
-        });
+        let value = Value::from_str(&partial.into()).expect("cannot convert JSON string to serde value");
+        update_cell(&self.expectations, |e| push_to(&mut e.json_body_excludes, value));
         self
     }
     // @docs-group: Body
@@ -4842,9 +4830,7 @@ impl Then {
             panic!("A delay higher than {} milliseconds is not supported.", max)
         }
 
-        update_cell(&self.response_template, |r| {
-            r.delay = Some(duration.as_millis() as u64);
-        });
+        update_cell(&self.response_template, |r| r.delay = Some(duration.as_millis() as u64));
         self
     }
     // @docs-group: Network

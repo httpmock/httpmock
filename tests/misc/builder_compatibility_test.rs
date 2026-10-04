@@ -150,29 +150,19 @@ fn proxy_filter_can_be_staged_inside_the_outer_callback() {
     assert_eq!(client.get(target.url("/other")).send().unwrap().status(), 404);
 }
 
-struct InvalidPath;
-
-impl TryFrom<InvalidPath> for String {
-    type Error = &'static str;
-
-    fn try_from(_: InvalidPath) -> Result<Self, Self::Error> {
-        Err("invalid path")
-    }
-}
-
 #[test]
-fn caught_setter_panic_preserves_earlier_matchers() {
+fn caught_setter_panic_preserves_response_body() {
     let server = MockServer::start();
     let mock = server.mock(|when, then| {
-        let when = when.path("/retained");
-        let result = catch_unwind(AssertUnwindSafe(|| when.path(InvalidPath)));
+        when.path("/retained");
+        let then = then.body("retained");
+        let result = catch_unwind(AssertUnwindSafe(|| then.status(70_000u32)));
         assert!(result.is_err());
-        then.status(201);
     });
 
-    let client = Client::new();
-    assert_eq!(client.get(server.url("/other")).send().unwrap().status(), 404);
-    assert_eq!(client.get(server.url("/retained")).send().unwrap().status(), 201);
+    let response = Client::new().get(server.url("/retained")).send().unwrap();
+    assert_eq!(response.status(), 200);
+    assert_eq!(response.text().unwrap(), "retained");
     mock.assert();
 }
 
@@ -205,7 +195,7 @@ fn caught_recording_filter_panic_preserves_configuration() {
 
     let result = catch_unwind(AssertUnwindSafe(|| {
         rule.filter(|when| {
-            when.path("/updated").path(InvalidPath);
+            when.path("/updated").json_body_includes("{");
         });
     }));
 

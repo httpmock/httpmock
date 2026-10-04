@@ -360,7 +360,6 @@ impl RecordingRuleBuilder {
 
     pub fn record_response_delays(self, record: bool) -> Self {
         update_cell(&self.config, |config| config.record_response_delays = record);
-
         self
     }
 }

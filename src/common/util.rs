@@ -16,9 +16,6 @@ use bytes::Bytes;
 use futures_timer::Delay;
 use serde::{Deserialize, Serialize};
 
-// ===============================================================================================
-// Misc
-// ===============================================================================================
 pub(crate) fn update_cell<T: Sized + Default, F: FnOnce(&mut T)>(v: &Cell<T>, f: F) {
     struct RestoreOnDrop<'a, T> {
         cell: &'a Cell<T>,
