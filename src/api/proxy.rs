@@ -342,17 +342,6 @@ impl RecordingRuleBuilder {
     where
         WhenSpecFn: FnOnce(When),
     {
-        struct RestoreRequirements<'a> {
-            target: &'a mut RequestRequirements,
-            source: Rc<Cell<RequestRequirements>>,
-        }
-
-        impl Drop for RestoreRequirements<'_> {
-            fn drop(&mut self) {
-                *self.target = self.source.take();
-            }
-        }
-
         update_cell(&self.config, |config| {
             let request_requirements = Rc::new(Cell::new(std::mem::take(&mut config.request_requirements)));
             // Restore the nested filter before restoring the outer config, including on unwind.
@@ -373,5 +362,16 @@ impl RecordingRuleBuilder {
         update_cell(&self.config, |config| config.record_response_delays = record);
 
         self
+    }
+}
+
+struct RestoreRequirements<'a> {
+    target: &'a mut RequestRequirements,
+    source: Rc<Cell<RequestRequirements>>,
+}
+
+impl Drop for RestoreRequirements<'_> {
+    fn drop(&mut self) {
+        *self.target = self.source.take();
     }
 }
