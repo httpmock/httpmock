@@ -75,7 +75,6 @@ feature.
 
 ### Bug fixes
 
-- A caught panic in a builder setter no longer clears previously configured values.
 - [#229](https://github.com/httpmock/httpmock/pull/229): The `https` feature builds correctly
   again (hyper-rustls/ring is enabled) (thanks [@danieleades](https://github.com/danieleades))
 - [#242](https://github.com/httpmock/httpmock/pull/242): The ring crypto provider is selected

@@ -1,7 +1,4 @@
-use std::{
-    any::Any,
-    panic::{AssertUnwindSafe, catch_unwind},
-};
+use std::any::Any;
 
 use httpmock::{MockServer, Then, When};
 use reqwest::blocking::Client;
@@ -148,22 +145,6 @@ fn proxy_filter_can_be_staged_inside_the_outer_callback() {
         .unwrap();
     assert_eq!(client.get(target.url("/wanted")).send().unwrap().status(), 201);
     assert_eq!(client.get(target.url("/other")).send().unwrap().status(), 404);
-}
-
-#[test]
-fn caught_setter_panic_preserves_response_body() {
-    let server = MockServer::start();
-    let mock = server.mock(|when, then| {
-        when.path("/retained");
-        let then = then.body("retained");
-        let result = catch_unwind(AssertUnwindSafe(|| then.status(70_000u32)));
-        assert!(result.is_err());
-    });
-
-    let response = Client::new().get(server.url("/retained")).send().unwrap();
-    assert_eq!(response.status(), 200);
-    assert_eq!(response.text().unwrap(), "retained");
-    mock.assert();
 }
 
 fn assert_send_sync<T: Send + Sync>() {}

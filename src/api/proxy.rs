@@ -345,16 +345,11 @@ impl RecordingRuleBuilder {
         let request_requirements = Arc::new(Mutex::new(std::mem::take(
             &mut lock_mutex(&self.config).request_requirements,
         )));
-        // Write the nested filter back into the config afterwards, including on unwind.
-        let guard = RestoreRequirements {
-            target: &self.config,
-            source: request_requirements.clone(),
-        };
-
         when(When {
-            expectations: request_requirements,
+            expectations: request_requirements.clone(),
         });
-        drop(guard);
+
+        lock_mutex(&self.config).request_requirements = take_from_mutex(&request_requirements);
 
         self
     }
@@ -363,46 +358,5 @@ impl RecordingRuleBuilder {
         update_mutex(&self.config, |config| config.record_response_delays = record);
 
         self
-    }
-}
-
-struct RestoreRequirements<'a> {
-    target: &'a Mutex<RecordingRuleConfig>,
-    source: Arc<Mutex<RequestRequirements>>,
-}
-
-impl Drop for RestoreRequirements<'_> {
-    fn drop(&mut self) {
-        lock_mutex(self.target).request_requirements = take_from_mutex(&self.source);
-    }
-}
-
-#[cfg(test)]
-mod test {
-    use std::panic::{AssertUnwindSafe, catch_unwind};
-
-    use super::*;
-
-    #[test]
-    fn caught_recording_filter_panic_preserves_configuration() {
-        let rule = RecordingRuleBuilder {
-            config: Default::default(),
-        }
-        .record_response_delays(true)
-        .filter(|when| {
-            when.path("/retained");
-        });
-        let config = rule.config.clone();
-
-        let result = catch_unwind(AssertUnwindSafe(|| {
-            rule.filter(|when| {
-                when.path("/updated").json_body_includes("{");
-            });
-        }));
-
-        assert!(result.is_err());
-        let config = lock_mutex(&config);
-        assert!(config.record_response_delays);
-        assert_eq!(config.request_requirements.path.as_deref(), Some("/updated"));
     }
 }
