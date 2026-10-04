@@ -127,6 +127,38 @@ You can find examples in the
 [`httpmock` test directory](https://github.com/httpmock/httpmock/blob/master/tests/).
 The [official website](http://httpmock.rs) and [reference docs](https://docs.rs/httpmock/) also contain _**a lot**_ of examples. 
 
+## Upgrading from 0.8
+
+Version 0.9 removes the body helpers `contains_str`, `is_blank`, `contains_slice`, and
+`contains_vec`. In custom request matchers, replace them as follows.
+
+For text bodies, replace `request.body().contains_str("ready")` with:
+
+```rust
+when.is_true(|request| request.body().to_maybe_lossy_str().contains("ready"));
+```
+
+This borrows valid UTF-8 text without allocating a string. Invalid UTF-8 is replaced
+with replacement characters; use the byte search below when exact bytes matter.
+
+Replace `request.body().is_blank()` with an ASCII-whitespace check:
+
+```rust
+when.is_true(|request| request.body_ref().trim_ascii().is_empty());
+```
+
+For `contains_slice` and `contains_vec`, search the raw bytes:
+
+```rust
+when.is_true(|request| {
+    let needle: &[u8] = b"ready"; // For a Vec<u8>, use its .as_slice() method.
+    needle.is_empty() || request.body_ref().windows(needle.len()).any(|part| part == needle)
+});
+```
+
+The byte example treats an empty needle as a match; the removed byte helpers panicked
+for empty needles.
+
 ## License
 
 `httpmock` is free software: you can redistribute it and/or modify it under the terms of the MIT Public License.
