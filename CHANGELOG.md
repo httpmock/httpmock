@@ -32,6 +32,9 @@ remains 1.88.
   using the `MockServer` API is unaffected.
 - The `experimental` cargo feature was removed. It did not enable anything; remove it from
   your feature list.
+- `RecordingRuleBuilder::config` is now private
+  ([#322](https://github.com/httpmock/httpmock/pull/322)). Its type was never nameable outside
+  the crate; configure recordings through the builder's methods.
 
 #### Upgrading from 0.8
 
@@ -53,6 +56,8 @@ feature.
 - Async mock, forwarding, proxy and recording setup futures implement `Send` when their
   inputs do, allowing registration inside `tokio::spawn`. Builders retain their owned API
   without new lifetime parameters ([#257](https://github.com/httpmock/httpmock/pull/257)).
+- `When`, `Then` and the forwarding, proxy and recording rule builders are now `Send` and
+  `Sync` ([#322](https://github.com/httpmock/httpmock/pull/322)).
 - [#297](https://github.com/httpmock/httpmock/pull/297): The dependency tree is about 30% smaller
   (74 to 52 crates without default features, 86 to 64 with them), resolving
   [#46](https://github.com/httpmock/httpmock/issues/46)

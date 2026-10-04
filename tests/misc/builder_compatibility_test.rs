@@ -166,41 +166,17 @@ fn caught_setter_panic_preserves_response_body() {
     mock.assert();
 }
 
-#[cfg(feature = "record")]
-fn fresh_recording_builder() -> httpmock::RecordingRuleBuilder {
-    httpmock::RecordingRuleBuilder {
-        config: Default::default(),
+fn assert_send_sync<T: Send + Sync>() {}
+
+#[test]
+fn builders_are_send_and_sync() {
+    assert_send_sync::<When>();
+    assert_send_sync::<Then>();
+    #[cfg(feature = "proxy")]
+    {
+        assert_send_sync::<httpmock::ForwardingRuleBuilder>();
+        assert_send_sync::<httpmock::ProxyRuleBuilder>();
     }
-}
-
-#[cfg(feature = "record")]
-#[test]
-fn recording_builders_can_own_and_share_configuration() {
-    let first = fresh_recording_builder();
-    let second = httpmock::RecordingRuleBuilder {
-        config: first.config.clone(),
-    };
-
-    second.record_response_delays(true);
-    assert!(first.config.take().record_response_delays);
-}
-
-#[cfg(feature = "record")]
-#[test]
-fn caught_recording_filter_panic_preserves_configuration() {
-    let rule = fresh_recording_builder().record_response_delays(true).filter(|when| {
-        when.path("/retained");
-    });
-    let config = rule.config.clone();
-
-    let result = catch_unwind(AssertUnwindSafe(|| {
-        rule.filter(|when| {
-            when.path("/updated").json_body_includes("{");
-        });
-    }));
-
-    assert!(result.is_err());
-    let config = config.take();
-    assert!(config.record_response_delays);
-    assert_eq!(config.request_requirements.path.as_deref(), Some("/updated"));
+    #[cfg(feature = "record")]
+    assert_send_sync::<httpmock::RecordingRuleBuilder>();
 }

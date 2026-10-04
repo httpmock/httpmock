@@ -1,11 +1,9 @@
 #[cfg(feature = "record")]
 use std::path::PathBuf;
 use std::{
-    cell::Cell,
     future::pending,
     net::SocketAddr,
-    rc::Rc,
-    sync::{Arc, LazyLock},
+    sync::{Arc, LazyLock, Mutex},
     thread,
 };
 
@@ -31,7 +29,7 @@ use crate::{
         data::{MockDefinition, MockServerHttpResponse, RequestRequirements},
         pool::Pool,
         runtime,
-        util::{Join, read_env, with_retry},
+        util::{Join, read_env, take, with_retry},
     },
     server::{HttpMockServerBuilder, state},
 };
@@ -416,24 +414,21 @@ impl MockServer {
     where
         SpecFn: FnOnce(When, Then),
     {
-        // Keep the non-Send builder handles out of the suspended registration future.
-        let definition = {
-            let req = Rc::new(Cell::new(RequestRequirements::default()));
-            let res = Rc::new(Cell::new(MockServerHttpResponse::default()));
+        let req = Arc::new(Mutex::new(RequestRequirements::default()));
+        let res = Arc::new(Mutex::new(MockServerHttpResponse::default()));
 
-            spec_fn(
-                When {
-                    expectations: req.clone(),
-                },
-                Then {
-                    response_template: res.clone(),
-                },
-            );
+        spec_fn(
+            When {
+                expectations: req.clone(),
+            },
+            Then {
+                response_template: res.clone(),
+            },
+        );
 
-            MockDefinition {
-                request: req.take(),
-                response: res.take(),
-            }
+        let definition = MockDefinition {
+            request: take(&req),
+            response: take(&res),
         };
 
         let response = self
@@ -631,20 +626,18 @@ impl MockServer {
         ForwardingRuleBuilderFn: FnOnce(ForwardingRuleBuilder),
         IntoString: Into<String>,
     {
-        let config = {
-            let headers = Rc::new(Cell::new(Vec::new()));
-            let req = Rc::new(Cell::new(RequestRequirements::default()));
+        let headers = Arc::new(Mutex::new(Vec::new()));
+        let req = Arc::new(Mutex::new(RequestRequirements::default()));
 
-            rule(ForwardingRuleBuilder {
-                headers: headers.clone(),
-                request_requirements: req.clone(),
-            });
+        rule(ForwardingRuleBuilder {
+            headers: headers.clone(),
+            request_requirements: req.clone(),
+        });
 
-            ForwardingRuleConfig {
-                target_base_url: target_base_url.into(),
-                request_requirements: req.take(),
-                request_header: headers.take(),
-            }
+        let config = ForwardingRuleConfig {
+            target_base_url: target_base_url.into(),
+            request_requirements: take(&req),
+            request_header: take(&headers),
         };
 
         let response = self
@@ -791,19 +784,17 @@ impl MockServer {
     where
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
     {
-        let config = {
-            let headers = Rc::new(Cell::new(Vec::new()));
-            let req = Rc::new(Cell::new(RequestRequirements::default()));
+        let headers = Arc::new(Mutex::new(Vec::new()));
+        let req = Arc::new(Mutex::new(RequestRequirements::default()));
 
-            rule(ProxyRuleBuilder {
-                headers: headers.clone(),
-                request_requirements: req.clone(),
-            });
+        rule(ProxyRuleBuilder {
+            headers: headers.clone(),
+            request_requirements: req.clone(),
+        });
 
-            ProxyRuleConfig {
-                request_requirements: req.take(),
-                request_header: headers.take(),
-            }
+        let config = ProxyRuleConfig {
+            request_requirements: take(&req),
+            request_header: take(&headers),
         };
 
         let response = self
@@ -991,16 +982,14 @@ impl MockServer {
     where
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
     {
-        let config = {
-            let config = Rc::new(Cell::new(RecordingRuleConfig {
-                request_requirements: RequestRequirements::default(),
-                record_headers: Vec::new(),
-                record_response_delays: false,
-            }));
+        let config = Arc::new(Mutex::new(RecordingRuleConfig {
+            request_requirements: RequestRequirements::default(),
+            record_headers: Vec::new(),
+            record_response_delays: false,
+        }));
 
-            rule(RecordingRuleBuilder { config: config.clone() });
-            config.take()
-        };
+        rule(RecordingRuleBuilder { config: config.clone() });
+        let config = take(&config);
 
         let response = self
             .server_adapter

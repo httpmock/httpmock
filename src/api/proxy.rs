@@ -1,6 +1,6 @@
 #[cfg(feature = "record")]
 use std::path::{Path, PathBuf};
-use std::{cell::Cell, rc::Rc};
+use std::sync::{Arc, Mutex};
 
 #[cfg(feature = "record")]
 use bytes::Bytes;
@@ -12,7 +12,7 @@ use crate::{
     api::server::MockServer,
     common::{
         data::{RecordingRuleConfig, RequestRequirements},
-        util::{Join, update_cell},
+        util::{Join, lock, take, update},
     },
 };
 
@@ -276,13 +276,13 @@ impl<'a> Recording<'a> {
 }
 
 pub struct ForwardingRuleBuilder {
-    pub(crate) request_requirements: Rc<Cell<RequestRequirements>>,
-    pub(crate) headers: Rc<Cell<Vec<(String, String)>>>,
+    pub(crate) request_requirements: Arc<Mutex<RequestRequirements>>,
+    pub(crate) headers: Arc<Mutex<Vec<(String, String)>>>,
 }
 
 impl ForwardingRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
-        update_cell(&self.headers, |headers| headers.push((key.into(), value.into())));
+        update(&self.headers, |headers| headers.push((key.into(), value.into())));
         self
     }
 
@@ -299,13 +299,13 @@ impl ForwardingRuleBuilder {
 
 pub struct ProxyRuleBuilder {
     // TODO: These fields are visible to the user, make them not public
-    pub(crate) request_requirements: Rc<Cell<RequestRequirements>>,
-    pub(crate) headers: Rc<Cell<Vec<(String, String)>>>,
+    pub(crate) request_requirements: Arc<Mutex<RequestRequirements>>,
+    pub(crate) headers: Arc<Mutex<Vec<(String, String)>>>,
 }
 
 impl ProxyRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
-        update_cell(&self.headers, |headers| headers.push((key.into(), value.into())));
+        update(&self.headers, |headers| headers.push((key.into(), value.into())));
         self
     }
 
@@ -322,17 +322,17 @@ impl ProxyRuleBuilder {
 }
 
 pub struct RecordingRuleBuilder {
-    pub config: Rc<Cell<RecordingRuleConfig>>,
+    pub(crate) config: Arc<Mutex<RecordingRuleConfig>>,
 }
 
 impl RecordingRuleBuilder {
     pub fn record_request_header<IntoString: Into<String>>(self, header: IntoString) -> Self {
-        update_cell(&self.config, |config| config.record_headers.push(header.into()));
+        update(&self.config, |config| config.record_headers.push(header.into()));
         self
     }
 
     pub fn record_request_headers<IntoString: Into<String>>(self, headers: Vec<IntoString>) -> Self {
-        update_cell(&self.config, |config| {
+        update(&self.config, |config| {
             config.record_headers.extend(headers.into_iter().map(Into::into))
         });
         self
@@ -342,35 +342,64 @@ impl RecordingRuleBuilder {
     where
         WhenSpecFn: FnOnce(When),
     {
-        update_cell(&self.config, |config| {
-            let request_requirements = Rc::new(Cell::new(std::mem::take(&mut config.request_requirements)));
-            // Restore the nested filter before restoring the outer config, including on unwind.
-            let guard = RestoreRequirements {
-                target: &mut config.request_requirements,
-                source: request_requirements,
-            };
+        let request_requirements = Arc::new(Mutex::new(std::mem::take(&mut lock(&self.config).request_requirements)));
+        // Write the nested filter back into the config afterwards, including on unwind.
+        let guard = RestoreRequirements {
+            target: &self.config,
+            source: request_requirements.clone(),
+        };
 
-            when(When {
-                expectations: guard.source.clone(),
-            });
+        when(When {
+            expectations: request_requirements,
         });
+        drop(guard);
 
         self
     }
 
     pub fn record_response_delays(self, record: bool) -> Self {
-        update_cell(&self.config, |config| config.record_response_delays = record);
+        update(&self.config, |config| config.record_response_delays = record);
         self
     }
 }
 
 struct RestoreRequirements<'a> {
-    target: &'a mut RequestRequirements,
-    source: Rc<Cell<RequestRequirements>>,
+    target: &'a Mutex<RecordingRuleConfig>,
+    source: Arc<Mutex<RequestRequirements>>,
 }
 
 impl Drop for RestoreRequirements<'_> {
     fn drop(&mut self) {
-        *self.target = self.source.take();
+        lock(self.target).request_requirements = take(&self.source);
+    }
+}
+
+#[cfg(test)]
+mod test {
+    use std::panic::{AssertUnwindSafe, catch_unwind};
+
+    use super::*;
+
+    #[test]
+    fn caught_recording_filter_panic_preserves_configuration() {
+        let rule = RecordingRuleBuilder {
+            config: Default::default(),
+        }
+        .record_response_delays(true)
+        .filter(|when| {
+            when.path("/retained");
+        });
+        let config = rule.config.clone();
+
+        let result = catch_unwind(AssertUnwindSafe(|| {
+            rule.filter(|when| {
+                when.path("/updated").json_body_includes("{");
+            });
+        }));
+
+        assert!(result.is_err());
+        let config = lock(&config);
+        assert!(config.record_response_delays);
+        assert_eq!(config.request_requirements.path.as_deref(), Some("/updated"));
     }
 }
