@@ -89,7 +89,7 @@ enum RoutePath {
 
 /// Routes incoming requests either to the mock server's management API or to the
 /// mocking, forwarding and proxying logic.
-pub struct Handler {
+pub(crate) struct Handler {
     path_tree: PathTree<RoutePath>,
     state: Arc<state::HttpMockStateManager>,
     #[cfg(feature = "proxy")]
