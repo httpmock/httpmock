@@ -62,9 +62,8 @@ fn router_error_payload_accepts_regex_and_status_errors() {
 }
 
 #[test]
-fn released_state_manager_name_and_server_constructor_remain_accessible() {
+fn released_state_manager_name_remains_accessible() {
     let _manager = httpmock::server::state::HttpMockStateManager::new(100);
-    let _constructor = httpmock::server::HttpMockServer::new;
 }
 
 fn panic_message(action: impl FnOnce()) -> String {

@@ -31,6 +31,8 @@ remains 1.88.
 - `server::state::MockServerState` is now crate-private
   ([#289](https://github.com/httpmock/httpmock/pull/289)). Direct construction of the raw
   state type is no longer available; code using the `MockServer` API is unaffected.
+- `server::HttpMockServer::new` is now crate-private
+  ([#289](https://github.com/httpmock/httpmock/pull/289)). Use `HttpMockServerBuilder::build()` instead.
 
 #### Upgrading from 0.8
 
@@ -68,8 +70,8 @@ feature.
 
 ### Bug fixes
 
-- Preserve the 0.8.3 request conversion helper, state manager name, low-level
-  server constructor, and reachable conversion-error API.
+- Preserve the 0.8.3 request conversion helper, state manager name, and reachable
+  conversion-error API.
 - Retain the empty `experimental` feature for existing dependency declarations.
 - Server TLS respects an application-installed rustls crypto provider. Ring is the
   explicit fallback when no provider is installed, avoiding ambiguous feature detection.

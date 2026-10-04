@@ -323,7 +323,7 @@ impl HttpMockServerBuilder {
             http_client,
         );
 
-        Ok(HttpMockServer::from_parts(
+        Ok(HttpMockServer::new(
             handler,
             MockServerConfig {
                 static_port: self.port,

@@ -83,12 +83,7 @@ impl HttpMockServer {
     /// # Parameters
     /// - `handler`: The request handler.
     /// - `config`: The configuration settings for the mock server.
-    #[allow(clippy::boxed_local)] // Preserve the released constructor's parameter type.
-    pub fn new(handler: Box<handler::Handler>, config: MockServerConfig) -> Result<Self, Error> {
-        Ok(Self::from_parts(*handler, config))
-    }
-
-    pub(crate) fn from_parts(handler: handler::Handler, config: MockServerConfig) -> Self {
+    pub(crate) fn new(handler: handler::Handler, config: MockServerConfig) -> Self {
         HttpMockServer { handler, config }
     }
 
