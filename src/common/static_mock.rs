@@ -10,10 +10,7 @@ use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
 use crate::common::{
-    data::{
-        Error, Error::StaticMockConversionError, HttpMockRegex, Method, MockDefinition, MockServerHttpResponse,
-        RequestRequirements,
-    },
+    data::{Error, HttpMockRegex, Method, MockDefinition, MockServerHttpResponse, RequestRequirements},
     util::HttpMockBytes,
 };
 
@@ -285,7 +282,7 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
 
     fn try_into(self) -> Result<MockDefinition, Self::Error> {
         if self.then.body_from_file.is_some() {
-            return Err(StaticMockConversionError(
+            return Err(Error::StaticMockConversion(
                 "body_from_file is only supported when loading mocks from a static mock directory".to_string(),
             ));
         }
@@ -558,7 +555,7 @@ fn response_body_bytes(
         // definition files), so it is parsed rather than treated as a JSON string literal.
         let json_body = match json_body {
             Value::String(json) => {
-                serde_json::from_str::<Value>(&json).map_err(|err| StaticMockConversionError(err.to_string()))?
+                serde_json::from_str::<Value>(&json).map_err(|err| Error::StaticMockConversion(err.to_string()))?
             }
             value => value,
         };
@@ -590,7 +587,7 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
 
         let mut method = None;
         if let Some(method_str) = value.request.method {
-            method = Some(Method::from_str(&method_str).map_err(StaticMockConversionError)?);
+            method = Some(Method::from_str(&method_str).map_err(Error::StaticMockConversion)?);
         }
 
         Ok(StaticMockDefinition {

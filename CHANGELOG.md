@@ -33,6 +33,9 @@ remains 1.88.
   state type is no longer available; code using the `MockServer` API is unaffected.
 - `server::HttpMockServer::new` is now crate-private
   ([#289](https://github.com/httpmock/httpmock/pull/289)). Use `HttpMockServerBuilder::build()` instead.
+- The conversion-error variants `Error::HeaderDeserializationError`, `Error::StaticMockConversionError`,
+  `Error::RequestConversionError` and `Error::ResponseConversionError` lost their `Error` suffix
+  ([#286](https://github.com/httpmock/httpmock/pull/286)). Update explicit variant construction and match patterns.
 
 #### Upgrading from 0.8
 
@@ -70,8 +73,8 @@ feature.
 
 ### Bug fixes
 
-- Preserve the 0.8.3 request conversion helper, state manager name, and reachable
-  conversion-error API.
+- Preserve the 0.8.3 request conversion helper, state manager name, and removed
+  error variants and conversions.
 - Retain the empty `experimental` feature for existing dependency declarations.
 - Server TLS respects an application-installed rustls crypto provider. Ring is the
   explicit fallback when no provider is installed, avoiding ambiguous feature detection.

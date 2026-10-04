@@ -27,23 +27,23 @@ type ConversionError = <HttpMockRequest as TryFrom<&'static http::Request<String
 fn conversion_error_variants_and_json_conversion_remain_usable() {
     let json_error = serde_json::from_str::<serde_json::Value>("{").unwrap_err();
     let errors = [
-        ConversionError::HeaderDeserializationError("header".into()),
+        ConversionError::HeaderDeserialization("header".into()),
         ConversionError::CookieParserError("cookie".into()),
-        ConversionError::StaticMockConversionError("static".into()),
+        ConversionError::StaticMockConversion("static".into()),
         ConversionError::from(json_error),
         ConversionError::InvalidRequestData("data".into()),
-        ConversionError::RequestConversionError("request".into()),
-        ConversionError::ResponseConversionError("response".into()),
+        ConversionError::RequestConversion("request".into()),
+        ConversionError::ResponseConversion("response".into()),
     ];
     for error in errors {
         // Exhaustive matching was possible against the associated error type in 0.8.3.
         match error {
-            ConversionError::HeaderDeserializationError(message)
+            ConversionError::HeaderDeserialization(message)
             | ConversionError::CookieParserError(message)
-            | ConversionError::StaticMockConversionError(message)
+            | ConversionError::StaticMockConversion(message)
             | ConversionError::InvalidRequestData(message)
-            | ConversionError::RequestConversionError(message)
-            | ConversionError::ResponseConversionError(message) => assert!(!message.is_empty()),
+            | ConversionError::RequestConversion(message)
+            | ConversionError::ResponseConversion(message) => assert!(!message.is_empty()),
             ConversionError::JSONConversionError(source) => assert!(source.is_eof()),
         }
     }
