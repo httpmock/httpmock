@@ -1,4 +1,4 @@
-# Retain the released image's Rust toolchain, source tree and executable path.
+# First stage: build the application
 FROM rust:1.88 AS builder
 
 WORKDIR /httpmock
@@ -11,10 +11,16 @@ COPY certs/ ./certs/
 
 RUN cargo install --all-features --path .
 
+FROM debian:trixie-slim
+
+WORKDIR /httpmock
+
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \
     && rm -rf /var/lib/apt/lists/*
+
+COPY --from=builder /usr/local/cargo/bin/httpmock /usr/local/bin/httpmock
 
 # Log level (refer to env_logger crate for more information)
 ENV RUST_LOG=httpmock=info

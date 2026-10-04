@@ -45,6 +45,9 @@ remains 1.88.
   These conversions were unused internally; callers wrapping their own errors this way need another error type.
 - The empty `experimental` Cargo feature was removed. Remove it from your dependency's feature list;
   it did not enable any functionality.
+- The Docker image now uses a slim Debian runtime without the Rust toolchain or source tree.
+  The executable moved from `/usr/local/cargo/bin/httpmock` to `/usr/local/bin/httpmock`;
+  invoke `httpmock` through `PATH` instead of relying on its old absolute path.
 
 #### Upgrading from 0.8
 
@@ -85,8 +88,7 @@ feature.
 - Server TLS respects an application-installed rustls crypto provider. Ring is the
   explicit fallback when no provider is installed, avoiding ambiguous feature detection.
 - File, method and certificate panic diagnostics retain their underlying error causes.
-- Preserve the Docker image's `/httpmock` working directory, Rust toolchain/source tree,
-  and `/usr/local/cargo/bin/httpmock` path. This retains the larger Rust-based runtime image.
+- Preserve the Docker image's `/httpmock` working directory in the final runtime stage.
 - [#229](https://github.com/httpmock/httpmock/pull/229): The `https` feature builds correctly
   again (hyper-rustls/ring is enabled) (thanks [@danieleades](https://github.com/danieleades))
 - [#242](https://github.com/httpmock/httpmock/pull/242): Server TLS uses an explicit ring
