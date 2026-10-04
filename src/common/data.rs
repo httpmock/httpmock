@@ -417,6 +417,27 @@ impl HttpMockResponse {
     pub fn builder() -> HttpMockResponseBuilder {
         HttpMockResponseBuilder::new()
     }
+
+    /// Converts this response to an HTTP response with a byte body.
+    ///
+    /// # Errors
+    /// Returns an error if the status is missing or invalid, or a header is invalid.
+    ///
+    /// # Example
+    /// ```
+    /// use httpmock::HttpMockResponse;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let response = HttpMockResponse::builder().status(200).body("hello").build();
+    /// let http_response = response.to_http_response()?;
+    /// assert_eq!(http_response.status(), 200);
+    /// assert_eq!(http_response.body().as_ref(), b"hello");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn to_http_response(&self) -> Result<http::Response<Bytes>, Error> {
+        http::Response::<Bytes>::try_from(self)
+    }
 }
 
 /// Converts an `HttpMockResponse` into a real `http::Response<Bytes>`.

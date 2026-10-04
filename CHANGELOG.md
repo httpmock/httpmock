@@ -43,6 +43,8 @@ feature.
 
 ### Improvements
 
+- Add `HttpMockResponse::to_http_response()` for converting to an HTTP response with a
+  byte body. The method borrows the response and returns any conversion error.
 - [#297](https://github.com/httpmock/httpmock/pull/297): The dependency tree is about 30% smaller
   (74 to 52 crates without default features, 86 to 64 with them), resolving
   [#46](https://github.com/httpmock/httpmock/issues/46)
