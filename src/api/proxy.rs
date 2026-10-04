@@ -12,7 +12,7 @@ use crate::{
     api::server::MockServer,
     common::{
         data::{RecordingRuleConfig, RequestRequirements},
-        util::{Join, lock, take, update},
+        util::{Join, lock_mutex, take_from_mutex, update_mutex},
     },
 };
 
@@ -282,7 +282,7 @@ pub struct ForwardingRuleBuilder {
 
 impl ForwardingRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
-        update(&self.headers, |headers| headers.push((key.into(), value.into())));
+        update_mutex(&self.headers, |headers| headers.push((key.into(), value.into())));
         self
     }
 
@@ -305,7 +305,7 @@ pub struct ProxyRuleBuilder {
 
 impl ProxyRuleBuilder {
     pub fn add_request_header<Key: Into<String>, Value: Into<String>>(self, key: Key, value: Value) -> Self {
-        update(&self.headers, |headers| headers.push((key.into(), value.into())));
+        update_mutex(&self.headers, |headers| headers.push((key.into(), value.into())));
         self
     }
 
@@ -327,12 +327,12 @@ pub struct RecordingRuleBuilder {
 
 impl RecordingRuleBuilder {
     pub fn record_request_header<IntoString: Into<String>>(self, header: IntoString) -> Self {
-        update(&self.config, |config| config.record_headers.push(header.into()));
+        update_mutex(&self.config, |config| config.record_headers.push(header.into()));
         self
     }
 
     pub fn record_request_headers<IntoString: Into<String>>(self, headers: Vec<IntoString>) -> Self {
-        update(&self.config, |config| {
+        update_mutex(&self.config, |config| {
             config.record_headers.extend(headers.into_iter().map(Into::into))
         });
         self
@@ -342,7 +342,9 @@ impl RecordingRuleBuilder {
     where
         WhenSpecFn: FnOnce(When),
     {
-        let request_requirements = Arc::new(Mutex::new(std::mem::take(&mut lock(&self.config).request_requirements)));
+        let request_requirements = Arc::new(Mutex::new(std::mem::take(
+            &mut lock_mutex(&self.config).request_requirements,
+        )));
         // Write the nested filter back into the config afterwards, including on unwind.
         let guard = RestoreRequirements {
             target: &self.config,
@@ -358,7 +360,8 @@ impl RecordingRuleBuilder {
     }
 
     pub fn record_response_delays(self, record: bool) -> Self {
-        update(&self.config, |config| config.record_response_delays = record);
+        update_mutex(&self.config, |config| config.record_response_delays = record);
+
         self
     }
 }
@@ -370,7 +373,7 @@ struct RestoreRequirements<'a> {
 
 impl Drop for RestoreRequirements<'_> {
     fn drop(&mut self) {
-        lock(self.target).request_requirements = take(&self.source);
+        lock_mutex(self.target).request_requirements = take_from_mutex(&self.source);
     }
 }
 
@@ -398,7 +401,7 @@ mod test {
         }));
 
         assert!(result.is_err());
-        let config = lock(&config);
+        let config = lock_mutex(&config);
         assert!(config.record_response_delays);
         assert_eq!(config.request_requirements.path.as_deref(), Some("/updated"));
     }

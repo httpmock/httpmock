@@ -29,7 +29,7 @@ use crate::{
         data::{MockDefinition, MockServerHttpResponse, RequestRequirements},
         pool::Pool,
         runtime,
-        util::{Join, read_env, take, with_retry},
+        util::{Join, read_env, take_from_mutex, with_retry},
     },
     server::{HttpMockServerBuilder, state},
 };
@@ -426,16 +426,14 @@ impl MockServer {
             },
         );
 
-        let definition = MockDefinition {
-            request: take(&req),
-            response: take(&res),
-        };
-
         let response = self
             .server_adapter
             .as_ref()
             .unwrap()
-            .create_mock(&definition)
+            .create_mock(&MockDefinition {
+                request: take_from_mutex(&req),
+                response: take_from_mutex(&res),
+            })
             .await
             .expect("Cannot deserialize mock server response");
 
@@ -634,17 +632,15 @@ impl MockServer {
             request_requirements: req.clone(),
         });
 
-        let config = ForwardingRuleConfig {
-            target_base_url: target_base_url.into(),
-            request_requirements: take(&req),
-            request_header: take(&headers),
-        };
-
         let response = self
             .server_adapter
             .as_ref()
             .unwrap()
-            .create_forwarding_rule(config)
+            .create_forwarding_rule(ForwardingRuleConfig {
+                target_base_url: target_base_url.into(),
+                request_requirements: take_from_mutex(&req),
+                request_header: take_from_mutex(&headers),
+            })
             .await
             .expect("Cannot deserialize mock server response");
 
@@ -792,16 +788,14 @@ impl MockServer {
             request_requirements: req.clone(),
         });
 
-        let config = ProxyRuleConfig {
-            request_requirements: take(&req),
-            request_header: take(&headers),
-        };
-
         let response = self
             .server_adapter
             .as_ref()
             .unwrap()
-            .create_proxy_rule(config)
+            .create_proxy_rule(ProxyRuleConfig {
+                request_requirements: take_from_mutex(&req),
+                request_header: take_from_mutex(&headers),
+            })
             .await
             .expect("Cannot deserialize mock server response");
 
@@ -989,13 +983,12 @@ impl MockServer {
         }));
 
         rule(RecordingRuleBuilder { config: config.clone() });
-        let config = take(&config);
 
         let response = self
             .server_adapter
             .as_ref()
             .unwrap()
-            .create_recording(config)
+            .create_recording(take_from_mutex(&config))
             .await
             .expect("Cannot deserialize mock server response");
 

@@ -15,18 +15,21 @@ use bytes::Bytes;
 use futures_timer::Delay;
 use serde::{Deserialize, Serialize};
 
+// ===============================================================================================
+// Misc
+// ===============================================================================================
 /// Locks a builder's shared state. Poisoning is ignored: a setter that panicked while holding
 /// the lock never moved the value out, so everything configured before it is still intact.
-pub(crate) fn lock<T>(v: &Mutex<T>) -> MutexGuard<'_, T> {
-    v.lock().unwrap_or_else(PoisonError::into_inner)
+pub(crate) fn lock_mutex<T>(mutex: &Mutex<T>) -> MutexGuard<'_, T> {
+    mutex.lock().unwrap_or_else(PoisonError::into_inner)
 }
 
-pub(crate) fn update<T, F: FnOnce(&mut T)>(v: &Mutex<T>, f: F) {
-    f(&mut lock(v));
+pub(crate) fn update_mutex<T, F: FnOnce(&mut T)>(mutex: &Mutex<T>, update_value: F) {
+    update_value(&mut lock_mutex(mutex));
 }
 
-pub(crate) fn take<T: Default>(v: &Mutex<T>) -> T {
-    std::mem::take(&mut *lock(v))
+pub(crate) fn take_from_mutex<T: Default>(mutex: &Mutex<T>) -> T {
+    std::mem::take(&mut *lock_mutex(mutex))
 }
 
 // ===============================================================================================
