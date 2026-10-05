@@ -132,8 +132,8 @@ fn dynamic_responder_http_crate_test() {
     let mock = server.mock(|when, then| {
         when.method("GET");
         then.respond_with(move |req: &HttpMockRequest| {
-            // Convert the HttpMockRequest to a http creates Request object
-            let req: http::Request<()> = req.into();
+            // Convert the HttpMockRequest to an http crate Request object
+            let req: http::Request<bytes::Bytes> = req.into();
 
             let mut count = call_count.lock().unwrap();
             *count += 1;

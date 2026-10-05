@@ -299,17 +299,14 @@ fn get_request_mismatches(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::common::util::HttpMockBytes;
 
     fn dummy_request() -> HttpMockRequest {
-        HttpMockRequest::new(
-            "http".to_string(),
-            "/test".to_string(),
-            "GET".to_string(),
-            Vec::new(),
-            "HTTP/1.1".to_string(),
-            HttpMockBytes::from(bytes::Bytes::new()),
-        )
+        http::Request::builder()
+            .uri("http://localhost/test")
+            .body(bytes::Bytes::new())
+            .unwrap()
+            .try_into()
+            .unwrap()
     }
 
     #[test]
