@@ -46,7 +46,7 @@ jobs:
           cache-key: shard-${{ matrix.partition }}
           rustflags: ""
 
-      - uses: taiki-e/install-action@v2.87.20
+      - uses: taiki-e/install-action@v2.87.22
         with:
           tool: cargo-hack
 
