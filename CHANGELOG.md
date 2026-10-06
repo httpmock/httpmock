@@ -32,6 +32,8 @@ remains 1.88.
   using the `MockServer` API is unaffected.
 - The `experimental` cargo feature was removed. It did not enable anything; remove it from
   your feature list.
+- The `tls-detect` cargo feature was removed. It only enabled an internal dependency that
+  `https` already pulled in; remove it from your feature list.
 - `RecordingRuleBuilder::config` is now private
   ([#322](https://github.com/httpmock/httpmock/pull/322)). Its type was never nameable outside
   the crate; configure recordings through the builder's methods.
@@ -61,6 +63,8 @@ feature.
 - [#297](https://github.com/httpmock/httpmock/pull/297): The dependency tree is about 30% smaller
   (74 to 52 crates without default features, 86 to 64 with them), resolving
   [#46](https://github.com/httpmock/httpmock/issues/46)
+- `async-trait` and `tls-detect` are no longer dependencies. The server now tells TLS and
+  plain HTTP connections apart by the first byte the client sends.
 - [#275](https://github.com/httpmock/httpmock/pull/275): Owned HTTP request and response
   conversions avoid unnecessary body clones. Boxed byte bodies remain supported for both
   owned and borrowed conversions; borrowed conversions retain the caller's original body.

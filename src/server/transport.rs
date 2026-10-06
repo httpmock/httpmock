@@ -264,8 +264,18 @@ impl HttpMockServer {
 
         #[cfg(feature = "https")]
         {
-            let mut peek_buffer = TcpStreamPeekBuffer::new(&tcp_stream);
-            if is_encrypted(&mut peek_buffer, 0).await {
+            let is_tls = match starts_with_tls_handshake(&tcp_stream).await {
+                Ok(is_tls) => is_tls,
+                // The connection broke before the client sent anything, so there is nothing to
+                // serve. This is usually a client that resets right away, like a health check or
+                // a port scanner, which isn't worth an error.
+                Err(err) => {
+                    tracing::debug!("TCP connection failed before the client sent any data: {:?}", err);
+                    return Ok(());
+                }
+            };
+
+            if is_tls {
                 tracing::trace!("TCP connection seems to be TLS encrypted");
 
                 // Since we get a request via HTTPS, the target host for this request is this server.
@@ -274,14 +284,6 @@ impl HttpMockServer {
                 // local address. The tunneling case is handled in the CONNECT branch of `service()`.
                 let tcp_address = tcp_stream.local_addr().map_err(Error::IOError)?;
                 return serve_tls_connection(self, tcp_stream, Some(tcp_address.to_string())).await;
-            }
-
-            if tracing::log::max_level() >= tracing::log::LevelFilter::Trace {
-                let peeked_str = String::from_utf8_lossy(peek_buffer.buffer()).to_string();
-                tracing::trace!(
-                    "TCP connection seems NOT to be TLS encrypted (based on peeked data: {}",
-                    peeked_str
-                );
             }
         }
 
@@ -411,12 +413,10 @@ fn to_service_response(response: Response<Bytes>) -> Result<Response<BoxBody<Byt
 
 #[cfg(feature = "http2")]
 use hyper_util::rt::TokioExecutor;
-#[cfg(feature = "https")]
-use tls_detect::is_encrypted;
 use tokio::io::{AsyncRead, AsyncWrite};
 
 #[cfg(feature = "https")]
-use crate::server::tls::{CertificateResolverFactory, TcpStreamPeekBuffer};
+use crate::server::tls::{CertificateResolverFactory, starts_with_tls_handshake};
 use crate::server::{Error::ServerConnectionError, RequestMetadata};
 
 fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), Error> {
@@ -448,4 +448,35 @@ fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), Error> {
 
     *req.uri_mut() = new_uri;
     Ok(())
+}
+
+#[cfg(all(test, feature = "https"))]
+mod tests {
+    use std::{sync::Arc, time::Duration};
+
+    use tokio::{
+        net::{TcpListener, TcpStream},
+        time::timeout,
+    };
+
+    use crate::server::builder::HttpMockServerBuilder;
+
+    #[tokio::test]
+    async fn connection_reset_before_any_data_is_not_an_error() {
+        let server = Arc::new(HttpMockServerBuilder::new().build().unwrap());
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let client = TcpStream::connect(listener.local_addr().unwrap()).await.unwrap();
+        let (tcp_stream, remote_address) = listener.accept().await.unwrap();
+
+        // With a zero linger timeout, closing the socket resets the connection, as health checks
+        // and port scanners often do.
+        client.set_zero_linger().unwrap();
+        drop(client);
+
+        let handling = server.handle_tcp_stream(tcp_stream, remote_address);
+        timeout(Duration::from_secs(5), handling)
+            .await
+            .expect("the reset connection should be handled right away")
+            .unwrap();
+    }
 }
