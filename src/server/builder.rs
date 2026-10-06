@@ -3,7 +3,7 @@ use std::path::PathBuf;
 use std::{error::Error, sync::Arc};
 
 #[cfg(feature = "proxy")]
-use crate::common::http::{HttpClient, HttpMockHttpClient};
+use crate::common::http::HttpMockHttpClient;
 #[cfg(feature = "record")]
 use crate::server::persistence::read_static_mock_definitions;
 use crate::server::{
@@ -180,7 +180,7 @@ pub struct HttpMockServerBuilder {
     #[cfg(feature = "https")]
     https_config_builder: HttpsConfigBuilder,
     #[cfg(feature = "proxy")]
-    http_client: Option<Arc<dyn HttpClient + Send + Sync + 'static>>,
+    http_client: Option<Arc<HttpMockHttpClient>>,
 }
 
 impl HttpMockServerBuilder {

@@ -4,7 +4,6 @@ use std::{net::SocketAddr, sync::Arc};
 use crate::common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig};
 #[cfg(feature = "record")]
 use crate::common::data::{ActiveRecording, RecordingRuleConfig};
-use async_trait::async_trait;
 #[cfg(feature = "record")]
 use bytes::Bytes;
 
@@ -31,7 +30,6 @@ impl LocalMockServerAdapter {
     }
 }
 
-#[async_trait]
 impl MockServerAdapter for LocalMockServerAdapter {
     fn host(&self) -> String {
         self.addr.ip().to_string()
@@ -120,20 +118,18 @@ impl MockServerAdapter for LocalMockServerAdapter {
 
     #[cfg(feature = "record")]
     async fn export_recording(&self, id: usize) -> Result<Option<Bytes>, ServerAdapterError> {
-        Ok(self
-            .state
+        self.state
             .export_recording(id)
-            .map_err(|err| UpstreamError(err.to_string()))?)
+            .map_err(|err| UpstreamError(err.to_string()))
     }
 
     #[cfg(feature = "record")]
-    async fn create_mocks_from_recording<'a>(
+    async fn create_mocks_from_recording(
         &self,
-        recording_file_content: &'a str,
+        recording_file_content: &str,
     ) -> Result<Vec<usize>, ServerAdapterError> {
-        Ok(self
-            .state
+        self.state
             .load_mocks_from_recording(recording_file_content)
-            .map_err(|err| UpstreamError(err.to_string()))?)
+            .map_err(|err| UpstreamError(err.to_string()))
     }
 }

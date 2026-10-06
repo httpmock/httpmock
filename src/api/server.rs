@@ -1,7 +1,9 @@
 #[cfg(feature = "record")]
 use std::path::PathBuf;
 use std::{
+    any::Any,
     future::pending,
+    marker::PhantomData,
     net::SocketAddr,
     sync::{Arc, LazyLock, Mutex},
     thread,
@@ -22,7 +24,7 @@ use crate::common::http::HttpMockHttpClient;
 use crate::{
     Mock,
     api::{
-        LocalMockServerAdapter, MockServerAdapter,
+        LocalMockServerAdapter, ServerAdapter,
         spec::{Then, When},
     },
     common::{
@@ -50,18 +52,20 @@ use crate::{
 /// - Monitor and verify that the expected requests are made by the client under test.
 /// - Simulate various network conditions and server responses, including errors and latencies.
 pub struct MockServer {
-    pub(in crate::api) server_adapter: Option<Arc<dyn MockServerAdapter + Send + Sync>>,
-    pool: Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>,
+    pub(in crate::api) server_adapter: Option<ServerAdapter>,
+    pool: Arc<Pool<ServerAdapter>>,
+    // Keeps `MockServer` (and `Mock` etc., which borrow it) `!UnwindSafe` and `!RefUnwindSafe`
+    // in every feature set, as it was while the adapter was a `dyn` trait object. Without it,
+    // these auto traits would depend on whether the `remote` adapter variant is compiled in.
+    _not_unwind_safe: PhantomData<Arc<dyn Any + Send + Sync>>,
 }
 
 impl MockServer {
-    async fn from(
-        server_adapter: Arc<dyn MockServerAdapter + Send + Sync>,
-        pool: Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>,
-    ) -> Self {
+    async fn from(server_adapter: ServerAdapter, pool: Arc<Pool<ServerAdapter>>) -> Self {
         let server = Self {
             server_adapter: Some(server_adapter),
             pool,
+            _not_unwind_safe: PhantomData,
         };
 
         server.reset_async().await;
@@ -436,7 +440,7 @@ impl MockServer {
             .expect("Not able to resolve the provided host name to an IPv4 address");
 
         let adapter = REMOTE_SERVER_POOL_REF
-            .take_or_create(|| Arc::new(RemoteMockServerAdapter::new(addr, REMOTE_SERVER_CLIENT.clone())))
+            .take_or_create(|| ServerAdapter::Remote(RemoteMockServerAdapter::new(addr, REMOTE_SERVER_CLIENT.clone())))
             .await;
         Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await
     }
@@ -1312,7 +1316,7 @@ impl Drop for MockServer {
     }
 }
 
-const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn MockServerAdapter + Send + Sync> = || {
+const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> ServerAdapter = || {
     let (addr_sender, addr_receiver) = channel::<SocketAddr>();
     let state_manager = Arc::new(state::Manager::default());
     let srv = HttpMockServerBuilder::new()
@@ -1327,10 +1331,10 @@ const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn MockServerAdapter + Send +
     });
 
     let addr = addr_receiver.join().expect("Cannot get server address");
-    Arc::new(LocalMockServerAdapter::new(addr, state_manager))
+    ServerAdapter::Local(LocalMockServerAdapter::new(addr, state_manager))
 };
 
-static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>> = LazyLock::new(|| {
+static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<ServerAdapter>>> = LazyLock::new(|| {
     let max_servers = read_env("HTTPMOCK_MAX_SERVERS", "25")
         .parse::<usize>()
         .expect("Cannot parse environment variable HTTPMOCK_MAX_SERVERS as an integer");
@@ -1338,8 +1342,7 @@ static LOCAL_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send
 });
 
 #[cfg(feature = "remote")]
-static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<Arc<dyn MockServerAdapter + Send + Sync>>>> =
-    LazyLock::new(|| Arc::new(Pool::new(1)));
+static REMOTE_SERVER_POOL_REF: LazyLock<Arc<Pool<ServerAdapter>>> = LazyLock::new(|| Arc::new(Pool::new(1)));
 
 #[cfg(feature = "remote")]
 // TODO: REFACTOR to use a runtime agnostic HTTP client for remote access.
