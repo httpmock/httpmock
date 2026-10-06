@@ -12,8 +12,8 @@ use crate::{
         comparison,
         comparison::{
             distance_for, distance_for_prefix, distance_for_substring, distance_for_suffix, hostname_equals,
-            regex_unmatched_length, string_contains, string_distance, string_equals, string_has_prefix,
-            string_has_suffix,
+            regex_unmatched_length, string_distance, string_equals, string_has_prefix, string_has_suffix,
+            string_includes,
         },
     },
 };
@@ -24,19 +24,16 @@ pub trait ValueComparator<S: ?Sized, T: ?Sized> {
     fn distance(&self, mock_value: &Option<&S>, req_value: &Option<&T>) -> usize;
 }
 
-// ************************************************************************************************
-// JSONExactMatchComparator
-// ************************************************************************************************
 #[derive(Default)]
-pub struct JSONExactMatchComparator {}
+pub struct JsonEqualsComparator {}
 
-impl JSONExactMatchComparator {
+impl JsonEqualsComparator {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl ValueComparator<Value, Value> for JSONExactMatchComparator {
+impl ValueComparator<Value, Value> for JsonEqualsComparator {
     fn matches(&self, mock_value: &Option<&Value>, req_value: &Option<&Value>) -> bool {
         match (mock_value, req_value) {
             (None, _) => true,
@@ -59,20 +56,17 @@ impl ValueComparator<Value, Value> for JSONExactMatchComparator {
     }
 }
 
-// ************************************************************************************************
-// JSONContainsMatchComparator
-// ************************************************************************************************
-pub struct JSONContainsMatchComparator {
+pub struct JsonIncludesComparator {
     pub negated: bool,
 }
 
-impl JSONContainsMatchComparator {
+impl JsonIncludesComparator {
     pub fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
 
-impl ValueComparator<Value, Value> for JSONContainsMatchComparator {
+impl ValueComparator<Value, Value> for JsonIncludesComparator {
     fn matches(&self, mock_value: &Option<&Value>, req_value: &Option<&Value>) -> bool {
         match (mock_value, req_value) {
             (None, _) => true,
@@ -102,9 +96,6 @@ impl ValueComparator<Value, Value> for JSONContainsMatchComparator {
     }
 }
 
-// ************************************************************************************************
-// StringExactMatchComparator
-// ************************************************************************************************
 pub struct HostEqualsComparator {
     negated: bool,
 }
@@ -134,9 +125,6 @@ impl ValueComparator<String, String> for HostEqualsComparator {
     }
 }
 
-// ************************************************************************************************
-// StringExactMatchComparator
-// ************************************************************************************************
 pub struct StringEqualsComparator {
     case_sensitive: bool,
     negated: bool,
@@ -165,15 +153,12 @@ impl ValueComparator<String, String> for StringEqualsComparator {
     }
 }
 
-// ************************************************************************************************
-// StringIncludesMatchComparator
-// ************************************************************************************************
-pub struct StringContainsComparator {
+pub struct StringIncludesComparator {
     case_sensitive: bool,
     negated: bool,
 }
 
-impl StringContainsComparator {
+impl StringIncludesComparator {
     pub fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
             case_sensitive,
@@ -182,9 +167,9 @@ impl StringContainsComparator {
     }
 }
 
-impl ValueComparator<String, String> for StringContainsComparator {
+impl ValueComparator<String, String> for StringIncludesComparator {
     fn matches(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> bool {
-        string_contains(self.case_sensitive, self.negated, mock_value, req_value)
+        string_includes(self.case_sensitive, self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -210,7 +195,7 @@ mod tests {
         let binding2 = "hello world".to_string();
         let req_value = Some(&binding2);
 
-        let comparator = StringContainsComparator {
+        let comparator = StringIncludesComparator {
             case_sensitive: true,
             negated: false,
         };
@@ -224,7 +209,7 @@ mod tests {
         let binding2 = "world".to_string();
         let req_value = Some(&binding2);
 
-        let comparator = StringContainsComparator {
+        let comparator = StringIncludesComparator {
             case_sensitive: true,
             negated: false,
         };
@@ -238,7 +223,7 @@ mod tests {
         let binding2 = "hello".to_string();
         let req_value = Some(&binding2);
 
-        let comparator = StringContainsComparator {
+        let comparator = StringIncludesComparator {
             case_sensitive: true,
             negated: false,
         };
@@ -246,15 +231,12 @@ mod tests {
     }
 }
 
-// ************************************************************************************************
-// StringContainsMatchComparator
-// ************************************************************************************************
-pub struct StringPrefixMatchComparator {
+pub struct StringPrefixComparator {
     case_sensitive: bool,
     negated: bool,
 }
 
-impl StringPrefixMatchComparator {
+impl StringPrefixComparator {
     pub fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
             case_sensitive,
@@ -263,7 +245,7 @@ impl StringPrefixMatchComparator {
     }
 }
 
-impl ValueComparator<String, String> for StringPrefixMatchComparator {
+impl ValueComparator<String, String> for StringPrefixComparator {
     fn matches(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> bool {
         string_has_prefix(self.case_sensitive, self.negated, mock_value, req_value)
     }
@@ -277,15 +259,12 @@ impl ValueComparator<String, String> for StringPrefixMatchComparator {
     }
 }
 
-// ************************************************************************************************
-// StringContainsMatchComparator
-// ************************************************************************************************
-pub struct StringSuffixMatchComparator {
+pub struct StringSuffixComparator {
     case_sensitive: bool,
     negated: bool,
 }
 
-impl StringSuffixMatchComparator {
+impl StringSuffixComparator {
     pub fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
             case_sensitive,
@@ -294,7 +273,7 @@ impl StringSuffixMatchComparator {
     }
 }
 
-impl ValueComparator<String, String> for StringSuffixMatchComparator {
+impl ValueComparator<String, String> for StringSuffixComparator {
     fn matches(&self, mock_value: &Option<&String>, req_value: &Option<&String>) -> bool {
         string_has_suffix(self.case_sensitive, self.negated, mock_value, req_value)
     }
@@ -308,26 +287,23 @@ impl ValueComparator<String, String> for StringSuffixMatchComparator {
     }
 }
 
-// ************************************************************************************************
-// StringPatternMatchComparator
-// ************************************************************************************************
-pub struct StringPatternMatchComparator {
+pub struct StringMatchesComparator {
     case_sensitive: bool,
     negated: bool,
 }
 
-impl StringPatternMatchComparator {
-    pub fn new(negated: bool, case_sensitive: bool) -> Self {
+impl StringMatchesComparator {
+    pub fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
-            negated,
             case_sensitive,
+            negated,
         }
     }
 }
 
-impl ValueComparator<HttpMockRegex, String> for StringPatternMatchComparator {
+impl ValueComparator<HttpMockRegex, String> for StringMatchesComparator {
     fn matches(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&String>) -> bool {
-        comparison::string_matches_regex(self.negated, self.case_sensitive, mock_value, req_value)
+        comparison::string_matches_regex(self.case_sensitive, self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -339,23 +315,20 @@ impl ValueComparator<HttpMockRegex, String> for StringPatternMatchComparator {
     }
 
     fn distance(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&String>) -> usize {
-        comparison::regex_string_distance(self.negated, self.case_sensitive, mock_value, req_value)
+        comparison::regex_string_distance(self.case_sensitive, self.negated, mock_value, req_value)
     }
 }
 
-// ************************************************************************************************
-// StringExactMatchComparator
-// ************************************************************************************************
 #[derive(Default)]
-pub struct HttpMockBytesPatternComparator {}
+pub struct BytesMatchesComparator {}
 
-impl HttpMockBytesPatternComparator {
+impl BytesMatchesComparator {
     pub fn new() -> Self {
         Self::default()
     }
 }
 
-impl ValueComparator<HttpMockRegex, HttpMockBytes> for HttpMockBytesPatternComparator {
+impl ValueComparator<HttpMockRegex, HttpMockBytes> for BytesMatchesComparator {
     fn matches(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&HttpMockBytes>) -> bool {
         match (mock_value, req_value) {
             (None, Some(_)) => true,
@@ -383,20 +356,17 @@ impl ValueComparator<HttpMockRegex, HttpMockBytes> for HttpMockBytesPatternCompa
     }
 }
 
-// ************************************************************************************************
-// IntegerExactMatchComparator
-// ************************************************************************************************
-pub struct U16ExactMatchComparator {
+pub struct U16EqualsComparator {
     negated: bool,
 }
 
-impl U16ExactMatchComparator {
+impl U16EqualsComparator {
     pub fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
 
-impl ValueComparator<u16, u16> for U16ExactMatchComparator {
+impl ValueComparator<u16, u16> for U16EqualsComparator {
     fn matches(&self, mock_value: &Option<&u16>, req_value: &Option<&u16>) -> bool {
         comparison::integer_equals(self.negated, mock_value, req_value)
     }
@@ -410,22 +380,19 @@ impl ValueComparator<u16, u16> for U16ExactMatchComparator {
     }
 }
 
-// ************************************************************************************************
-// BytesExactMatchComparator
-// ************************************************************************************************
-pub struct BytesExactMatchComparator {
+pub struct BytesEqualsComparator {
     negated: bool,
 }
 
-impl BytesExactMatchComparator {
+impl BytesEqualsComparator {
     pub fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
 
-impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesExactMatchComparator {
+impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesEqualsComparator {
     fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
-        comparison::bytes_equal(self.negated, mock_value, req_value)
+        comparison::bytes_equals(self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -441,9 +408,6 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesExactMatchComparator
     }
 }
 
-// ************************************************************************************************
-// BytesExactMatchComparator
-// ************************************************************************************************
 pub struct BytesIncludesComparator {
     negated: bool,
 }
@@ -512,9 +476,6 @@ fn bytes_affix_distance(
     if negated { compared_window - distance } else { distance }
 }
 
-// ************************************************************************************************
-// BytesPrefixComparator
-// ************************************************************************************************
 pub struct BytesPrefixComparator {
     negated: bool,
 }
@@ -527,7 +488,7 @@ impl BytesPrefixComparator {
 
 impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
     fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
-        comparison::bytes_prefix(self.negated, mock_value, req_value)
+        comparison::bytes_has_prefix(self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -543,9 +504,6 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
     }
 }
 
-// ************************************************************************************************
-// BytesSuffixComparator
-// ************************************************************************************************
 pub struct BytesSuffixComparator {
     negated: bool,
 }
@@ -558,7 +516,7 @@ impl BytesSuffixComparator {
 
 impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
     fn matches(&self, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
-        comparison::bytes_suffix(self.negated, mock_value, req_value)
+        comparison::bytes_has_suffix(self.negated, mock_value, req_value)
     }
 
     fn name(&self) -> &str {
@@ -570,9 +528,6 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
     }
 }
 
-// ************************************************************************************************
-// AnyValueComparator
-// ************************************************************************************************
 #[derive(Default)]
 pub struct AnyValueComparator {}
 
@@ -595,9 +550,6 @@ impl<T, U> ValueComparator<T, U> for AnyValueComparator {
     }
 }
 
-// ************************************************************************************************
-// FunctionMatchComparator
-// ************************************************************************************************
 pub struct FunctionMatchesRequestComparator {
     negated: bool,
 }
@@ -658,8 +610,8 @@ mod test {
     use crate::{
         common::data::HttpMockRegex,
         server::matchers::comparators::{
-            AnyValueComparator, JSONContainsMatchComparator, JSONExactMatchComparator, StringContainsComparator,
-            StringEqualsComparator, StringPatternMatchComparator, ValueComparator,
+            AnyValueComparator, JsonEqualsComparator, JsonIncludesComparator, StringEqualsComparator,
+            StringIncludesComparator, StringMatchesComparator, ValueComparator,
         },
     };
 
@@ -683,9 +635,9 @@ mod test {
     }
 
     #[test]
-    fn json_exact_match_comparator_match() {
+    fn json_equals_match() {
         run_test(
-            &JSONExactMatchComparator::new(),
+            &JsonEqualsComparator::new(),
             &json!({"name" : "Peter", "surname" : "Griffin"}),
             &json!({"name" : "Peter", "surname" : "Griffin"}),
             true,
@@ -695,9 +647,9 @@ mod test {
     }
 
     #[test]
-    fn json_exact_match_comparator_no_match() {
+    fn json_equals_no_match() {
         run_test(
-            &JSONExactMatchComparator::new(),
+            &JsonEqualsComparator::new(),
             &json!({"name" : "Peter", "surname" : "Griffin"}),
             &json!({"name" : "Walter", "surname" : "White"}),
             false,
@@ -707,9 +659,9 @@ mod test {
     }
 
     #[test]
-    fn json_contains_comparator_match() {
+    fn json_includes_match() {
         run_test(
-            &JSONContainsMatchComparator::new(false),
+            &JsonIncludesComparator::new(false),
             &json!({ "other" : { "human" : { "surname" : "Griffin" }}}),
             &json!({ "name" : "Peter", "other" : { "human" : { "surname" : "Griffin" }}}),
             true,
@@ -719,9 +671,9 @@ mod test {
     }
 
     #[test]
-    fn json_contains_comparator_no_match() {
+    fn json_includes_no_match() {
         run_test(
-            &JSONContainsMatchComparator::new(false),
+            &JsonIncludesComparator::new(false),
             &json!({ "surname" : "Griffin" }),
             &json!({ "name" : "Peter", "other" : { "human" : { "surname" : "Griffin" }}}),
             false,
@@ -731,7 +683,7 @@ mod test {
     }
 
     #[test]
-    fn string_exact_comparator_match() {
+    fn string_equals_match() {
         run_test(
             &StringEqualsComparator::new(true, false),
             &"test string".to_string(),
@@ -743,7 +695,7 @@ mod test {
     }
 
     #[test]
-    fn string_exact_comparator_no_match() {
+    fn string_equals_no_match() {
         run_test(
             &StringEqualsComparator::new(true, false),
             &"test string".to_string(),
@@ -755,7 +707,7 @@ mod test {
     }
 
     #[test]
-    fn string_exact_comparator_case_sensitive_match() {
+    fn string_equals_case_insensitive_match() {
         run_test(
             &StringEqualsComparator::new(false, false),
             &"TEST string".to_string(),
@@ -767,9 +719,9 @@ mod test {
     }
 
     #[test]
-    fn string_contains_comparator_match() {
+    fn string_includes_match() {
         run_test(
-            &StringContainsComparator::new(true, false),
+            &StringIncludesComparator::new(true, false),
             &"st st".to_string(),
             &"test string".to_string(),
             true,
@@ -779,9 +731,9 @@ mod test {
     }
 
     #[test]
-    fn string_contains_comparator_no_match() {
+    fn string_includes_no_match() {
         run_test(
-            &StringContainsComparator::new(true, false),
+            &StringIncludesComparator::new(true, false),
             &"xxx".to_string(),
             &"yyy".to_string(),
             false,
@@ -791,9 +743,9 @@ mod test {
     }
 
     #[test]
-    fn string_contains_comparator_case_sensitive_match() {
+    fn string_includes_case_insensitive_match() {
         run_test(
-            &StringContainsComparator::new(false, false),
+            &StringIncludesComparator::new(false, false),
             &"ST st".to_string(),
             &"test STRING".to_string(),
             true,
@@ -803,9 +755,9 @@ mod test {
     }
 
     #[test]
-    fn regex_comparator_match() {
+    fn regex_match() {
         run_test(
-            &StringPatternMatchComparator::new(false, true),
+            &StringMatchesComparator::new(true, false),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
             &"2014-01-01".to_string(),
             true,
@@ -815,9 +767,9 @@ mod test {
     }
 
     #[test]
-    fn regex_comparator_no_match() {
+    fn regex_no_match() {
         run_test(
-            &StringPatternMatchComparator::new(false, true),
+            &StringMatchesComparator::new(true, false),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
             &"xxx".to_string(),
             false,
@@ -827,7 +779,7 @@ mod test {
     }
 
     #[test]
-    fn any_comparator_match() {
+    fn any_value_match() {
         run_test(
             &AnyValueComparator::new(),
             &"00000000".to_string(),
