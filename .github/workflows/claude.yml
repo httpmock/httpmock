@@ -25,13 +25,31 @@ jobs:
       id-token: write
       actions: read # Required for Claude to read CI results on PRs
     steps:
+      # Tag mode checks out the PR head, and issue_comment runs with this repo's
+      # secrets even on fork PRs, so the fork's code would run next to them.
+      # Only issues and same-repo PRs are handled. Fails closed if the lookup fails.
+      - name: Skip fork PRs
+        id: gate
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number || (github.event.issue.pull_request && github.event.issue.number) }}
+        run: |
+          if [ -n "$PR_NUMBER" ] && [ "$(gh pr view "$PR_NUMBER" --repo "$GITHUB_REPOSITORY" --json isCrossRepository --jq .isCrossRepository)" != false ]; then
+            echo "::notice::Skipping #$PR_NUMBER: fork PR or failed lookup. @claude only runs on issues and same-repo PRs."
+            echo "run=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+          fi
+
       - name: Checkout repository
+        if: steps.gate.outputs.run == 'true'
         uses: actions/checkout@v4
         with:
           fetch-depth: 1
 
       - name: Run Claude Code
         id: claude
+        if: steps.gate.outputs.run == 'true'
         uses: anthropics/claude-code-action@v1
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}

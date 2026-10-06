@@ -1,45 +1,84 @@
 name: Claude Code Review
 
+# pull_request_target so fork PRs can be reviewed. This runs the workflow as
+# defined on master with repository secrets, so it must never check out, fetch
+# or execute code from the PR. Claude reads the PR through the GitHub API.
+# --allowedTools pre-approves the gh calls below and dontAsk denies anything
+# else that would need approval. Read-only shell commands (cat, grep, git log)
+# still run, so this isn't a sandbox: keep the job permissions minimal.
+#
+# From 2026-11-02 GitHub blocks pull_request_target in public repos unless an
+# Actions event policy allows it for this file.
 on:
-  pull_request:
-    types: [opened, synchronize, ready_for_review, reopened]
-    # Optional: Only run on specific file changes
-    # paths:
-    #   - "src/**/*.ts"
-    #   - "src/**/*.tsx"
-    #   - "src/**/*.js"
-    #   - "src/**/*.jsx"
+  pull_request_target:
+    # No synchronize: the review plugin can't see its own inline comments, so
+    # every push would re-run the full review and repeat them. To re-review,
+    # remove and re-add the claude-review label.
+    types: [opened, ready_for_review, reopened, labeled]
+
+# Events for any other label get their own group, so adding e.g. `bug` can't
+# cancel a running review.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}-${{ (github.event.action == 'labeled' && github.event.label.name != 'claude-review') && github.run_id || 'review' }}
+  cancel-in-progress: true
+
+permissions: {}
 
 jobs:
   claude-review:
-    # Optional: Filter by PR author
-    # if: |
-    #   github.event.pull_request.user.login == 'external-contributor' ||
-    #   github.event.pull_request.user.login == 'new-developer' ||
-    #   github.event.pull_request.author_association == 'FIRST_TIME_CONTRIBUTOR'
+    # Runs automatically for maintainers and anyone who has contributed before.
+    # Other PRs run once each time someone with triage access adds the
+    # claude-review label (after the PR leaves draft). Bot PRs and bot-triggered
+    # events are skipped.
+    if: |
+      github.event.pull_request.draft == false &&
+      github.event.pull_request.user.type != 'Bot' &&
+      github.event.sender.type != 'Bot' && (
+        (github.event.action != 'labeled' &&
+          contains(fromJSON('["OWNER", "MEMBER", "COLLABORATOR", "CONTRIBUTOR"]'), github.event.pull_request.author_association)) ||
+        (github.event.action == 'labeled' && github.event.label.name == 'claude-review')
+      )
 
     runs-on: ubuntu-latest
+    timeout-minutes: 60
     permissions:
       contents: read
-      pull-requests: read
+      pull-requests: write
       issues: read
-      id-token: write
 
     steps:
+      # Default branch only (what checkout gets on pull_request_target without a
+      # ref). Never add a ref or repository pointing at the PR head. On v7,
+      # persist-credentials: false is what keeps the job token out of git config.
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
         with:
           fetch-depth: 1
+          persist-credentials: false
 
       - name: Run Claude Code Review
-        id: claude-review
         uses: anthropics/claude-code-action@v1
+        env:
+          # The action stops at the first result message, so background
+          # subagents get abandoned and the job ends green without a review
+          # (anthropics/claude-code-action#1646).
+          CLAUDE_CODE_DISABLE_BACKGROUND_TASKS: "1"
         with:
           claude_code_oauth_token: ${{ secrets.CLAUDE_CODE_OAUTH_TOKEN }}
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          # The job-level if above is the access gate. Setting this also turns
+          # on the action's subprocess env scrub and bubblewrap isolation.
+          allowed_non_write_users: '*'
+          # Nothing above xhigh, including the plugin's subagents, and no
+          # dynamic workflows in CI.
+          settings: '{"maxEffortLevel":"xhigh","disableWorkflows":true}'
           plugin_marketplaces: 'https://github.com/anthropics/claude-code.git'
           plugins: 'code-review@claude-code-plugins'
           prompt: '/code-review:code-review --comment ${{ github.repository }}/pull/${{ github.event.pull_request.number }}'
-          claude_args: '--allowedTools "mcp__github_inline_comment__create_inline_comment"'
-          # See https://github.com/anthropics/claude-code-action/blob/main/docs/usage.md
-          # or https://code.claude.com/docs/en/cli-reference for available options
-
+          # Don't add track_progress: it switches to tag mode, which checks out
+          # the fork's PR head with this job's secrets.
+          claude_args: >-
+            --effort xhigh
+            --permission-mode dontAsk
+            --allowedTools "Bash(gh pr view:*),Bash(gh pr diff:*),Bash(gh pr list:*),Bash(gh pr comment:*),Bash(gh issue view:*),Bash(gh issue list:*),Bash(gh search:*),mcp__github_inline_comment__create_inline_comment"
+            --disallowedTools "WebFetch,WebSearch,Write,Edit,NotebookEdit,Bash(gh api:*),Bash(gh pr review:*),Bash(gh pr edit:*),Bash(gh pr close:*)"
