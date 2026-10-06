@@ -7,4 +7,4 @@ pub mod util;
 pub(crate) mod static_mock;
 
 #[cfg(any(feature = "remote", feature = "proxy"))]
-pub(crate) mod http;
+pub(crate) mod http_client;
