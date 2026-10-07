@@ -57,3 +57,37 @@ async fn https_test_reqwest() {
     assert_eq!(res.headers().get("X-Hello").unwrap().to_str().unwrap(), "test");
     assert!(base_url.starts_with("https://"));
 }
+
+#[tokio::test]
+async fn serves_http_and_https_on_the_same_port() {
+    use httpmock::{MockServer, server::DEFAULT_CA_CERTIFICATE};
+    use reqwest::{Client, tls::Certificate};
+
+    // Arrange
+    let server = MockServer::start_async().await;
+
+    let mock = server
+        .mock_async(|when, then| {
+            when.path("/hello");
+            then.status(200);
+        })
+        .await;
+
+    // Trust the CA the mock server signs its certificates with, so this test doesn't depend on the OS trust store
+    let cert = Certificate::from_pem(DEFAULT_CA_CERTIFICATE.as_bytes()).unwrap();
+    let client = Client::builder().add_root_certificate(cert).build().unwrap();
+
+    // Act: the server tells TLS and plain HTTP apart by the first byte the client sends
+    for scheme in ["http", "https"] {
+        let res = client
+            .get(format!("{}://{}/hello", scheme, server.address()))
+            .send()
+            .await
+            .unwrap();
+
+        // Assert
+        assert_eq!(res.status(), 200, "{} request should be served", scheme);
+    }
+
+    mock.assert_calls_async(2).await;
+}

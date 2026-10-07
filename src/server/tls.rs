@@ -5,9 +5,9 @@ use std::{
     sync::{Arc, Mutex, RwLock},
 };
 
-use async_trait::async_trait;
 use rcgen::{CertificateParams, Issuer, KeyPair, SanType};
 use rustls::{
+    ContentType,
     crypto::ring::sign::any_supported_type,
     pki_types::{CertificateDer, PrivateKeyDer},
     server::{ClientHello, ResolvesServerCert},
@@ -346,69 +346,19 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
     }
 }
 
-pub struct TcpStreamPeekBuffer<'a> {
-    stream: &'a tokio::net::TcpStream,
-    buffer: Vec<u8>,
-}
-
-impl<'a> TcpStreamPeekBuffer<'a> {
-    pub fn new(stream: &'a tokio::net::TcpStream) -> Self {
-        TcpStreamPeekBuffer {
-            stream,
-            buffer: Vec::new(),
-        }
-    }
-
-    pub fn buffer(&self) -> &[u8] {
-        &self.buffer
-    }
-
-    pub async fn advance(&mut self, offset: usize) -> std::io::Result<()> {
-        if self.buffer.len() > offset {
-            return Ok(());
-        }
-
-        let required_size = offset + 1;
-        if required_size > self.buffer.len() {
-            self.buffer.resize(required_size, 0);
-        }
-
-        let mut total_peeked = 0;
-        while total_peeked < required_size {
-            let peeked_now = self.stream.peek(&mut self.buffer[total_peeked..]).await?;
-            if peeked_now == 0 {
-                return Err(std::io::Error::new(
-                    std::io::ErrorKind::UnexpectedEof,
-                    "EOF reached before offset",
-                ));
-            }
-            total_peeked += peeked_now;
-        }
-
-        Ok(())
-    }
-}
-
-#[async_trait]
-impl<'a> tls_detect::Read<'a> for TcpStreamPeekBuffer<'a> {
-    async fn read_byte(&mut self, from_offset: usize) -> std::io::Result<u8> {
-        self.advance(from_offset).await?;
-        Ok(self.buffer[from_offset])
-    }
-
-    async fn read_bytes(&mut self, from_offset: usize, to_offset: usize) -> std::io::Result<Vec<u8>> {
-        self.advance(to_offset).await?;
-        Ok(self.buffer[from_offset..to_offset].to_vec())
-    }
-
-    async fn read_u16_from_be(&mut self, offset: usize) -> std::io::Result<u16> {
-        let u16_bytes = self.read_bytes(offset, offset + 2).await?;
-        Ok(u16::from_be_bytes([u16_bytes[0], u16_bytes[1]]))
-    }
-
-    async fn buffer_to(&mut self, limit: usize) -> std::io::Result<()> {
-        self.advance(limit).await
-    }
+/// Tells whether the client opened `stream` with a TLS handshake, without consuming anything.
+///
+/// A TLS client always starts with a `ClientHello` in a handshake record, while HTTP/1 requests
+/// and the HTTP/2 connection preface start with ASCII text, so the first byte is enough to tell
+/// them apart; rustls validates the rest during the handshake. Peeking a single byte also can't
+/// spin on a partially received prefix: `peek` only returns once data is available, and then it
+/// either fills the one-byte buffer or reports EOF.
+pub async fn starts_with_tls_handshake(stream: &tokio::net::TcpStream) -> std::io::Result<bool> {
+    let mut first_byte = [0];
+    stream
+        .peek(&mut first_byte)
+        .await
+        .map(|peeked| peeked == 1 && ContentType::from(first_byte[0]) == ContentType::Handshake)
 }
 
 // Collect all local interface IP addresses (IPv4 and IPv6), excluding unspecified.
@@ -423,4 +373,111 @@ fn collect_local_ips() -> Vec<std::net::IpAddr> {
         }
     }
     out
+}
+
+#[cfg(test)]
+mod tests {
+    use std::{sync::Arc, time::Duration};
+
+    use rustls::{
+        ClientConfig, ClientConnection, RootCertStore, crypto::ring::default_provider, pki_types::ServerName,
+    };
+    use tokio::{
+        io::{AsyncReadExt, AsyncWriteExt},
+        net::{TcpListener, TcpStream},
+        time::timeout,
+    };
+
+    use super::starts_with_tls_handshake;
+
+    // The first flight a real rustls client sends, i.e. a handshake record carrying the ClientHello.
+    fn client_hello() -> Vec<u8> {
+        let config = ClientConfig::builder_with_provider(Arc::new(default_provider()))
+            .with_safe_default_protocol_versions()
+            .unwrap()
+            .with_root_certificates(RootCertStore::empty())
+            .with_no_client_auth();
+        let mut connection =
+            ClientConnection::new(Arc::new(config), ServerName::try_from("localhost").unwrap()).unwrap();
+        let mut hello = Vec::new();
+        connection.write_tls(&mut hello).unwrap();
+        hello
+    }
+
+    async fn connected_pair() -> (TcpStream, TcpStream) {
+        let listener = TcpListener::bind("127.0.0.1:0").await.unwrap();
+        let client = TcpStream::connect(listener.local_addr().unwrap()).await.unwrap();
+        client.set_nodelay(true).unwrap();
+        let (server, _) = listener.accept().await.unwrap();
+        (client, server)
+    }
+
+    // Sends `first`, runs the detection, then sends `rest` and checks that the server still reads
+    // everything the client sent, which proves that the detection didn't consume any bytes.
+    async fn detect(first: &[u8], rest: &[u8]) -> bool {
+        let (mut client, mut server) = connected_pair().await;
+        client.write_all(first).await.unwrap();
+        let is_tls = timeout(Duration::from_secs(5), starts_with_tls_handshake(&server))
+            .await
+            .expect("detection should not wait for more than the first byte")
+            .unwrap();
+
+        client.write_all(rest).await.unwrap();
+        let mut received = vec![0; first.len() + rest.len()];
+        timeout(Duration::from_secs(5), server.read_exact(&mut received))
+            .await
+            .expect("all bytes sent by the client should still be readable")
+            .unwrap();
+        assert_eq!(received, [first, rest].concat());
+
+        is_tls
+    }
+
+    #[tokio::test]
+    async fn detects_rustls_client_hello() {
+        assert!(detect(&client_hello(), &[]).await);
+    }
+
+    #[tokio::test]
+    async fn detects_client_hello_from_first_byte() {
+        let hello = client_hello();
+        assert!(detect(&hello[..1], &hello[1..]).await);
+    }
+
+    #[tokio::test]
+    async fn http1_request_is_not_tls() {
+        assert!(!detect(b"GET / HTTP/1.1\r\nHost: localhost\r\n\r\n", b"").await);
+        assert!(!detect(b"G", b"ET / HTTP/1.1\r\nHost: localhost\r\n\r\n").await);
+    }
+
+    #[tokio::test]
+    async fn http1_request_with_leading_crlf_is_not_tls() {
+        assert!(!detect(b"\r\nGET / HTTP/1.1\r\nHost: localhost\r\n\r\n", b"").await);
+    }
+
+    #[tokio::test]
+    async fn h2_preface_is_not_tls() {
+        assert!(!detect(b"PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n", b"").await);
+    }
+
+    #[tokio::test]
+    async fn closed_connection_is_not_tls() {
+        let (client, server) = connected_pair().await;
+        drop(client);
+        let is_tls = timeout(Duration::from_secs(5), starts_with_tls_handshake(&server))
+            .await
+            .expect("detection should finish once the client closed the connection")
+            .unwrap();
+        assert!(!is_tls);
+    }
+
+    #[tokio::test]
+    async fn waits_for_first_byte() {
+        let (_client, server) = connected_pair().await;
+        assert!(
+            timeout(Duration::from_millis(50), starts_with_tls_handshake(&server))
+                .await
+                .is_err()
+        );
+    }
 }

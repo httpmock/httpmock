@@ -1,6 +1,5 @@
 use std::{net::SocketAddr, sync::Arc};
 
-use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Request, StatusCode};
 use serde::de::DeserializeOwned;
@@ -10,28 +9,25 @@ use crate::common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleC
 #[cfg(feature = "record")]
 use crate::common::data::{ActiveRecording, RecordingRuleConfig};
 use crate::{
-    api::{
-        MockServerAdapter,
-        adapter::{
-            ServerAdapterError,
-            ServerAdapterError::{
-                InvalidMockDefinitionError, JsonDeserializationError, JsonSerializationError, UpstreamError,
-            },
+    api::adapter::{
+        MockServerAdapter, ServerAdapterError,
+        ServerAdapterError::{
+            InvalidMockDefinitionError, JsonDeserializationError, JsonSerializationError, UpstreamError,
         },
     },
     common::{
         data::{ActiveMock, ClosestMatch, MockDefinition, MockServerHttpResponse, RequestRequirements},
-        http::HttpClient,
+        http::HttpMockHttpClient,
     },
 };
 
 pub(in crate::api) struct RemoteMockServerAdapter {
     addr: SocketAddr,
-    http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
+    http_client: Arc<HttpMockHttpClient>,
 }
 
 impl RemoteMockServerAdapter {
-    pub(in crate::api) fn new(addr: SocketAddr, http_client: Arc<dyn HttpClient + Send + Sync + 'static>) -> Self {
+    pub(in crate::api) fn new(addr: SocketAddr, http_client: Arc<HttpMockHttpClient>) -> Self {
         Self { addr, http_client }
     }
 
@@ -148,7 +144,6 @@ impl RemoteMockServerAdapter {
     }
 }
 
-#[async_trait]
 impl MockServerAdapter for RemoteMockServerAdapter {
     fn host(&self) -> String {
         self.addr.ip().to_string()
@@ -327,9 +322,9 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     }
 
     #[cfg(feature = "record")]
-    async fn create_mocks_from_recording<'a>(
+    async fn create_mocks_from_recording(
         &self,
-        recording_file_content: &'a str,
+        recording_file_content: &str,
     ) -> Result<Vec<usize>, ServerAdapterError> {
         // Note: this endpoint receives the raw recording file content and,
         // unlike the other POST calls, is intentionally sent without a JSON

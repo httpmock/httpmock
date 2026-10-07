@@ -1,6 +1,5 @@
 use std::sync::Arc;
 
-use async_trait::async_trait;
 use bytes::Bytes;
 use http::{Request, Response};
 use http_body_util::{BodyExt, Full};
@@ -23,11 +22,6 @@ pub enum Error {
     RequestSend(#[from] hyper_util::client::legacy::Error),
     #[error("runtime error: {0}")]
     TaskJoin(#[from] tokio::task::JoinError),
-}
-
-#[async_trait]
-pub(crate) trait HttpClient {
-    async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error>;
 }
 
 pub(crate) struct HttpMockHttpClient {
@@ -75,9 +69,8 @@ impl HttpMockHttpClient {
     }
 }
 
-#[async_trait]
-impl HttpClient for HttpMockHttpClient {
-    async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
+impl HttpMockHttpClient {
+    pub(crate) async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let (mut req_parts, req_body) = req.into_parts();
 
         // If the request is origin-form or incomplete, reconstruct an absolute URI

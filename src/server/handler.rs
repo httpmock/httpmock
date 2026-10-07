@@ -19,7 +19,7 @@ use crate::common::data::RecordingRuleConfig;
 #[cfg(any(feature = "remote", feature = "proxy"))]
 use crate::common::http::Error as HttpClientError;
 #[cfg(feature = "proxy")]
-use crate::common::http::HttpClient;
+use crate::common::http::HttpMockHttpClient;
 #[cfg(feature = "proxy")]
 use crate::{
     common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig},
@@ -93,13 +93,13 @@ pub(crate) struct Handler {
     path_tree: PathTree<RoutePath>,
     state: Arc<state::Manager>,
     #[cfg(feature = "proxy")]
-    http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
+    http_client: Arc<HttpMockHttpClient>,
 }
 
 impl Handler {
     pub(crate) fn new(
         state: Arc<state::Manager>,
-        #[cfg(feature = "proxy")] http_client: Arc<dyn HttpClient + Send + Sync + 'static>,
+        #[cfg(feature = "proxy")] http_client: Arc<HttpMockHttpClient>,
     ) -> Self {
         let mut path_tree: PathTree<RoutePath> = PathTree::new();
         #[allow(unused_must_use)]
