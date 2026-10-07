@@ -12,15 +12,3 @@ quote = "1.0"
 [[bin]]
 name = "extract_docs"
 path = "src/extract_docs.rs"
-
-[[bin]]
-name = "extract_code"
-path = "src/extract_code.rs"
-
-[[bin]]
-name = "extract_groups"
-path = "src/extract_groups.rs"
-
-[[bin]]
-name = "extract_example_tests"
-path = "src/extract_example_tests.rs"

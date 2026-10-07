@@ -1,8 +1,8 @@
-use std::fs;
-use std::io::{self, BufRead, BufReader};
 use std::collections::HashMap;
+use std::fs;
+use std::io::{BufRead, BufReader};
 
-fn main() {
+pub fn extract_examples() -> HashMap<String, String> {
     let directory_path = "../tests/examples";
     let paths = fs::read_dir(directory_path).expect("Unable to read directory");
 
@@ -38,12 +38,5 @@ fn main() {
         }
     }
 
-    // Ensure the target directory exists
-    fs::create_dir_all("target").expect("Unable to create target directory");
-
-    // Serialize the example map to JSON
-    let json_output_str = serde_json::to_string_pretty(&example_map).expect("Unable to serialize JSON");
-
-    // Write the output to 'target/extract_example_tests.json'
-    fs::write("target/generated/example_tests.json", json_output_str).expect("Unable to write file");
+    example_map
 }
