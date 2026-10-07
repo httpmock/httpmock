@@ -78,7 +78,7 @@ impl MockServerAdapter for LocalMockServerAdapter {
         let closest_match = self
             .state
             .verify(mock_rr)
-            .map_err(|e| UpstreamError(format!("Cannot delete mock: {:?}", e)))?;
+            .map_err(|e| UpstreamError(format!("Cannot verify mock: {:?}", e)))?;
         Ok(closest_match)
     }
 
