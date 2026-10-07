@@ -11,6 +11,7 @@ remains 1.88.
   are implementation details rather than a supported extension API; there is no
   replacement public path.
 
+- `MockServer::forward_to` and `MockServer::forward_to_async` now return `Result` and reject invalid forwarding targets when the rule is created.
 - The methods `HttpMockRequest::query_params_map` and `HttpMockRequest::to_http_request`
   were removed ([#246](https://github.com/httpmock/httpmock/pull/246)). Use
   `query_params().into_iter().collect()` to obtain a map, and `http::Request::from(&request)`
