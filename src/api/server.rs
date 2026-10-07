@@ -1155,10 +1155,11 @@ impl MockServer {
         use std::fs;
 
         let path = path.into();
-        let content = fs::read_to_string(&path).unwrap_or_else(|_| {
+        let content = fs::read_to_string(&path).unwrap_or_else(|error| {
             panic!(
-                "could not read from file {}",
-                path.as_os_str().to_str().map_or(String::new(), |p| p.to_string())
+                "could not read from file {}: {:?}",
+                path.as_os_str().to_str().map_or(String::new(), |p| p.to_string()),
+                error
             )
         });
 
@@ -1314,7 +1315,7 @@ impl Drop for MockServer {
 
 const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> Arc<dyn MockServerAdapter + Send + Sync> = || {
     let (addr_sender, addr_receiver) = channel::<SocketAddr>();
-    let state_manager = Arc::new(state::Manager::default());
+    let state_manager = Arc::new(state::HttpMockStateManager::default());
     let srv = HttpMockServerBuilder::new()
         .build_with_state(state_manager.clone())
         .expect("cannot build mock server");

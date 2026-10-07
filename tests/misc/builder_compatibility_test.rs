@@ -6,6 +6,7 @@
 //! The request tests check that these setup patterns still produce the intended matching behavior.
 //! In particular, a filter builder saved during setup must keep updating its rule after the inner
 //! filter callback returns, until the outer rule-configuration callback finishes.
+//!
 //! The forwarding, proxy and recording spawn-only tests exercise registration and deletion without traffic.
 
 use std::any::Any;
@@ -38,10 +39,12 @@ fn owned_builders_support_existing_helpers_and_static_callbacks() {
 
     let mock = server.mock(|when, then| {
         let setup = Setup { when, then };
+
         // Move the builders and owned path into the callback instead of borrowing the outer setup.
         run_static_callback(Box::new(move || {
             // Any requires a 'static type, so When must not borrow from the server.mock callback.
             assert!((&setup.when as &dyn Any).is::<When>());
+
             // Match /users through the helper. Passing any_request to and exercises method callbacks;
             // any_request adds no restriction and leaves the path matcher in place.
             with_path(setup.when, &path).and(When::any_request);
@@ -136,25 +139,26 @@ async fn recording_setup_can_run_in_a_send_task() {
 #[cfg(feature = "proxy")]
 #[test]
 fn forwarding_filter_can_be_staged_inside_the_outer_callback() {
-    let target = MockServer::start();
     // The target accepts every path, so only the gateway's filter can exclude /other.
+    let target = MockServer::start();
     target.mock(|when, then| {
         when.any_request();
         then.status(201);
     });
-    let gateway = MockServer::start();
 
+    let gateway = MockServer::start();
     gateway.forward_to(target.base_url(), |rule| {
-        let mut pending_filter = None;
         // Save the owned When and let the inner callback return without configuring a path yet.
+        let mut pending_filter = None;
         rule.filter(|when| pending_filter = Some(when));
+
         // This later change must still reach the rule before the outer setup callback returns.
         // Extracting the filter's state when the inner callback ends would lose the /wanted matcher.
         pending_filter.unwrap().path("/wanted");
     });
 
-    let client = Client::new();
     // /wanted reaches the target; /other must receive the gateway's unmatched-request response.
+    let client = Client::new();
     assert_eq!(client.get(gateway.url("/wanted")).send().unwrap().status(), 201);
     assert_eq!(client.get(gateway.url("/other")).send().unwrap().status(), 404);
 }
@@ -163,18 +167,19 @@ fn forwarding_filter_can_be_staged_inside_the_outer_callback() {
 #[cfg(feature = "proxy")]
 #[test]
 fn proxy_filter_can_be_staged_inside_the_outer_callback() {
-    let target = MockServer::start();
     // Both paths would return 201 at the target, making the gateway's filtering observable.
+    let target = MockServer::start();
     target.mock(|when, then| {
         when.any_request();
         then.status(201);
     });
-    let gateway = MockServer::start();
 
+    let gateway = MockServer::start();
     gateway.proxy(|rule| {
-        let mut pending_filter = None;
         // Keep the owned filter builder after its callback returns, then configure the same rule.
+        let mut pending_filter = None;
         rule.filter(|when| pending_filter = Some(when));
+
         // If the rule already captured a snapshot of the empty filter, /other would also be proxied.
         pending_filter.unwrap().path("/wanted");
     });
@@ -184,6 +189,7 @@ fn proxy_filter_can_be_staged_inside_the_outer_callback() {
         .proxy(reqwest::Proxy::all(gateway.base_url()).unwrap())
         .build()
         .unwrap();
+
     // The saved filter must allow /wanted through and reject /other at the gateway.
     assert_eq!(client.get(target.url("/wanted")).send().unwrap().status(), 201);
     assert_eq!(client.get(target.url("/other")).send().unwrap().status(), 404);
@@ -198,11 +204,13 @@ fn assert_send_sync<T: Send + Sync>() {}
 fn builders_are_send_and_sync() {
     assert_send_sync::<When>();
     assert_send_sync::<Then>();
+
     #[cfg(feature = "proxy")]
     {
         assert_send_sync::<httpmock::ForwardingRuleBuilder>();
         assert_send_sync::<httpmock::ProxyRuleBuilder>();
     }
+
     #[cfg(feature = "record")]
     assert_send_sync::<httpmock::RecordingRuleBuilder>();
 }

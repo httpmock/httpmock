@@ -10,10 +10,7 @@ pub type ResponseCallback = Arc<dyn Fn(&HttpMockRequest) -> HttpMockResponse + S
 pub type RequestPredicate = Arc<dyn Fn(&HttpMockRequest) -> bool + Send + Sync>;
 
 use crate::{
-    common::{
-        data::Error::{HeaderDeserialization, RequestConversion},
-        util::HttpMockBytes,
-    },
+    common::util::HttpMockBytes,
     server::{RequestMetadata, matchers::generic::MatchingStrategy},
 };
 
@@ -216,6 +213,11 @@ impl HttpMockRequest {
             .collect()
     }
 
+    /// Converts this request to an HTTP request with a byte body.
+    pub fn to_http_request(&self) -> http::Request<Bytes> {
+        self.into()
+    }
+
     pub fn query_param_length(&self) -> usize {
         form_urlencoded::parse(self.uri().query().unwrap_or("").as_bytes()).count()
     }
@@ -277,7 +279,7 @@ fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)
         .iter()
         .map(|(name, value)| {
             // Attempt to convert the HeaderValue to a &str, returning an error if it fails.
-            let value_str = value.to_str().map_err(|e| RequestConversion(e.to_string()))?;
+            let value_str = value.to_str().map_err(|e| Error::RequestConversion(e.to_string()))?;
             Ok((name.as_str().to_string(), value_str.to_string()))
         })
         .collect()
@@ -399,6 +401,27 @@ pub struct HttpMockResponse {
 impl HttpMockResponse {
     pub fn builder() -> HttpMockResponseBuilder {
         HttpMockResponseBuilder::new()
+    }
+
+    /// Converts this response to an HTTP response with a byte body.
+    ///
+    /// # Errors
+    /// Returns an error if the status is missing or invalid, or a header is invalid.
+    ///
+    /// # Example
+    /// ```
+    /// use httpmock::HttpMockResponse;
+    ///
+    /// # fn main() -> Result<(), Box<dyn std::error::Error>> {
+    /// let response = HttpMockResponse::builder().status(200).body("hello").build();
+    /// let http_response = response.to_http_response()?;
+    /// assert_eq!(http_response.status(), 200);
+    /// assert_eq!(http_response.body().as_ref(), b"hello");
+    /// # Ok(())
+    /// # }
+    /// ```
+    pub fn to_http_response(&self) -> Result<http::Response<Bytes>, Error> {
+        http::Response::<Bytes>::try_from(self)
     }
 }
 
@@ -633,7 +656,9 @@ impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
         let mut headers = Vec::with_capacity(value.headers().len());
 
         for (key, value) in value.headers() {
-            let value = value.to_str().map_err(|err| HeaderDeserialization(err.to_string()))?;
+            let value = value
+                .to_str()
+                .map_err(|err| Error::HeaderDeserialization(err.to_string()))?;
 
             headers.push((key.as_str().to_string(), value.to_string()))
         }
@@ -1073,7 +1098,7 @@ impl From<&str> for Method {
     fn from(value: &str) -> Self {
         value
             .parse()
-            .unwrap_or_else(|_| panic!("Cannot parse HTTP method from string {:?}", value))
+            .unwrap_or_else(|error| panic!("Cannot parse HTTP method from string {:?}: {:?}", value, error))
     }
 }
 

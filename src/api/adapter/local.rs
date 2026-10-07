@@ -19,11 +19,11 @@ use crate::{
 
 pub(in crate::api) struct LocalMockServerAdapter {
     pub(in crate::api) addr: SocketAddr,
-    state: Arc<state::Manager>,
+    state: Arc<state::HttpMockStateManager>,
 }
 
 impl LocalMockServerAdapter {
-    pub(in crate::api) fn new(addr: SocketAddr, local_state: Arc<state::Manager>) -> Self {
+    pub(in crate::api) fn new(addr: SocketAddr, local_state: Arc<state::HttpMockStateManager>) -> Self {
         LocalMockServerAdapter {
             addr,
             state: local_state,

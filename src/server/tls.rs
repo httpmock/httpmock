@@ -329,7 +329,7 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
 
             return Some(
                 self.generate(hostname)
-                    .unwrap_or_else(|_| panic!("Cannot generate certificate for host {}", hostname)),
+                    .unwrap_or_else(|error| panic!("Cannot generate certificate for host {}: {:?}", hostname, error)),
             );
         }
 

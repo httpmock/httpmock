@@ -13,6 +13,8 @@ RUN cargo install --all-features --path .
 
 FROM debian:trixie-slim
 
+WORKDIR /httpmock
+
 # hadolint ignore=DL3008
 RUN apt-get update && apt-get install -y --no-install-recommends \
     ca-certificates \

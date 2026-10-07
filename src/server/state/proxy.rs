@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use crate::{
     common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig},
     prelude::HttpMockRequest,
-    server::state::{Error, Manager, request_matches},
+    server::state::{Error, HttpMockStateManager, request_matches},
 };
 
 #[derive(Default)]
@@ -16,7 +16,7 @@ pub(super) struct State {
     proxy_rules: BTreeMap<usize, ActiveProxyRule>,
 }
 
-impl Manager {
+impl HttpMockStateManager {
     pub(crate) fn create_forwarding_rule(&self, config: ForwardingRuleConfig) -> ActiveForwardingRule {
         let mut state = self.state.lock().unwrap();
 

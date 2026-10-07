@@ -11,11 +11,13 @@ remains 1.88.
   are implementation details rather than a supported extension API; there is no
   replacement public path.
 
-- The methods `HttpMockRequest::query_params_map` and `HttpMockRequest::to_http_request`
+- The body helpers `is_blank`, `contains_str`, `contains_slice` and `contains_vec`
   were removed ([#246](https://github.com/httpmock/httpmock/pull/246)). Use
-  `query_params().into_iter().collect()` to obtain a map, and `http::Request::from(&request)`
-  to convert a request. Custom matchers written with `When::matches` may need these
-  adjustments.
+  `request.body_ref()` to inspect the bytes directly, or `When::body_includes`
+  for substring matching.
+- `HttpMockRequest::query_params_map()` was removed
+  ([#246](https://github.com/httpmock/httpmock/pull/246)). Collect `query_params()` into a
+  `HashMap<String, String>` instead; see the [README migration example](README.md#upgrading-from-08).
 - The `MockExt` trait was removed and `Mock`'s public `id` field is now private
   ([#285](https://github.com/httpmock/httpmock/pull/285)). Remove `MockExt` imports and
   replace direct `mock.id` field access with `mock.id()`. The inherent `Mock::new`
@@ -26,33 +28,48 @@ remains 1.88.
   enabled HTTP/2 unconditionally. This fails at runtime, not at compile time: enable the
   `http2` feature to keep serving such clients. HTTPS is unaffected, as `h2` was already only
   offered via ALPN with the feature enabled.
-- The server state types `server::state::HttpMockStateManager` and
-  `server::state::MockServerState` were merged into `server::state::Manager`
-  ([#289](https://github.com/httpmock/httpmock/pull/289)). These are server internals; code
-  using the `MockServer` API is unaffected.
-- The `experimental` cargo feature was removed. It did not enable anything; remove it from
-  your feature list.
+- `server::state::MockServerState` is now crate-private
+  ([#289](https://github.com/httpmock/httpmock/pull/289)). Direct construction of the raw
+  state type is no longer available; code using the `MockServer` API is unaffected.
+- `server::HttpMockServer::new` is now crate-private
+  ([#289](https://github.com/httpmock/httpmock/pull/289)). Use `HttpMockServerBuilder::build()` instead.
+- The conversion-error variants `Error::HeaderDeserializationError`, `Error::StaticMockConversionError`,
+  `Error::RequestConversionError` and `Error::ResponseConversionError` lost their `Error` suffix
+  ([#286](https://github.com/httpmock/httpmock/pull/286)). Update explicit variant construction and match patterns.
+- The internally unused conversion-error variants `Error::CookieParserError`, `Error::JSONConversionError`
+  and `Error::InvalidRequestData` were removed ([#286](https://github.com/httpmock/httpmock/pull/286)),
+  including the conversion from `serde_json::Error`. Callers constructing or matching these variants,
+  or using this error type to propagate JSON errors, must update their code.
+- The inner error of `server::Error::RouterError` no longer supports conversions from
+  `regex::Error` or `http::status::InvalidStatusCode` ([#286](https://github.com/httpmock/httpmock/pull/286)).
+  These conversions were unused internally; callers wrapping their own errors this way need another error type.
+- The empty `experimental` Cargo feature was removed. Remove it from your dependency's feature list;
+  it did not enable any functionality.
+- The Docker image now uses a slim Debian runtime without the Rust toolchain or source tree.
+  The executable moved from `/usr/local/cargo/bin/httpmock` to `/usr/local/bin/httpmock`;
+  invoke `httpmock` through `PATH` instead of relying on its old absolute path.
 - `RecordingRuleBuilder::config` is now private
   ([#322](https://github.com/httpmock/httpmock/pull/322)). Its type was never nameable outside
   the crate; configure recordings through the builder's methods.
 
 #### Upgrading from 0.8
 
-Most code needs no changes. Code that fails to compile after upgrading needs at most these
-replacements:
+Most code needs no changes. Remove `MockExt` imports and use `mock.id()` to read a mock's
+ID; reconstructing handles with `Mock::new(id, &server)` remains supported. Replace
+`body().is_blank()` with `body_ref().iter().all(u8::is_ascii_whitespace)` and use byte-slice
+operations for the removed `contains_*` helpers.
 
-| 0.8 | 0.9 |
-|---|---|
-| `use httpmock::MockExt;` | remove the import; `Mock::new(id, &server)` is still available |
-| `mock.id` | `mock.id()` |
-| `request.query_params_map()` | `request.query_params().into_iter().collect()` |
-| `request.to_http_request()` | `http::Request::from(&request)` |
+`HttpMockRequest::to_http_request()` and `server::state::HttpMockStateManager` remain available.
+Direct imports from `server::matchers` must be removed; use the `When` API to configure
+matchers instead.
 
 Tests whose clients speak cleartext HTTP/2 to the mock server additionally need the `http2`
 feature.
 
 ### Improvements
 
+- Add `HttpMockResponse::to_http_response()` for converting to an HTTP response with a
+  byte body. The method borrows the response and returns any conversion error.
 - Async mock, forwarding, proxy and recording setup futures implement `Send` when their
   inputs do, allowing registration inside `tokio::spawn`. Builders retain their owned API
   without new lifetime parameters ([#257](https://github.com/httpmock/httpmock/pull/257)).
@@ -75,10 +92,15 @@ feature.
 
 ### Bug fixes
 
+- Preserve the 0.8.3 request conversion helper and state manager name.
+- Server TLS respects an application-installed rustls crypto provider. Ring is the
+  explicit fallback when no provider is installed, avoiding ambiguous feature detection.
+- File, method and certificate panic diagnostics retain their underlying error causes.
+- Preserve the Docker image's `/httpmock` working directory in the final runtime stage.
 - [#229](https://github.com/httpmock/httpmock/pull/229): The `https` feature builds correctly
   again (hyper-rustls/ring is enabled) (thanks [@danieleades](https://github.com/danieleades))
-- [#242](https://github.com/httpmock/httpmock/pull/242): The ring crypto provider is selected
-  explicitly for server TLS (thanks [@danieleades](https://github.com/danieleades))
+- [#242](https://github.com/httpmock/httpmock/pull/242): Server TLS uses an explicit ring
+  fallback when no crypto provider is installed (thanks [@danieleades](https://github.com/danieleades))
 - [#243](https://github.com/httpmock/httpmock/pull/243): `DELETE /recordings/:id` now deletes
   recordings instead of proxy rules (thanks [@danieleades](https://github.com/danieleades))
 - [#245](https://github.com/httpmock/httpmock/pull/245): The configured `history_limit` is

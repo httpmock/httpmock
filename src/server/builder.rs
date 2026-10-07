@@ -293,7 +293,7 @@ impl HttpMockServerBuilder {
     /// A `HttpMockServer` instance or an error if the build process fails.
     pub fn build(self) -> Result<HttpMockServer, Box<dyn Error>> {
         let history_limit = self.history_limit.unwrap_or(DEFAULT_HISTORY_LIMIT);
-        self.build_with_state(Arc::new(state::Manager::new(history_limit)))
+        self.build_with_state(Arc::new(state::HttpMockStateManager::new(history_limit)))
     }
 
     /// Builds the `HttpMockServer` with the current settings and provided state manager.
@@ -303,7 +303,10 @@ impl HttpMockServerBuilder {
     ///
     /// # Returns
     /// A `HttpMockServer` instance or an error if the build process fails.
-    pub(crate) fn build_with_state(self, state: Arc<state::Manager>) -> Result<HttpMockServer, Box<dyn Error>> {
+    pub(crate) fn build_with_state(
+        self,
+        state: Arc<state::HttpMockStateManager>,
+    ) -> Result<HttpMockServer, Box<dyn Error>> {
         #[cfg(feature = "proxy")]
         let http_client = self
             .http_client

@@ -40,7 +40,7 @@ pub(crate) const DEFAULT_HISTORY_LIMIT: usize = 100;
 
 /// The mock server's mutable state: the registered mocks, the request history,
 /// and the active forwarding, proxy and recording rules.
-pub(crate) struct Inner {
+pub(crate) struct MockServerState {
     next_mock_id: usize,
     history_limit: usize,
     pub mocks: BTreeMap<usize, ActiveMock>,
@@ -52,9 +52,9 @@ pub(crate) struct Inner {
     recording: record::State,
 }
 
-impl Inner {
+impl MockServerState {
     pub fn new(history_limit: usize) -> Self {
-        Inner {
+        MockServerState {
             mocks: BTreeMap::new(),
             #[cfg(feature = "proxy")]
             proxy: Default::default(),
@@ -69,14 +69,14 @@ impl Inner {
 }
 
 /// Owns the mock server's state and serialises access to it.
-pub struct Manager {
-    state: Mutex<Inner>,
+pub struct HttpMockStateManager {
+    state: Mutex<MockServerState>,
 }
 
-impl Manager {
+impl HttpMockStateManager {
     pub fn new(history_limit: usize) -> Self {
         Self {
-            state: Mutex::new(Inner::new(history_limit)),
+            state: Mutex::new(MockServerState::new(history_limit)),
         }
     }
 
@@ -220,9 +220,9 @@ impl Manager {
     }
 }
 
-impl Default for Manager {
+impl Default for HttpMockStateManager {
     fn default() -> Self {
-        Manager::new(DEFAULT_HISTORY_LIMIT)
+        HttpMockStateManager::new(DEFAULT_HISTORY_LIMIT)
     }
 }
 
@@ -315,7 +315,7 @@ mod tests {
     #[test]
     fn history_is_capped_at_configured_limit() {
         let history_limit = 3;
-        let manager = Manager::new(history_limit);
+        let manager = HttpMockStateManager::new(history_limit);
 
         // Serve more requests than the configured limit.
         for _ in 0..10 {
@@ -338,7 +338,7 @@ mod tests {
 
     #[test]
     fn default_history_limit_is_preserved() {
-        let manager = Manager::default();
+        let manager = HttpMockStateManager::default();
         assert_eq!(manager.state.lock().unwrap().history_limit, DEFAULT_HISTORY_LIMIT);
     }
 }
