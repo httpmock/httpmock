@@ -15,7 +15,7 @@ use crate::common::data::{ActiveRecording, RecordingRuleConfig};
 pub(super) mod local;
 
 #[derive(Error, Debug)]
-pub(super) enum ServerAdapterError {
+pub enum ServerAdapterError {
     #[error("mock with ID {0} not found")]
     MockNotFound(usize),
     #[cfg(feature = "remote")]

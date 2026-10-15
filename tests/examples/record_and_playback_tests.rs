@@ -13,11 +13,13 @@ fn record_with_forwarding_test() {
     });
 
     let recording_server = MockServer::start();
-    recording_server.forward_to(target_server.base_url(), |rule| {
-        rule.filter(|when| {
-            when.path("/hello");
-        });
-    });
+    recording_server
+        .forward_to(target_server.base_url(), |rule| {
+            rule.filter(|when| {
+                when.path("/hello");
+            });
+        })
+        .unwrap();
 
     let recording = recording_server.record(|rule| {
         rule.record_response_delays(true)
@@ -140,11 +142,13 @@ fn record_with_forwarding_example_test() {
     // host instead of answering with a mocked response. The 'when'
     // variable lets you configure rules under which forwarding
     // should take place.
-    server.forward_to("https://httpmock.rs", |rule| {
-        rule.filter(|when| {
-            when.any_request(); // Ensure all requests are forwarded.
-        });
-    });
+    server
+        .forward_to("https://httpmock.rs", |rule| {
+            rule.filter(|when| {
+                when.any_request(); // Ensure all requests are forwarded.
+            });
+        })
+        .unwrap();
 
     let recording = server.record(|rule| {
         rule.filter(|when| {
@@ -204,11 +208,13 @@ fn playback_github_api() {
     // host (GitHub API) instead of responding with a mock. The 'rule'
     // parameter allows you to define conditions under which forwarding
     // should occur.
-    server.forward_to("https://httpmock.rs", |rule| {
-        rule.filter(|when| {
-            when.any_request(); // Forward all requests.
-        });
-    });
+    server
+        .forward_to("https://httpmock.rs", |rule| {
+            rule.filter(|when| {
+                when.any_request(); // Forward all requests.
+            });
+        })
+        .unwrap();
 
     // Set up recording to capture all forwarded requests and responses
     let recording = server.record(|rule| {
@@ -262,11 +268,13 @@ fn playback_github_api() {
 fn record_with_forwarding_all_request_parts_test() {
     let server = MockServer::start();
 
-    server.forward_to("https://httpmock.rs", |rule| {
-        rule.filter(|when| {
-            when.any_request(); // Ensure all requests are forwarded.
-        });
-    });
+    server
+        .forward_to("https://httpmock.rs", |rule| {
+            rule.filter(|when| {
+                when.any_request(); // Ensure all requests are forwarded.
+            });
+        })
+        .unwrap();
 
     let recording = server.record(|rule| {
         rule.record_request_headers(vec![String::from("X-Auth-Token"), String::from("Accept-Language")])
@@ -305,7 +313,7 @@ fn record_with_forwarding_all_request_parts_test() {
     );
 
     let recording_file_path = recording
-        .save("website-via-forwarding")
+        .save("website-via-forwarding-all-request-parts")
         .expect("cannot store recording on disk");
 
     // Start a new mock server instance for playback
