@@ -5,69 +5,119 @@ description: Describes how the mock server can be configured to support HTTPS
 import { Aside } from '@astrojs/starlight/components';
 
 <Aside type="caution" title="Note">
-    This feature is currently **unstable** and there is no guarantee it will be included in a future stable release.
-    There is progress on stabilizing it, but at the moment, HTTPS **does not work with the proxy feature**.
+    HTTPS support is newer than the rest of the library. The bundled CA certificate and the details of certificate
+    generation may still change in a future release.
 </Aside>
 
-By default, `httpmock` does not enable HTTPS support for testing. However, you can enable it on demand by using the
-Cargo feature `https`. When this feature is enabled, `httpmock` automatically uses HTTPS for all internal communication
-between the Rust API and the mock server, whether it’s a remote standalone server or a local
-[`MockServer`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html) instance.
-It also allows your client to send HTTPS requests to the mock server.
+By default, `httpmock` serves plain HTTP only. The Cargo feature `https` adds TLS to the mock server, so your
+client can send HTTPS requests to a local
+[`MockServer`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html) instance or to a standalone
+server built with the feature (the [Docker image](/server/standalone/#docker-image) is built with all features).
+With the feature enabled, [`MockServer::url`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.url)
+returns `https://` URLs, so a test that builds its request URLs through it switches to HTTPS without any other
+change. The feature is also what lets the [proxy and record](/record-and-playback/recording/) features intercept
+HTTPS traffic to other hosts.
+
+The administrative communication between the Rust API and the mock server stays plain HTTP on the same port, so
+nothing changes in how tests create and verify mocks. To talk to a standalone server over HTTPS from the client
+side, enable the `remote-https` feature as well.
 
 ## Unified Port
-`httpmock` uses a unified port approach for both HTTP and HTTPS communication. This means you don’t need to change
-the port or modify anything in your Rust tests to switch to HTTPS. Your client can send requests using HTTPS as needed,
-and `httpmock` will automatically detect HTTPS traffic on the port and transition from HTTP to HTTPS without
-any additional configuration.
 
-## CA Certificate
-Since HTTPS requires the use of certificates, you'll need to accept the `httpmock` CA certificate
-in your client settings or, more conveniently, in your system preferences when using HTTPS.
-You can find the `httpmock` CA certificate in the `httpmock`
-[GitHub repository](https://github.com/httpmock/httpmock/blob/master/certs) (ca.pem file).
+`httpmock` uses a unified port approach for both HTTP and HTTPS communication. The server looks at the first bytes
+of every new connection and, if they start a TLS handshake, performs TLS on that connection; otherwise it treats the
+connection as plain HTTP. This means you don’t need to change the port or modify anything in your Rust tests to
+switch to HTTPS. Your client can send requests using HTTPS as needed, and the same port keeps serving HTTP.
 
+## Certificates
 
-`httpmock` uses its CA certificate to generate domain-specific certificates for your tests. For instance, if you want
-to mock requests from https://wikipedia.org (such as when using the `httpmock` proxy feature), the mock server
-will generate and cache a certificate for that domain based on the `httpmock` CA certificate. Since your system
-trusts the CA certificate, the self-signed, domain-specific certificate for Wikipedia will also be trusted
-automatically.
+Since HTTPS requires certificates, `httpmock` ships with its own certificate authority and signs a certificate for
+every host on the fly.
+
+### CA Certificate
+
+The CA certificate and key are in the `certs` directory of the
+[GitHub repository](https://github.com/httpmock/httpmock/blob/master/certs) (`ca.pem` and `ca.key`) and are
+compiled into the crate. With the `https` feature they are available as the constants
+[`server::DEFAULT_CA_CERTIFICATE`](https://docs.rs/httpmock/latest/httpmock/server/constant.DEFAULT_CA_CERTIFICATE.html)
+and [`server::DEFAULT_CA_PRIVATE_KEY`](https://docs.rs/httpmock/latest/httpmock/server/constant.DEFAULT_CA_PRIVATE_KEY.html),
+which is handy for trusting the CA in a test client (see below).
+
+The key is public, so the CA is only suitable for tests. If you embed the server through
+[`HttpMockServerBuilder`](https://docs.rs/httpmock/latest/httpmock/server/struct.HttpMockServerBuilder.html), you
+can supply your own CA with
+[`https_ca_key_pair`](https://docs.rs/httpmock/latest/httpmock/server/struct.HttpMockServerBuilder.html#method.https_ca_key_pair)
+or [`https_ca_key_pair_files`](https://docs.rs/httpmock/latest/httpmock/server/struct.HttpMockServerBuilder.html#method.https_ca_key_pair_files).
+The standalone binary always uses the bundled CA.
+
+### Host Certificates
+
+`httpmock` uses its CA certificate to generate host-specific certificates for your tests. For instance, if you want
+to mock requests to `https://wikipedia.org` (such as when using the `httpmock` proxy feature), the mock server
+will generate and cache a certificate for that domain, signed by the `httpmock` CA, as soon as a client connects
+with that server name (SNI). Since your system trusts the CA certificate, the generated certificate for Wikipedia
+is trusted as well.
+
+When a client connects without a server name, which is what happens for requests to a bare IP address, the server
+issues a certificate for its own address instead. That certificate additionally covers `localhost`, `127.0.0.1`,
+`::1`, the IP addresses of the host's network interfaces, and whatever you list in the `HTTPMOCK_EXTRA_SANS`
+environment variable (comma separated hostnames or IPs). The variable matters when the server runs in a Docker
+container: the interface addresses it sees are the container-internal ones, so add the hostnames or IPs that your
+clients use to reach the container. The variable is described with the other settings of the standalone binary on
+the [standalone server page](/server/standalone/#environment-variables).
 
 ### Trusting the CA Certificate
 
-Here is how you can add the `httpmock` CA crtificate to your system.
+In a Rust test, the simplest way is to add the CA to the client instead of the system. With `reqwest`:
 
-#### MacOS
+```rust
+use httpmock::{MockServer, server::DEFAULT_CA_CERTIFICATE};
+use reqwest::{blocking::Client, tls::Certificate};
+
+let server = MockServer::start();
+server.mock(|when, then| {
+    when.path("/hello");
+    then.status(200);
+});
+
+let client = Client::builder()
+    .add_root_certificate(Certificate::from_pem(DEFAULT_CA_CERTIFICATE.as_bytes()).unwrap())
+    .build()
+    .unwrap();
+
+// With the https feature, server.url() returns an https:// URL.
+let response = client.get(server.url("/hello")).send().unwrap();
+assert_eq!(response.status(), 200);
+```
+
+To trust the CA for every program on a machine, for example when the application under test is not written in
+Rust, add it to the system's certificate store.
+
+#### macOS
 
 ```bash
 # Download the CA certificate
-curl -o httpmock-ca.crt https://github.com/httpmock/httpmock/raw/master/certs/ca.pem
+curl -o httpmock-ca.pem https://github.com/httpmock/httpmock/raw/master/certs/ca.pem
 
-# Open Keychain Access manually or use the open command
-open /Applications/Utilities/Keychain\ Access.app
-
-# Import the certificate:
-# - Drag the downloaded 'httpmock-ca.crt' file into the "System" keychain.
-# - Set the certificate to "Always Trust" under "Get Info".
+# Add it to the system keychain as a trusted root
+sudo security add-trusted-cert -d -r trustRoot -k /Library/Keychains/System.keychain httpmock-ca.pem
 ```
+
+Alternatively, drag the file into the System keychain in Keychain Access and set it to "Always Trust" under
+"Get Info".
 
 #### Windows
-```
+
+```powershell
 # Download the CA certificate
-Invoke-WebRequest -Uri "https://github.com/httpmock/httpmock/raw/master/certs/ca.pem" -OutFile "C:\Path\To\httpmock-ca.crt"
+Invoke-WebRequest -Uri "https://github.com/httpmock/httpmock/raw/master/certs/ca.pem" -OutFile "httpmock-ca.crt"
 
-# Open the Certificate Manager
-# Press 'Win + R', type 'mmc', and press Enter.
-
-# Import the certificate:
-# - In MMC, go to File > Add/Remove Snap-in, select "Certificates", and click "Add".
-# - Choose "Computer account" and then "Local computer".
-# - Under "Trusted Root Certification Authorities", right-click on "Certificates" and choose "All Tasks > Import".
-# - Browse to the downloaded 'httpmock-ca.crt' file and complete the import wizard.
+# Import it into the machine's trusted root store (run as administrator)
+Import-Certificate -FilePath httpmock-ca.crt -CertStoreLocation Cert:\LocalMachine\Root
 ```
 
 #### Ubuntu
+
 ```bash
 # Clone the repository to get the CA certificate
 git clone git@github.com:httpmock/httpmock.git
@@ -78,3 +128,12 @@ sudo cp httpmock/certs/ca.pem /usr/local/share/ca-certificates/httpmock.crt
 # Update the system's trusted certificates
 sudo update-ca-certificates
 ```
+
+## Crypto Provider
+
+The TLS implementation is [`rustls`](https://docs.rs/rustls/latest/rustls/). The `https` feature enables the
+`ring` provider, and the server uses whatever crypto provider your application has installed as the process-wide
+default. Only if none is installed does it fall back to `ring`, so an application that has installed `aws-lc-rs`
+or a custom provider keeps its configuration, and compiling several providers into one binary no longer causes a
+panic at startup. The client side (`remote-https` and the proxy) installs `ring` as the process default when
+nothing is installed yet.

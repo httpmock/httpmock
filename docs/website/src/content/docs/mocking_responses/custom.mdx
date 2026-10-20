@@ -1,0 +1,24 @@
+---
+title: Custom Responses
+description: Building the response at request time with respond_with.
+---
+
+import { Aside, Code } from '@astrojs/starlight/components';
+import raw from '../../../../../../tests/examples/custom_request_matcher_tests.rs?raw';
+import { snippet } from '../../../utils/snippets';
+
+The methods on [`Then`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html) describe one fixed response. When the response has to depend on the request, or change from call to call, [`respond_with`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.respond_with) takes a closure instead. It gets the [`HttpMockRequest`](https://docs.rs/httpmock/latest/httpmock/struct.HttpMockRequest.html) and returns an [`HttpMockResponse`](https://docs.rs/httpmock/latest/httpmock/struct.HttpMockResponse.html), which you build with [`HttpMockResponse::builder`](https://docs.rs/httpmock/latest/httpmock/struct.HttpMockResponse.html#method.builder). Both types convert to and from the [`http`](https://crates.io/crates/http) crate's `Request` and `Response`, so a closure can also return an `http::Response` and call `.into()` on it.
+
+The closure runs on the mock server's request handling path, once per matched request. Keep it quick, since anything slow in there delays the response, and protect shared state with a `Mutex` or an atomic because the server calls it from its own thread.
+
+<Aside type="caution" title="Attention">
+    Custom responses are not available when connecting to a standalone mock server, for example through
+    [`MockServer::connect`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect),
+    because the closure cannot be sent to another process.
+</Aside>
+
+## Example
+
+This test from the repository answers with a different status on every call by counting requests in a `Mutex`:
+
+<Code code={snippet(raw, 'respond_with')} lang="rust" />

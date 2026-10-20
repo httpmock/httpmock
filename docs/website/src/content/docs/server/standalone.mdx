@@ -12,7 +12,8 @@ By deploying `httpmock` as an independent service, it becomes available outside 
 fake responses for services that are unavailable for testing.
 
 Even when a mock server is running outside your Rust tests in a separate process, such as a Docker container,
-you can still use it within your Rust tests just like a local MockServer instance
+you can still use it within your Rust tests just like a local
+[`MockServer`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html) instance
 (see [Connecting to Standalone Mock Servers](#connecting-to-standalone-mock-servers)). This enables your Rust tests
 to set up remote, standalone servers for larger, federated end-to-end test scenarios, with your Rust tests
 acting as the test runner.
@@ -23,13 +24,65 @@ of the development lifecycle.
 ## Running Standalone Mock Servers
 
 ### Docker Image
+
 Although you can build the mock server in standalone mode yourself, it is easiest to use the accompanying
 [Docker image](https://hub.docker.com/r/httpmock/httpmock) hosted on Docker Hub.
 
 You can run it as follows:
+
 ```bash
-docker run httpmock/httpmock
-````
+docker run -p 5050:5050 httpmock/httpmock
+```
+
+The image is built from the [Dockerfile](https://github.com/httpmock/httpmock/blob/master/Dockerfile) in the
+project root with all Cargo features enabled, so HTTPS, HTTP/2, recording and YAML mock files are all available.
+It is based on a slim Debian runtime (`debian:trixie-slim`) with only `ca-certificates` added. The runtime contains
+no Rust toolchain, no source tree and neither `curl` nor `wget`, which keeps it small but matters for healthchecks
+(see below).
+
+The binary lives at `/usr/local/bin/httpmock`. Up to version 0.8.3 it was at `/usr/local/cargo/bin/httpmock`;
+a symlink keeps that path working, so configurations using the old absolute path do not need to change. The
+working directory is `/httpmock`, and the entrypoint is `httpmock --expose`, so the server accepts connections from
+outside the container without any further configuration. The image sets `HTTPMOCK_PORT=5050` (the exposed port),
+`HTTPMOCK_REQUEST_HISTORY_LIMIT=100` and `RUST_LOG=httpmock=info`. Any argument you append to `docker run` is passed
+to the binary, so `docker run -p 8080:8080 httpmock/httpmock --port 8080` moves the server to another port.
+
+To serve mocks from [YAML files](#mock-definition-files), mount a directory and point `HTTPMOCK_MOCK_FILES_DIR`
+at it:
+
+```bash
+docker run -p 5050:5050 \
+  -v "$(pwd)/mocks:/mocks:ro" \
+  -e HTTPMOCK_MOCK_FILES_DIR=/mocks \
+  httpmock/httpmock
+```
+
+The same setup with Docker Compose, mirroring the
+[`docker-compose.yml`](https://github.com/httpmock/httpmock/blob/master/docker-compose.yml) in the repository:
+
+```yaml
+services:
+  httpmock:
+    image: httpmock/httpmock
+    ports:
+      - "5050:5050"
+    volumes:
+      - ./mocks:/mocks:ro
+    environment:
+      - HTTPMOCK_MOCK_FILES_DIR=/mocks
+```
+
+Because the image ships without `curl` or `wget`, a container healthcheck cannot call them. The server answers
+`GET /__httpmock__/ping` with status `200`, and `bash` is available in the image, so a healthcheck can talk to the
+port directly:
+
+```yaml
+    healthcheck:
+      test: ["CMD", "bash", "-c", "exec 3<>/dev/tcp/127.0.0.1/5050 && printf 'GET /__httpmock__/ping HTTP/1.1\\r\\nHost: localhost\\r\\nConnection: close\\r\\n\\r\\n' >&3 && head -n 1 <&3 | grep -q ' 200 '"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+```
 
 #### Build Docker Image
 
@@ -44,12 +97,22 @@ git clone git@github.com:httpmock/httpmock.git
 docker build -t my-httpmock-image .
 
 # Start a Docker container
-docker run my-httpmock-image
-````
+docker run -p 5050:5050 my-httpmock-image
+```
 
 ### Build Binary
-Alternatively, you can clone the GitHub repository and build a binary from the projects root directory
-and execute it as follows:
+
+The binary is part of the crate and requires the `standalone` Cargo feature. You can install it from crates.io:
+
+```bash
+# Same feature set as the Docker image (HTTPS included)
+cargo install httpmock --all-features
+
+# Or a smaller HTTP-only build
+cargo install httpmock --features standalone
+```
+
+Alternatively, you can clone the GitHub repository and build the binary from the project's root directory:
 
 ```bash
 # Clone the repository
@@ -62,10 +125,46 @@ cargo build --release --all-features
 ./target/release/httpmock
 ```
 
+## Configuration
+
+The binary is configured through command line flags, each of which can also be set through an environment
+variable. A flag given on the command line wins over the environment variable, and the environment variable wins
+over the default.
+
+### Command Line Options
+
+| Flag | Environment variable | Default | Description |
+| --- | --- | --- | --- |
+| `-p, --port <PORT>` | `HTTPMOCK_PORT` | `5050` | The TCP port the server listens on. |
+| `-e, --expose` | `HTTPMOCK_EXPOSE` | off | Bind to `0.0.0.0` and accept connections from other machines. Without it the server only listens on the loopback interface. |
+| `-m, --mock-files-dir <DIR>` | `HTTPMOCK_MOCK_FILES_DIR` | none | Directory with [YAML mock definition files](#mock-definition-files) to load at startup. |
+| `-d, --disable-access-log` | `HTTPMOCK_DISABLE_ACCESS_LOG` | off | Do not log incoming requests. |
+| `-r, --request-history-limit <N>` | `HTTPMOCK_REQUEST_HISTORY_LIMIT` | `100` | Number of recent requests kept per server for assertions and mismatch reports. |
+
+`httpmock --help` prints the same list.
+
 ### Environment Variables
 
-Please refer to the [Environment Variables](/getting_started/fundamentals/#environment-variables) section for information what environment variables are available when
-using a standalone mock server.
+The variables in the table above mirror the flags. `HTTPMOCK_EXPOSE` and `HTTPMOCK_DISABLE_ACCESS_LOG` are boolean
+flags and must be set to `true` or `false` (any other value, including an empty string or `1`, is rejected at
+startup). The Docker image already passes `--expose`, so you do not need `HTTPMOCK_EXPOSE` there.
+
+Two further variables are read by the server at runtime rather than parsed as flags:
+
+- `HTTPMOCK_EXTRA_SANS`: A comma separated list of hostnames or IP addresses to add as subject alternative names
+to the TLS certificate the server generates when a client connects without SNI. By default such a certificate
+covers `localhost`, the loopback addresses and the IPs of the server's own network interfaces. Inside a Docker
+container those are the container-internal addresses, so set this variable to the hostnames or IPs clients use to
+reach the container. See the [HTTPS page](/server/https/) for how certificates are generated.
+- `RUST_LOG`: The log filter of the binary, in the syntax of
+[`tracing_subscriber::EnvFilter`](https://docs.rs/tracing-subscriber/latest/tracing_subscriber/filter/struct.EnvFilter.html).
+The default is `httpmock=info`. Use `httpmock=debug` or `httpmock=trace` to see why a request did not match.
+
+On the client side, `HTTPMOCK_HOST` and `HTTPMOCK_PORT` tell
+[`MockServer::connect_from_env`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect_from_env)
+and [`MockServer::connect_from_env_async`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect_from_env_async)
+where the standalone server runs. These and the other variables the library reads in your tests are documented on
+the [crate's docs.rs front page](https://docs.rs/httpmock/latest/httpmock/).
 
 ## Connecting to Standalone Mock Servers
 
@@ -74,7 +173,29 @@ instance is created. Instead of using [`MockServer::start`](https://docs.rs/http
 you need to connect to a remote server by using one of the `connect` methods (such as
 [`MockServer::connect`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect) or
 [`MockServer::connect_from_env`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect_from_env)).
-Note: These are only available with the remote feature enabled.
+These are only available with the `remote` Cargo feature enabled, for example by running
+`cargo test --features remote`.
+
+```rust
+use httpmock::MockServer;
+
+// Connect to a standalone server instead of starting one
+let server = MockServer::connect("localhost:5050");
+
+let mock = server.mock(|when, then| {
+    when.path("/search");
+    then.status(202);
+});
+```
+
+Everything else works as with a local server: the same
+[`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) and
+[`Then`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html) builders,
+[`Mock::assert`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert) and
+[`MockServer::reset`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.reset). Connecting
+resets the standalone server first, which removes every mock that was created through the API before and clears the
+request history. Mocks loaded from [YAML files](#mock-definition-files) are kept; a reset only sets their call
+counters back to zero, and they cannot be deleted or limited through the API.
 
 ## Sequential Test Execution
 
@@ -88,11 +209,15 @@ each test uses its own mock server.
     applications use the remote server simultaneously, interference may still occur.
 </Aside>
 
-## Usage Without Rust
+## Mock Definition Files
 
-You can use a standalone mock server independently, without needing Rust to configure mock behavior. `httpmock` allows
-you to define mocks using YAML files, which follow a similar when/then pattern as the Rust API. Here's an example
-that defines two mocks (mock definitions are separated using the triple dash separator):
+You can use a standalone mock server independently, without needing Rust to configure mock behavior. `httpmock`
+allows you to define mocks in YAML files, which follow the same when/then pattern as the Rust API. Point the server
+at a directory with `--mock-files-dir` (or `HTTPMOCK_MOCK_FILES_DIR`); every `.yaml` or `.yml` file in it is
+loaded once at startup, so changes to the files require a restart. Files with another extension are skipped, so
+body files for `body_from_file` can sit next to the mock files, but entries without an extension (including
+subdirectories) are read as YAML and fail the startup. A file can hold several mock definitions, separated by the
+YAML document separator `---`:
 
 ```yaml
 when:
@@ -110,11 +235,91 @@ then:
   json_body: '{ "status" : "created" }'
 ```
 
-<Aside type="note" title="Note">
-    Defining mocks with YAML files is straightforward because the field names directly match the corresponding
-    methods in the Rust API, found in the [`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) or
-    [`Then`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html) data structures.
-</Aside>
+Mocks recorded with the [record and playback](/record-and-playback/recording/) feature are written in this format,
+so a recording can be dropped into the mock directory as is.
+[This example file](https://github.com/httpmock/httpmock/blob/master/tests/resources/static_yaml_mock.yaml) in the
+repository shows many of the fields in use.
 
-Please refer to [this example file](https://github.com/httpmock/httpmock/blob/master/tests/resources/static_yaml_mock.yaml),
-which includes many of the usable fields.
+### Request Fields (`when`)
+
+The keys under `when` correspond to the matchers of the
+[`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) builder and are evaluated the same way. Each
+request attribute comes as a family of keys with the same suffixes. A key that takes a list may list several values
+and all of them must hold.
+
+| Attribute | Keys | Values |
+| --- | --- | --- |
+| Scheme | `scheme`, `scheme_not` | a string each |
+| Host | `host` (string); `host_not`, `host_contains`, `host_excludes`, `host_prefix`, `host_suffix`, `host_prefix_not`, `host_suffix_not` (list of strings); `host_matches` (list of regexes) | |
+| Port | `port` (number); `port_not` (list of numbers) | |
+| Path | `path` (string); `path_not`, `path_contains`, `path_excludes`, `path_prefix`, `path_suffix`, `path_prefix_not`, `path_suffix_not` (list of strings); `path_matches` (list of regexes) | |
+| Method | `method` (string, such as `GET`); `method_not` (list of strings) | |
+| Query parameters | `query_param`, `query_param_not`, `query_param_contains`, `query_param_excludes`, `query_param_prefix`, `query_param_suffix`, `query_param_prefix_not`, `query_param_suffix_not` | list of `name`/`value` pairs |
+| | `query_param_exists`, `query_param_missing` | list of names |
+| | `query_param_matches` | list of `name`/`value` regex pairs |
+| | `query_param_count` | list of `name`/`value`/`count` entries |
+| Headers | the same keys with the `header` prefix (`header`, `header_not`, `header_exists`, `header_count`, ...) | as for query parameters |
+| Cookies | the same keys with the `cookie` prefix (`cookie`, `cookie_not`, `cookie_exists`, `cookie_count`, ...) | as for query parameters |
+| Body | `body` (string); `body_not`, `body_contains`, `body_excludes`, `body_prefix`, `body_suffix`, `body_prefix_not`, `body_suffix_not` (list of strings); `body_matches` (list of regexes) | |
+| | the same keys with a `_base64` suffix (`body_base64`, `body_contains_base64`, ...) | base64 encoded bytes, for binary bodies |
+| JSON body | `json_body`, `json_body_not` (a YAML mapping, compared as JSON); `json_body_includes`, `json_body_excludes` (list of mappings) | |
+| Form data | `form_urlencoded_tuple`, `form_urlencoded_tuple_not`, `form_urlencoded_contains`, `form_urlencoded_excludes`, `form_urlencoded_prefix`, `form_urlencoded_suffix`, `form_urlencoded_prefix_not`, `form_urlencoded_suffix_not` | list of `name`/`value` pairs |
+| | `form_urlencoded_key_exists`, `form_urlencoded_key_missing` | list of names |
+| | `form_urlencoded_matches` | list of `name`/`value` regex pairs |
+| | `form_urlencoded_count` | list of `name`/`value`/`count` entries |
+
+A `name`/`value` pair is written as a mapping, and a count entry adds a `count` key:
+
+```yaml
+when:
+  path: /orders
+  query_param:
+    - name: page
+      value: "2"
+  header_exists:
+    - authorization
+  header_count:
+    - name: x-request-id
+      value: .*
+      count: 1
+  json_body:
+    item: book
+    quantity: 3
+```
+
+Most keys are named like the `When` method they map to. The keys with a `_contains` suffix map to the `_includes`
+methods (for example `path_contains` to
+[`When::path_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path_includes)), and the
+form data keys map to the `form_urlencoded_tuple_*` methods (for example `form_urlencoded_key_exists` to
+[`When::form_urlencoded_tuple_exists`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_exists)).
+Keys the server does not know are ignored rather than reported, so check the spelling when a mock does not match.
+
+### Response Fields (`then`)
+
+| Key | Value | Description |
+| --- | --- | --- |
+| `status` | number | The HTTP status code, see [`Then::status`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.status). |
+| `header` | list of `name`/`value` pairs | Response headers, see [`Then::header`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.header). |
+| `body` | string | The response body, see [`Then::body`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.body). |
+| `body_base64` | string | The response body as base64 encoded bytes, for binary content. |
+| `json_body` | mapping or string | The body as JSON, see [`Then::json_body`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.json_body). A YAML mapping is serialized to JSON; a string must contain valid JSON and is parsed, so it can hold JSON verbatim. No `content-type` header is added, so set one with `header` if your client needs it. |
+| `body_from_file` | string | Read the body from a file, see [`Then::body_from_file`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.body_from_file). The path is relative to the YAML file and must stay inside the mock directory; absolute paths and symlinks leading outside it are rejected. |
+| `delay` | number | Milliseconds to wait before responding, see [`Then::delay`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.delay). |
+| `up_to_n_times` | number | Stop matching after this many responses, see [`Then::up_to_n_times`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.up_to_n_times). Must be at least `1`. |
+
+`body_from_file` takes precedence over `json_body`, and `json_body` over `body` and `body_base64`. Giving both `body` and
+`body_base64` results in no body at all, so use one of the two.
+
+```yaml
+when:
+  method: GET
+  path: /report.pdf
+then:
+  status: 200
+  header:
+    - name: content-type
+      value: application/pdf
+  body_from_file: report.pdf
+  delay: 250
+  up_to_n_times: 1
+```

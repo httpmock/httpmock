@@ -1,0 +1,43 @@
+---
+title: Mocking Responses
+description: How the Then part of a mock builds the response, and where to find every response method in the API reference.
+---
+
+The `then` part of a mock describes the response the server sends once a request has matched. Each method on the [`Then`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html) builder sets one aspect of that response, and like the matchers they all return the builder, so they chain. Methods that set the same value, such as `status` or `body`, replace the previous one, while `header` adds to what is already there.
+
+As with the matchers, every method has an example in the API reference on docs.rs. This page lists them by what they do.
+
+## Status
+
+[`status`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.status) sets the HTTP status code of the response. It accepts anything that converts into a `u16`, so both `200` and `StatusCode::OK.as_u16()` work.
+
+## Body
+
+There are four ways to set the body, depending on where the content comes from.
+
+- [`body`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.body) takes a string or any byte slice and sends it as is, so it also covers binary responses.
+- [`body_from_file`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.body_from_file) reads the body from a file at mock creation time. The path is resolved relative to the working directory of the process the mock server runs in, which for a test is the crate root, and the call panics if the file cannot be read.
+- [`json_body`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.json_body) takes a `serde_json::Value`, typically built with the `json!` macro, and serializes it.
+- [`json_body_obj`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.json_body_obj) serializes any value that implements `Serialize`, which is the easiest way to respond with your own response types.
+
+The JSON variants only set the body. Add a `content-type` header yourself if the client needs one.
+
+## Headers
+
+[`header`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.header) adds one response header with a name and a value. Call it once per header; calling it again with the same name adds a second header line rather than replacing the first.
+
+## Delay
+
+[`delay`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.delay) makes the server wait for a `Duration` before it sends the response. That is the easiest way to test client timeouts, retries with backoff, or anything that depends on a slow upstream.
+
+## Limiting how often a mock answers
+
+[`up_to_n_times`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.up_to_n_times) lets the mock serve at most `n` requests. After that it stops matching and later requests fall through to the next mock that matches, or get a `404` if there is none. Mocks are tried in the order they were created, so create the limited mock first and the fallback after it. The mock stays registered, so [`Mock::calls`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.calls) and [`Mock::assert_calls`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_calls) keep working on it. This is the tool for "fail twice, then succeed" scenarios where the code under test retries on its own and you cannot call [`Mock::delete`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.delete) in between.
+
+## Reusing response setup
+
+[`and`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.and) applies a function `fn(Then) -> Then` inside a chain, so a response shape that many mocks share, such as "JSON with a content type and a small delay", can be a plain function that you plug into each chain.
+
+## Dynamic responses
+
+[`respond_with`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.respond_with) replaces the static response with a closure that builds an [`HttpMockResponse`](https://docs.rs/httpmock/latest/httpmock/struct.HttpMockResponse.html) from the request at request time. See [custom responses](/mocking_responses/custom/) for how it works and what it cannot do.

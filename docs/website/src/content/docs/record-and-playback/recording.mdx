@@ -1,25 +1,33 @@
 ---
 title: Recording
-description: Explains how requests can be recorded.
+description: Explains how requests and responses can be recorded.
 ---
 
-import codeExamples from "../../../../generated/example_tests.json"
+import raw from '../../../../../../tests/examples/record_and_playback_tests.rs?raw';
+import { snippet } from '../../../utils/snippets';
 import { Code } from '@astrojs/starlight/components';
 import { Aside } from '@astrojs/starlight/components';
 
-`httpmock` provides functionality to record both requests to third-party services and their responses.
-There are two strategies how you can achieve that: Forwarding and Proxy.
+`httpmock` can record the requests your application sends to a third-party service together with the responses
+that service returns. The recording is a YAML file that a mock server can later
+[play back](/record-and-playback/playback/), so your tests no longer depend on the real service.
+
+Recording needs the `record` cargo feature, which also pulls in `proxy`. The feature table is in the
+[API reference](https://docs.rs/httpmock/latest/httpmock/).
+
+There are two ways to get the traffic through the mock server: forwarding and proxy.
 
 ## Forwarding Strategy
 
-The forwarding feature is the easier method for intercepting and recording responses from third-party services. 
-However, it requires you to change the client’s base URL to direct requests to the mock server’s address.
+Forwarding is the simpler of the two. It requires that you can point your client at the mock server's address
+instead of the real service, for example by making the base URL configurable.
 
-When using the forwarding strategy, your client sends requests to an `httpmock` mock server. 
-The mock server forwards requests that match the criteria defined in the 
-[When](https://docs.rs/httpmock/latest/httpmock/struct.When.html) structure to a predefined target base URL.
+Your client sends requests to the mock server. The mock server forwards every request that matches the filter
+of a forwarding rule to the target base URL and returns the target's response. Filters use the same
+[`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) structure you know from creating mocks. The rule
+is created with
+[`MockServer::forward_to`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.forward_to):
 
-Let's have a look at a basic forwarding example:
 ```rust
 // Initialize the mock server for testing
 let server = MockServer::start();
@@ -36,26 +44,25 @@ server.forward_to("https://github.com", |rule| {
 ```
 
 <Aside type="note" title="Hint">
-    If no forwarding rule matches a request, the mock server reverts to its standard mocking strategy and attempts
-    to serve a configured mock response..
+    If no forwarding rule matches a request, the mock server falls back to its normal behaviour and tries
+    to serve a configured mock response.
 </Aside>
 
-You can use the forwarding functionality to record requests sent to the remote service.
+Forwarding replaces the host name of the request with the target. A recording made through a forwarding rule
+therefore does not contain the host as a matching criterion, which is what lets you play it back on a mock
+server that listens on a different address.
 
 ### Full Example
 
-The following example demonstrates how you can use the forwarding feature to record requests sent to the
-`httpmock` website and the responses it returns.
+The following example uses a forwarding rule to record requests sent to the `httpmock` website and the responses
+it returns, and then plays the recording back on a second server.
 
-<Code code={codeExamples['record-forwarding-website']} lang="rust" />
+<Code code={snippet(raw, 'record-forwarding-website')} lang="rust" />
 
 ## Proxy Strategy
 
-The proxy feature in `httpmock`, while functional on its own, is particularly useful for recording
-in scenarios where modifying or injecting the base URL used by the client is not possible.
-
-Many SDKs, APIs, and HTTP clients support proxy server configuration. For example,
-the reqwest crate allows you to set up a proxy server with the following configuration:
+The proxy strategy is useful when you cannot change the base URL your client uses. Most SDKs and HTTP clients
+support a proxy server setting instead. With the reqwest crate, for example, it looks like this:
 
 ```rust
 // Create a client using the reqwest crate with a configured proxy
@@ -68,17 +75,42 @@ let client = Client::builder()
 let response = client.get("https://github.com").send().unwrap();
 ```
 
-In this example, each request is routed through the proxy server rather than directly to the requested domain host.
-The proxy server then tunnels or forwards the request to the target host, which is `github.com` in this case.
+Each request now goes to the proxy server, which forwards it to the real host, `github.com` in this case.
+When `httpmock` is that proxy, it can intercept, record and forward both requests and responses. Proxy rules
+are created with
+[`MockServer::proxy`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.proxy) and take the
+same kind of filter as forwarding rules.
 
-When configured as a proxy, `httpmock` can intercept, record, and forward both requests and responses.
+Proxying HTTPS traffic means the mock server terminates TLS itself. Your client needs to trust the mock server's
+CA certificate for that; the [HTTPS page](/server/https/) explains how.
 
 <Aside type="note" title="Hint">
-    If no proxy rule matches a request, the mock server reverts to its standard mocking strategy and attempts
+    If no proxy rule matches a request, the mock server falls back to its normal behaviour and tries
     to serve a configured mock response.
 </Aside>
 
 ### Full Example
-<Code code={codeExamples['record-proxy-website']} lang="rust" />
 
+<Code code={snippet(raw, 'record-proxy-website')} lang="rust" />
 
+## Creating the Recording
+
+Forwarding and proxy rules only decide where requests go. The recording itself is started with
+[`MockServer::record`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.record). Its rule
+builder takes a `filter` that selects what gets recorded, again using `When`, and two options:
+`record_request_headers` lists the request headers to store (by default none are recorded), and
+`record_response_delays(true)` stores how long the real service took so playback can reproduce the delay. See
+[`RecordingRuleBuilder`](https://docs.rs/httpmock/latest/httpmock/struct.RecordingRuleBuilder.html) for the
+details.
+
+Once your test has sent its requests, write the recording to disk with
+[`Recording::save_to`](https://docs.rs/httpmock/latest/httpmock/struct.Recording.html#method.save_to), which takes the
+directory and a scenario name and returns the path of the file it wrote. The file is named
+`<scenario>_<timestamp>.yaml`; saving the same scenario twice within one second does not overwrite the first
+file, the second one gets a counter suffix.
+[`Recording::save`](https://docs.rs/httpmock/latest/httpmock/struct.Recording.html#method.save) uses a default directory,
+`target/httpmock/recordings`, which it resolves from the `CARGO_MANIFEST_DIR` that `httpmock` itself was compiled
+with. When `httpmock` comes from crates.io that is the registry checkout, not your project, so prefer `save_to`
+with a path of your own and keep the returned path when you do use `save`. Use
+[`Recording::export`](https://docs.rs/httpmock/latest/httpmock/struct.Recording.html#method.export) to get the
+YAML as bytes without writing a file.

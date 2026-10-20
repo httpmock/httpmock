@@ -25,7 +25,7 @@ let mock = server.mock(|when, then| {
 ```
 
 The [`mock`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.mock) method creates a
-rule on the mock server that responds to HTTP requests when the request marches all specified criteria.
+rule on the mock server that responds to HTTP requests when the request matches all specified criteria.
 
 The [`when`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) variable is a builder-like structure that specifies when the mock server should respond.
 In the example, it is configured to respond to requests with the path `/hello` (e.g., `GET http://localhost:8080/hello`).
@@ -39,10 +39,17 @@ If a request does not meet all specified criteria, the mock server will automati
 
 There is no limit to the number of mocks you can create on a mock server. You can set up as many as needed for your test scenarios.
 
+The [`mock`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.mock) method returns a
+[`Mock`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html) handle. You use it to verify what the server
+received, for example with [`Mock::assert`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert)
+or [`Mock::assert_calls`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_calls), and to
+remove the mock again with [`Mock::delete`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.delete).
+Every [`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) and
+[`Then`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html) method is documented with an example on docs.rs.
 
 ## Sync and Async API
 
-The internal implementation of `httpmock` is entirely based on asynchronous communication. However, it provides both, a synchronous (blocking) and an asynchronous
+The internal implementation of `httpmock` is entirely based on asynchronous communication. However, it provides both a synchronous (blocking) and an asynchronous
 (non-blocking) API. Asynchronous operations can be identified by the API's method signatures, typically ending with `_async` (such as [`mock_async`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.mock_async)
 as the asynchronous variant of the method [`mock`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.mock)).
 This pattern can be found throughout the entire API of `httpmock`.
@@ -60,7 +67,7 @@ This pattern can be found throughout the entire API of `httpmock`.
 
 ## Test Execution and Pooling
 
-When you initialize `MockServer` instances in your tests (e.g., using
+When you initialize [`MockServer`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html) instances in your tests (e.g., using
 [`MockServer::start()`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.start)), `httpmock` allocates a mock server from a global server pool for exclusive use by your test.
 This ensures that no other test can use the same mock server instance during test execution.
 
@@ -70,58 +77,28 @@ to the global pool and made available for other tests. The library automatically
 The default pool limit is set at 25 mock servers to avoid overloading the host system.
 Although this limit is conservative, many host machines can handle additional servers.
 Increasing this limit may not be necessary, depending on the parallelism settings of your test execution.
-You can modify the pool size by setting the `HTTPMOCK_MAX_SERVERS` environment variable.
+You can modify the pool size by setting the `HTTPMOCK_MAX_SERVERS` environment variable (see [Reference](#reference)).
 
 When the global mock server pool is empty and all servers are in use, any test attempting to
-instantiate a mock server will automatically be **blocked** until a server becomes available again.
+instantiate a mock server will automatically be blocked until a server becomes available again.
 
 ### Parallelism With Remote Mock Servers
 
-`httpmock` allows mock servers to be executed in standalone mode, where each server runs in its own process,
+`httpmock` allows mock servers to be executed in [standalone mode](/server/standalone/), where each server runs in its own process,
 typically launched as a separate binary. Tests can connect to these "remote" mock servers using
 [`MockServer::connect`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect),
 [`MockServer::connect_async`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect_async),
-and other [MockServer](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html) functions prefixed
+and other [`MockServer`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html) functions prefixed
 with `connect`.
 
 When using any connect function in tests, the parallelism is set to 1, allowing only one test to access the remote
 server at a time. This ensures that there are no conflicts with other tests during execution.
 
-## Environment Variables
+## Reference
 
-**Rust Tests**
-- `HTTPMOCK_MAX_SERVERS`: Sets the maximum number of mock servers in the global mock server pool.
-- `HTTPMOCK_REQUEST_HISTORY_LIMIT`: Mock servers keep a history of all requests that have been received in a test.
-The history works like a ring buffer, removing the oldest request from the history once it reaches the configured maximum.
-The request history is used for call assertions to verify that a request has been received that matches certain criteria,
-such as in [`Mock::assert`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert).
-By default, this number is set to 100.
-- `HTTPMOCK_HOST` / `HTTPMOCK_PORT`: Sets the hostname/port that should be used connect to remote mock servers when using
-[`MockServer::connect_from_env()`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect_from_env)
-or [`MockServer::connect_from_env_async()`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect_from_env_async).
-
-**Standalone Binary**:
-- `HTTPMOCK_EXPOSE`: If set to `1`, the mock server will be configured to accept external connections (binds to `0.0.0.0`). Otherwise, only connections from your local machine will be accepted.
-- `HTTPMOCK_MOCK_FILES_DIR`: The location where the mock server should look for mock definition files (YAML format).
-- `HTTPMOCK_DISABLE_ACCESS_LOG`: When set to `0`, the mock server will not log incoming requests.
-- `HTTPMOCK_EXTRA_SANS`: When a standalone mock server runs inside a Docker container, this comma separated list of IPs or
-hostnames tells httpmock which hostnames to include in the generated TLS certificates for HTTPS communication.
-Without this additional list, it would use Docker-internal IPs/hostnames that are not reachable from another machine.
-
-## Cargo Features
-
-The crate provides the following Cargo features:
-
-- `cookies`: Enables request matchers for parsing and matching values in cookies
-- `proxy`: Enables the mock server to function as a proxy server
-- `record`: Enables functionality to record requests and responses (most useful in combination with the `proxy` feature). Enables reading mock specifications from YAML files (e.g., recorded responses)
-- `https`: Enables the mock server to provide a unified port for both, HTTP and HTTPS
-- `http2`: Enables mock server support for HTTP2
-- `standalone`: Enables standalone mode
-- `remote`: Allows to connect to remote (standalone) mock servers
-- `remote-https`: Enables communication to remote (standalone) mock servers via `HTTPS`
-- `color`: enables colorful output in standalone mode
-
-For example, the command `cargo test --features=remote` enables the functionality in your tests to communicate with remote standalone mock servers.
-
-
+The crate's Cargo features and the environment variables the library reads in your tests (such as
+`HTTPMOCK_MAX_SERVERS`, or `HTTPMOCK_HOST` and `HTTPMOCK_PORT` for
+[`MockServer::connect_from_env`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect_from_env))
+are documented on the [crate's docs.rs front page](https://docs.rs/httpmock/latest/httpmock/), next to the API
+reference, so they stay in sync with the code of the release you use. The command line flags and environment
+variables of the standalone binary are on the [standalone server page](/server/standalone/#configuration).

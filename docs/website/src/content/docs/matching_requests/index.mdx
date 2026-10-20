@@ -1,0 +1,160 @@
+---
+title: Matching Requests
+description: How the When part of a mock decides which requests it answers, and where to find every matcher in the API reference.
+---
+
+Every mock has a `when` part. Each method you call on it adds one criterion, and the mock only answers a request if every criterion holds. A request that matches no mock at all gets a `404 (Not Found)` from the mock server. If you want to know why a mock did not fire, call [`Mock::assert`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert) on it: its failure message lists the closest request and which criteria failed. All matcher methods return the [`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) builder again, so they chain, and you can combine criteria from different groups freely: a `method`, a `path_prefix` and a `header` on one mock mean all three have to hold.
+
+The methods follow one naming scheme across all request parts. The plain name (`path`, `header`, `cookie`) requires an exact match. `_not` requires that the value is not equal, `_includes` and `_excludes` look for a substring, `_prefix` and `_suffix` check the start and end of a value, `_prefix_not` and `_suffix_not` are their negations, and `_matches` takes a regular expression. Key-value parts such as query parameters, headers, cookies and form fields also have `_exists` and `_missing`, which only look at the name, and `_count`, which checks how many pairs match a pair of regular expressions.
+
+Case sensitivity depends on the part. Scheme, method and host are compared case-insensitively, as the respective standards require. The request body is compared byte by byte, so body matchers are case-sensitive since version 0.8 (0.7 and earlier compared bodies case-insensitively).
+
+Each method has its own example in the API reference on docs.rs, so this page only maps the groups and links to them. If the built-in matchers are not enough, [custom matchers](/matching_requests/custom/) let you run your own function against the request.
+
+## Any request
+
+[`any_request`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.any_request) adds no criterion at all and exists to make it explicit that a mock answers everything. A `when` you never call a method on behaves the same way.
+
+## Path
+
+The path is the part of the URL after host and port and before the query string, so `/users/42` for `http://localhost:8080/users/42?full=true`.
+
+- [`path`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path)
+- [`path_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path_not)
+- [`path_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path_includes)
+- [`path_excludes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path_excludes)
+- [`path_prefix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path_prefix)
+- [`path_suffix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path_suffix)
+- [`path_prefix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path_prefix_not)
+- [`path_suffix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path_suffix_not)
+- [`path_matches`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.path_matches)
+
+## Method
+
+The HTTP method accepts a string such as `"GET"` or a [`Method`](https://docs.rs/httpmock/latest/httpmock/enum.Method.html) variant, and is compared case-insensitively.
+
+- [`method`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.method)
+- [`method_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.method_not)
+
+## Query parameters
+
+Query parameter matchers take a name and a value, except for `_exists` and `_missing`, which only take the name, and `_count`, which takes two regular expressions and the expected number of matching pairs. A parameter that appears several times is matched if any of its values satisfies the criterion.
+
+- [`query_param`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param)
+- [`query_param_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_not)
+- [`query_param_exists`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_exists)
+- [`query_param_missing`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_missing)
+- [`query_param_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_includes)
+- [`query_param_excludes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_excludes)
+- [`query_param_prefix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_prefix)
+- [`query_param_suffix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_suffix)
+- [`query_param_prefix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_prefix_not)
+- [`query_param_suffix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_suffix_not)
+- [`query_param_matches`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_matches)
+- [`query_param_count`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param_count)
+
+## Headers
+
+Header matchers work like the query parameter ones, with a header name and a value. Use `header_exists` or `header_missing` when only the presence of a header matters, for example to check that a client sends an `Authorization` header without caring about the token.
+
+- [`header`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header)
+- [`header_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_not)
+- [`header_exists`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_exists)
+- [`header_missing`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_missing)
+- [`header_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_includes)
+- [`header_excludes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_excludes)
+- [`header_prefix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_prefix)
+- [`header_suffix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_suffix)
+- [`header_prefix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_prefix_not)
+- [`header_suffix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_suffix_not)
+- [`header_matches`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_matches)
+- [`header_count`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.header_count)
+
+## Body
+
+The plain body matchers treat the request body as a string and compare it byte by byte, so they are case-sensitive and an exact `body` match includes whitespace and line breaks.
+
+- [`body`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body)
+- [`body_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_not)
+- [`body_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_includes)
+- [`body_excludes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_excludes)
+- [`body_prefix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_prefix)
+- [`body_suffix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_suffix)
+- [`body_prefix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_prefix_not)
+- [`body_suffix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_suffix_not)
+- [`body_matches`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_matches)
+
+### JSON bodies
+
+The JSON matchers parse the body and compare values instead of text, so key order and formatting do not matter. `json_body` takes a `serde_json::Value` (the `json!` macro is the usual way to build one), `json_body_obj` takes any type that implements `Serialize`, and `json_body_includes` and `json_body_excludes` check whether a partial JSON document is contained in the body.
+
+- [`json_body`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.json_body)
+- [`json_body_obj`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.json_body_obj)
+- [`json_body_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.json_body_includes)
+- [`json_body_excludes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.json_body_excludes)
+
+### Form bodies
+
+For `application/x-www-form-urlencoded` bodies the body is parsed into key-value tuples, and the `form_urlencoded_tuple` family matches them with the same name and value variants as query parameters.
+
+- [`form_urlencoded_tuple`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple)
+- [`form_urlencoded_tuple_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_not)
+- [`form_urlencoded_tuple_exists`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_exists)
+- [`form_urlencoded_tuple_missing`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_missing)
+- [`form_urlencoded_tuple_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_includes)
+- [`form_urlencoded_tuple_excludes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_excludes)
+- [`form_urlencoded_tuple_prefix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_prefix)
+- [`form_urlencoded_tuple_suffix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_suffix)
+- [`form_urlencoded_tuple_prefix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_prefix_not)
+- [`form_urlencoded_tuple_suffix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_suffix_not)
+- [`form_urlencoded_tuple_matches`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_matches)
+- [`form_urlencoded_tuple_count`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_count)
+
+## Cookies
+
+Cookie matchers read the `Cookie` request header and match individual cookies by name and value. They need the `cookies` cargo feature, which is enabled by default; if you build with `default-features = false`, add it back to use them.
+
+- [`cookie`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie)
+- [`cookie_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_not)
+- [`cookie_exists`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_exists)
+- [`cookie_missing`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_missing)
+- [`cookie_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_includes)
+- [`cookie_excludes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_excludes)
+- [`cookie_prefix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_prefix)
+- [`cookie_suffix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_suffix)
+- [`cookie_prefix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_prefix_not)
+- [`cookie_suffix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_suffix_not)
+- [`cookie_matches`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_matches)
+- [`cookie_count`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.cookie_count)
+
+## Host
+
+Host matchers look at the host name the request was sent to, which mostly matters when the mock server acts as a proxy or when several names resolve to it. Host names are compared case-insensitively.
+
+- [`host`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host)
+- [`host_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host_not)
+- [`host_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host_includes)
+- [`host_excludes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host_excludes)
+- [`host_prefix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host_prefix)
+- [`host_suffix`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host_suffix)
+- [`host_prefix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host_prefix_not)
+- [`host_suffix_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host_suffix_not)
+- [`host_matches`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host_matches)
+
+## Port
+
+The port matchers compare the port number the request arrived on.
+
+- [`port`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.port)
+- [`port_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.port_not)
+
+## Scheme
+
+The scheme is `http` or `https` and is compared case-insensitively. It is only useful with the `https` feature or when proxying, since a plain mock server only ever receives `http` requests.
+
+- [`scheme`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.scheme)
+- [`scheme_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.scheme_not)
+
+## Reusing criteria
+
+[`and`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.and) applies a function `fn(When) -> When` inside a chain, so a set of criteria that several mocks share can live in one helper and still read as part of the chain. [`is_true`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.is_true) and [`is_false`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.is_false) run your own closure against the request; see [custom matchers](/matching_requests/custom/).
