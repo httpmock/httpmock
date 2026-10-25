@@ -16,9 +16,8 @@ use crate::{
             ValueComparator,
         },
         generic::{
-            FunctionValueMatcher, KeyValueOperator, MatchingStrategy, MultiValueCountExpectation,
-            MultiValueCountMatcher, MultiValueExpectation, MultiValueMatcher, MultiValueRequest,
-            SingleValueExpectation, SingleValueMatcher,
+            FunctionValueMatcher, KeyValueRule, MatchingStrategy, MultiValueCountExpectation, MultiValueCountMatcher,
+            MultiValueExpectation, MultiValueMatcher, MultiValueRequest, SingleValueExpectation, SingleValueMatcher,
         },
         readers::{expectations, request_value},
     },
@@ -110,13 +109,7 @@ impl KeyValuePart {
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringEqualsComparator> {
         let value = StringEqualsComparator::new(true, false);
-        self.with_key(
-            method,
-            MatchingStrategy::Presence,
-            KeyValueOperator::And,
-            expectation,
-            value,
-        )
+        self.with_key(method, KeyValueRule::Present, expectation, value)
     }
 
     const fn not(
@@ -125,13 +118,7 @@ impl KeyValuePart {
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringEqualsComparator> {
         let value = StringEqualsComparator::new(true, true);
-        self.with_key(
-            method,
-            MatchingStrategy::Absence,
-            KeyValueOperator::Implication,
-            expectation,
-            value,
-        )
+        self.with_key(method, KeyValueRule::ValueAbsent, expectation, value)
     }
 
     const fn exists(
@@ -140,13 +127,7 @@ impl KeyValuePart {
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<AnyValueComparator> {
         let value = AnyValueComparator::new();
-        self.with_key(
-            method,
-            MatchingStrategy::Presence,
-            KeyValueOperator::And,
-            expectation,
-            value,
-        )
+        self.with_key(method, KeyValueRule::Present, expectation, value)
     }
 
     const fn missing(
@@ -157,11 +138,9 @@ impl KeyValuePart {
         MultiValueMatcher {
             entity_name: self.entity,
             matcher_method: method,
-            matching_strategy: MatchingStrategy::Absence,
-            operator: KeyValueOperator::And,
+            rule: KeyValueRule::KeyAbsent,
             expectation,
             request_value: self.request_value,
-            key_required: false,
             key_comparator: StringEqualsComparator::new(self.case_sensitive_keys, true),
             value_comparator: AnyValueComparator::new(),
             weight: 1,
@@ -174,13 +153,7 @@ impl KeyValuePart {
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringIncludesComparator> {
         let value = StringIncludesComparator::new(true, false);
-        self.with_key(
-            method,
-            MatchingStrategy::Presence,
-            KeyValueOperator::And,
-            expectation,
-            value,
-        )
+        self.with_key(method, KeyValueRule::Present, expectation, value)
     }
 
     const fn excludes(
@@ -189,13 +162,7 @@ impl KeyValuePart {
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringIncludesComparator> {
         let value = StringIncludesComparator::new(true, true);
-        self.with_key(
-            method,
-            MatchingStrategy::Absence,
-            KeyValueOperator::Implication,
-            expectation,
-            value,
-        )
+        self.with_key(method, KeyValueRule::ValueAbsent, expectation, value)
     }
 
     const fn prefix(
@@ -204,13 +171,7 @@ impl KeyValuePart {
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringPrefixComparator> {
         let value = StringPrefixComparator::new(true, false);
-        self.with_key(
-            method,
-            MatchingStrategy::Presence,
-            KeyValueOperator::And,
-            expectation,
-            value,
-        )
+        self.with_key(method, KeyValueRule::Present, expectation, value)
     }
 
     const fn prefix_not(
@@ -219,13 +180,7 @@ impl KeyValuePart {
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringPrefixComparator> {
         let value = StringPrefixComparator::new(true, true);
-        self.with_key(
-            method,
-            MatchingStrategy::Absence,
-            KeyValueOperator::Implication,
-            expectation,
-            value,
-        )
+        self.with_key(method, KeyValueRule::ValueAbsent, expectation, value)
     }
 
     const fn suffix(
@@ -234,13 +189,7 @@ impl KeyValuePart {
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringSuffixComparator> {
         let value = StringSuffixComparator::new(true, false);
-        self.with_key(
-            method,
-            MatchingStrategy::Presence,
-            KeyValueOperator::And,
-            expectation,
-            value,
-        )
+        self.with_key(method, KeyValueRule::Present, expectation, value)
     }
 
     const fn suffix_not(
@@ -249,13 +198,7 @@ impl KeyValuePart {
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringSuffixComparator> {
         let value = StringSuffixComparator::new(true, true);
-        self.with_key(
-            method,
-            MatchingStrategy::Absence,
-            KeyValueOperator::Implication,
-            expectation,
-            value,
-        )
+        self.with_key(method, KeyValueRule::ValueAbsent, expectation, value)
     }
 
     const fn matches(
@@ -266,11 +209,9 @@ impl KeyValuePart {
         MultiValueMatcher {
             entity_name: self.entity,
             matcher_method: method,
-            matching_strategy: MatchingStrategy::Presence,
-            operator: KeyValueOperator::And,
+            rule: KeyValueRule::Present,
             expectation,
             request_value: self.request_value,
-            key_required: true,
             key_comparator: StringMatchesComparator::new(self.case_sensitive_keys, false),
             value_comparator: StringMatchesComparator::new(true, false),
             weight: 1,
@@ -293,23 +234,20 @@ impl KeyValuePart {
         }
     }
 
-    /// A matcher that requires the key and compares it exactly.
+    /// A matcher that compares the key exactly.
     const fn with_key<C: ValueComparator<String, String>>(
         &self,
         method: &'static str,
-        matching_strategy: MatchingStrategy,
-        operator: KeyValueOperator,
+        rule: KeyValueRule,
         expectation: KeyValueExpectation,
         value_comparator: C,
     ) -> KeyValueMatcher<C> {
         MultiValueMatcher {
             entity_name: self.entity,
             matcher_method: method,
-            matching_strategy,
-            operator,
+            rule,
             expectation,
             request_value: self.request_value,
-            key_required: true,
             key_comparator: StringEqualsComparator::new(self.case_sensitive_keys, false),
             value_comparator,
             weight: 1,
