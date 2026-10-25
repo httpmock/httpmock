@@ -9,7 +9,7 @@ keywords = ["http", "mock", "test"]
 categories = ["development-tools::testing"]
 license = "MIT"
 repository = "https://github.com/httpmock/httpmock"
-rust-version = "1.88.0"
+rust-version = "1.89.0"
 exclude = [".github/", "assets/", "docs/", "scripts/", "codecov.yml", "funding.json", "tarpaulin*.toml"]
 
 [lints.rust]
@@ -46,7 +46,7 @@ http-body-util = "0.1"
 tokio = { version = "1", features = ["sync", "macros", "rt-multi-thread", "net"] }
 colored = { version = "3", optional = true }
 clap = { version = "4", features = ["derive", "env"], optional = true }
-serde_yaml = { version = "0.9", optional = true }
+serde-saphyr = { version = "2", default-features = false, features = ["serialize", "deserialize"], optional = true }
 headers = { version = "0.4", optional = true }
 
 ### TLS / HTTPS / PROXY
@@ -75,7 +75,7 @@ remote-https = ["remote", "dep:rustls", "rustls/aws_lc_rs", "dep:hyper-rustls", 
 proxy = ["remote-https", "hyper-util/client-legacy", "hyper-util/http2", "dep:hyper-rustls", "hyper-rustls/http2"] # enables proxy functionality
 https = ["dep:rustls", "dep:rcgen", "dep:tokio-rustls", "dep:hyper-rustls", "rustls/aws_lc_rs", "dep:if-addrs"] # enables httpmock server support for TLS/HTTPS
 http2 = ["hyper/http2", "hyper-util/http2", "hyper-util/server-auto", "hyper-rustls?/http2"] # enables httpmocks server support for HTTP2
-record = ["proxy", "dep:serde_yaml"]
+record = ["proxy", "dep:serde-saphyr"]
 
 [[bin]]
 name = "httpmock"

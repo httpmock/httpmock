@@ -3,9 +3,7 @@ use std::{
     path::{Component, Path, PathBuf},
 };
 
-use bytes::{BufMut, Bytes, BytesMut};
-use serde::Deserialize;
-use serde_yaml::Deserializer;
+use bytes::Bytes;
 use thiserror::Error;
 
 use crate::{
@@ -31,8 +29,10 @@ pub enum Error {
     BodyFromFile { reference: String, reason: String },
     #[error("state operation failed: {0}")]
     State(#[from] state::Error),
-    #[error("cannot process YAML: {0}")]
-    Yaml(#[from] serde_yaml::Error),
+    #[error("cannot parse YAML: {0}")]
+    YamlParse(#[from] serde_saphyr::Error),
+    #[error("cannot write YAML: {0}")]
+    YamlWrite(#[from] serde_saphyr::SerializeError),
     #[error("cannot convert data structures: {0}")]
     DataConversion(#[from] data::Error),
 }
@@ -125,29 +125,18 @@ fn read_mock_file(reference: &str, mock_directory: &Path, definition_file: &Path
 }
 
 pub fn deserialize_mock_defs_from_yaml(yaml_content: &str) -> Result<Vec<StaticMockDefinition>, Error> {
-    let mut definitions = Vec::new();
-
-    for document in Deserializer::from_str(yaml_content) {
-        definitions.push(StaticMockDefinition::deserialize(document)?);
-    }
-
-    Ok(definitions)
+    // Only `true` and `false` are booleans, like in YAML 1.2 and with serde_yaml before, so an
+    // unquoted `yes` or `on` in a `json_body` mapping stays a string.
+    let options = serde_saphyr::options! { strict_booleans: true };
+    Ok(serde_saphyr::from_multiple_with_options(yaml_content, options)?)
 }
 
 pub fn serialize_mock_defs_to_yaml(mocks: &[MockDefinition]) -> Result<Bytes, Error> {
-    let mut buffer = BytesMut::new();
-
-    for (idx, mock) in mocks.iter().enumerate() {
-        if idx > 0 {
-            buffer.put_slice(b"---\n");
-        }
-
-        let static_mock = StaticMockDefinition::try_from(mock)?;
-        let yaml = serde_yaml::to_string(&static_mock)?;
-        buffer.put_slice(yaml.as_bytes());
-    }
-
-    Ok(buffer.freeze())
+    let static_mocks = mocks
+        .iter()
+        .map(StaticMockDefinition::try_from)
+        .collect::<Result<Vec<_>, _>>()?;
+    Ok(Bytes::from(serde_saphyr::to_string_multiple(&static_mocks)?))
 }
 
 #[cfg(test)]
@@ -208,6 +197,24 @@ then:
         let mock: MockDefinition = definition.try_into().unwrap();
 
         assert_eq!(mock.response.body.unwrap().as_ref(), br#"{"status":"healthy"}"#);
+    }
+
+    #[test]
+    fn yaml_1_1_booleans_stay_strings_in_json_body() {
+        let yaml = "when:\n  path: /flags\nthen:\n  status: 200\n  json_body:\n    enabled: yes\n    mode: on\n";
+        let definition = deserialize_mock_defs_from_yaml(yaml).unwrap().pop().unwrap();
+        let mock: MockDefinition = definition.try_into().unwrap();
+
+        assert_eq!(
+            mock.response.body.unwrap().as_ref(),
+            br#"{"enabled":"yes","mode":"on"}"#
+        );
+    }
+
+    #[test]
+    fn empty_documents_are_skipped() {
+        let yaml = format!("---\n{}---\n---\n{}---\n", mock_yaml("delay: 1"), mock_yaml("delay: 2"));
+        assert_eq!(deserialize_mock_defs_from_yaml(&yaml).unwrap().len(), 2);
     }
 
     #[test]

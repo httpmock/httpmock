@@ -13,7 +13,7 @@
 [![Build](https://github.com/httpmock/httpmock/actions/workflows/feature-matrix.yml/badge.svg)](https://github.com/httpmock/httpmock/actions/workflows/feature-matrix.yml)
 [![crates.io](https://img.shields.io/crates/d/httpmock.svg)](https://crates.io/crates/httpmock)
 [![Mentioned in Awesome](https://raw.githubusercontent.com/alexliesenfeld/docs-assets/refs/heads/main/ab.svg)](https://github.com/rust-unofficial/awesome-rust#testing)
-[![Rust](https://img.shields.io/badge/rust-1.88%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/rust/blob/main/RELEASES.md#version-1880-2025-06-26)
+[![Rust](https://img.shields.io/badge/rust-1.89%2B-blue.svg?maxAge=3600)](https://github.com/rust-lang/rust/blob/main/RELEASES.md#version-1890-2025-08-07)
 
 </div>
 
