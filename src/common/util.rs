@@ -4,12 +4,12 @@ use std::{
     fs::File,
     io::Read,
     path::{Path, PathBuf},
-    sync::{Arc, Mutex, MutexGuard},
-    task::{Context, Poll, Wake, Waker},
-    thread::{self, Thread},
+    sync::{Mutex, MutexGuard},
     time::Duration,
 };
 
+#[cfg(any(feature = "https", feature = "remote-https"))]
+use std::sync::Arc;
 #[cfg(feature = "record")]
 use std::{fs::create_dir_all, io::Write};
 
@@ -71,47 +71,6 @@ pub(crate) fn read_env(name: &str, default: &str) -> String {
     match std::env::var(name) {
         Ok(value) => value,
         Err(_) => default.to_string(),
-    }
-}
-
-// ===============================================================================================
-// Futures
-// ===============================================================================================
-#[doc(hidden)]
-pub trait Join: Future {
-    fn join(self) -> <Self as Future>::Output;
-}
-
-impl<F: Future> Join for F {
-    fn join(self) -> <Self as Future>::Output {
-        /// Waker that unparks the blocked thread when the future is ready to
-        /// make progress. `unpark` before `park` leaves a token that makes the
-        /// next `park` return immediately, so no wakeups are lost.
-        struct ThreadWaker(Thread);
-
-        impl Wake for ThreadWaker {
-            fn wake(self: Arc<Self>) {
-                self.0.unpark();
-            }
-
-            fn wake_by_ref(self: &Arc<Self>) {
-                self.0.unpark();
-            }
-        }
-
-        let waker = Waker::from(Arc::new(ThreadWaker(thread::current())));
-        let mut context = Context::from_waker(&waker);
-
-        let mut future = std::pin::pin!(self);
-
-        loop {
-            match future.as_mut().poll(&mut context) {
-                Poll::Ready(output) => return output,
-                // `park` may wake spuriously, so we loop and re-poll rather
-                // than assuming one park corresponds to exactly one wake.
-                Poll::Pending => thread::park(),
-            }
-        }
     }
 }
 
@@ -398,11 +357,13 @@ pub fn read_file<P: AsRef<Path>>(absolute_resource_path: P) -> Result<Vec<u8>, S
 
 #[cfg(test)]
 mod test {
-    use crate::common::util::{Join, with_retry};
+    use pollster::FutureExt;
+
+    use crate::common::util::with_retry;
 
     #[test]
     fn with_retry_error_test() {
-        let result: Result<(), &str> = with_retry(1, || async { Err("test error") }).join();
+        let result: Result<(), &str> = with_retry(1, || async { Err("test error") }).block_on();
 
         assert!(result.is_err());
         assert_eq!(result.err().unwrap(), "test error")

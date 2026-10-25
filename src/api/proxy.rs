@@ -2,13 +2,12 @@
 
 use std::sync::{Arc, Mutex};
 
+use pollster::FutureExt;
+
 use crate::{
     When,
     api::server::MockServer,
-    common::{
-        data::RequestRequirements,
-        util::{Join, update_mutex},
-    },
+    common::{data::RequestRequirements, util::update_mutex},
 };
 
 /// Represents a forwarding rule on a [MockServer](struct.MockServer.html), allowing HTTP requests
@@ -30,7 +29,7 @@ impl<'a> ForwardingRule<'a> {
     /// # Panics
     /// Panics if the deletion fails, typically due to issues such as the rule not existing or server connectivity problems.
     pub fn delete(&mut self) {
-        self.delete_async().join();
+        self.delete_async().block_on();
     }
 
     /// Asynchronously deletes the forwarding rule from the mock server.
@@ -74,7 +73,7 @@ impl<'a> ProxyRule<'a> {
     /// Panics if the deletion fails due to server-related issues such as connectivity problems,
     /// or if the rule does not exist on the server.
     pub fn delete(&mut self) {
-        self.delete_async().join();
+        self.delete_async().block_on();
     }
 
     /// Asynchronously deletes the proxy rule from the server.

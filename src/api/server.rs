@@ -21,6 +21,8 @@ use crate::api::{
 };
 #[cfg(feature = "remote")]
 use crate::common::http::HttpMockHttpClient;
+use pollster::FutureExt;
+
 use crate::{
     Mock,
     api::{
@@ -31,7 +33,7 @@ use crate::{
         data::{MockDefinition, MockServerHttpResponse, RequestRequirements},
         pool::Pool,
         runtime,
-        util::{Join, read_env, take_from_mutex, with_retry},
+        util::{read_env, take_from_mutex, with_retry},
     },
     server::{HttpMockServerBuilder, state},
 };
@@ -113,7 +115,7 @@ impl MockServer {
     /// The instance is put back into the pool automatically when the corresponding
     /// 'MockServer' variable gets out of scope.
     pub fn start() -> MockServer {
-        Self::start_async().join()
+        Self::start_async().block_on()
     }
 
     /// Returns the hostname of the `MockServer`.
@@ -292,7 +294,7 @@ impl MockServer {
     where
         F: FnOnce(When, Then),
     {
-        self.mock_async(config_fn).join()
+        self.mock_async(config_fn).block_on()
     }
 
     /// Creates a [Mock](struct.Mock.html) object on the mock server asynchronously.
@@ -389,7 +391,7 @@ impl MockServer {
     /// assert_eq!(response.status(), 404);
     /// ```
     pub fn reset(&self) {
-        self.reset_async().join()
+        self.reset_async().block_on()
     }
 
     /// Resets the mock server. More specifically, it deletes all [Mock](struct.Mock.html) objects
@@ -471,7 +473,7 @@ impl MockServer {
     /// # Note
     /// This method requires the `remote` feature to be enabled.
     pub fn connect(address: &str) -> Self {
-        Self::connect_async(address).join()
+        Self::connect_async(address).block_on()
     }
 
     /// Asynchronously connects to a remote mock server running in standalone mode
@@ -513,7 +515,7 @@ impl MockServer {
     /// # Note
     /// This method requires the `remote` feature to be enabled.
     pub fn connect_from_env() -> Self {
-        Self::connect_from_env_async().join()
+        Self::connect_from_env_async().block_on()
     }
 }
 
@@ -577,7 +579,7 @@ impl MockServer {
         ForwardingRuleBuilderFn: FnOnce(ForwardingRuleBuilder),
         IntoString: Into<String>,
     {
-        self.forward_to_async(to_base_url, rule).join()
+        self.forward_to_async(to_base_url, rule).block_on()
     }
 
     /// Asynchronously configures the mock server to forward the request to the target host by replacing the host name,
@@ -727,7 +729,7 @@ impl MockServer {
     where
         ProxyRuleBuilderFn: FnOnce(ProxyRuleBuilder),
     {
-        self.proxy_async(rule).join()
+        self.proxy_async(rule).block_on()
     }
 
     /// Asynchronously configures the mock server to proxy HTTP requests based on specified criteria.
@@ -903,7 +905,7 @@ impl MockServer {
     where
         RecordingRuleBuilderFn: FnOnce(RecordingRuleBuilder),
     {
-        self.record_async(rule).join()
+        self.record_async(rule).block_on()
     }
 
     /// Asynchronously records all requests matching a given rule and the corresponding responses
@@ -1088,7 +1090,7 @@ impl MockServer {
     ///
     /// This method is only available when the `record` feature is enabled.
     pub fn playback<IntoPathBuf: Into<PathBuf>>(&self, path: IntoPathBuf) -> MockSet<'_> {
-        self.playback_async(path).join()
+        self.playback_async(path).block_on()
     }
 
     /// Asynchronously reads a recording file and configures the mock server to respond with the
@@ -1237,7 +1239,7 @@ impl MockServer {
     ///
     /// This method is only available when the `record` feature is enabled.
     pub fn playback_from_yaml<AsStrRef: AsRef<str>>(&self, content: AsStrRef) -> MockSet<'_> {
-        self.playback_from_yaml_async(content).join()
+        self.playback_from_yaml_async(content).block_on()
     }
 
     /// Asynchronously configures the mock server to respond with the recorded responses based on a provided recording
@@ -1344,7 +1346,7 @@ const LOCAL_SERVER_ADAPTER_GENERATOR: fn() -> ServerAdapter = || {
         runtime::block_on_current_thread(server_fn).expect("Server execution failed");
     });
 
-    let addr = addr_receiver.join().expect("Cannot get server address");
+    let addr = addr_receiver.block_on().expect("Cannot get server address");
     ServerAdapter::Local(LocalMockServerAdapter::new(addr, state_manager))
 };
 

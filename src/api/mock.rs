@@ -1,9 +1,8 @@
 use std::net::SocketAddr;
 
-use crate::{
-    api::{output, server::MockServer},
-    common::util::Join,
-};
+use pollster::FutureExt;
+
+use crate::api::{output, server::MockServer};
 
 /// Provides a reference to a mock configuration stored on a [MockServer](struct.MockServer.html).
 /// This structure is used for interacting with, monitoring, and managing a specific mock's lifecycle,
@@ -112,7 +111,7 @@ impl<'a> Mock<'a> {
     /// This method will panic if the mock server did not receive exactly one matching request or if
     /// there are issues with the mock server's availability.
     pub fn assert(&self) {
-        self.assert_async().join()
+        self.assert_async().block_on()
     }
 
     /// Asynchronously verifies that the mock server received exactly one HTTP request matching all
@@ -229,7 +228,7 @@ impl<'a> Mock<'a> {
     /// This method will panic if the actual number of hits differs from the specified `hits`, or if
     /// there are issues with the mock server's availability.
     pub fn assert_calls(&self, count: usize) {
-        self.assert_calls_async(count).join()
+        self.assert_calls_async(count).block_on()
     }
 
     /// Asynchronously verifies that the mock server received the specified number of HTTP requests
@@ -425,7 +424,7 @@ impl<'a> Mock<'a> {
     /// # Panics
     /// This method will panic if there are issues accessing the mock server or retrieving the hit count.
     pub fn calls(&self) -> usize {
-        self.calls_async().join()
+        self.calls_async().block_on()
     }
 
     /// Asynchronously returns the number of times the specified mock has been triggered on the mock server.
@@ -554,7 +553,7 @@ impl<'a> Mock<'a> {
     /// same path will not be intercepted by this mock, typically resulting in a 404 Not Found response
     /// unless another active mock matches the request.
     pub fn delete(&mut self) {
-        self.delete_async().join();
+        self.delete_async().block_on();
     }
 
     /// Asynchronously deletes this mock from the mock server. This method is the asynchronous equivalent of
@@ -657,7 +656,7 @@ impl<'a> Mock<'a> {
     /// mock server is a remote server that predates this method, or if there are issues with the
     /// mock server's availability.
     pub fn up_to_n_times(&self, n: usize) {
-        self.up_to_n_times_async(n).join();
+        self.up_to_n_times_async(n).block_on();
     }
 
     /// Asynchronously limits this mock to serving up to `n` calls in total. This method is the
@@ -751,7 +750,7 @@ pub struct MockSet<'a> {
 #[cfg(feature = "record")]
 impl<'a> MockSet<'a> {
     pub fn delete(&mut self) {
-        self.delete_async().join();
+        self.delete_async().block_on();
     }
 
     pub async fn delete_async(&self) {
