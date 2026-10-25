@@ -17,10 +17,11 @@ use crate::{
 // ************************************************************************************************
 // SingleValueMatcher
 // ************************************************************************************************
-type SingleValueExpectation<S> = for<'a> fn(&'a RequestRequirements) -> Option<Vec<&'a S>>;
+pub(crate) type SingleValueExpectation<S> = for<'a> fn(&'a RequestRequirements) -> Option<Vec<&'a S>>;
 
-type MultiValueExpectation<EK, EV> = for<'a> fn(&'a RequestRequirements) -> Option<Vec<(&'a EK, Option<&'a EV>)>>;
-type MultiValueRequest<RK, RV> = fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>;
+pub(crate) type MultiValueExpectation<EK, EV> =
+    for<'a> fn(&'a RequestRequirements) -> Option<Vec<(&'a EK, Option<&'a EV>)>>;
+pub(crate) type MultiValueRequest<RK, RV> = fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>;
 
 pub(crate) struct SingleValueMatcher<S, T, C>
 where
@@ -321,7 +322,7 @@ where
 // ************************************************************************************************
 // MultiValueCountMatcher
 // ************************************************************************************************
-type MultiValueCountExpectation<EK, EV> =
+pub(crate) type MultiValueCountExpectation<EK, EV> =
     for<'a> fn(&'a RequestRequirements) -> Option<Vec<(Option<&'a EK>, Option<&'a EV>, usize)>>;
 
 pub(crate) struct MultiValueCountMatcher<EK, EV, RK, RV, KC, VC>
