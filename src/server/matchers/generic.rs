@@ -17,30 +17,33 @@ use crate::{
 // ************************************************************************************************
 // SingleValueMatcher
 // ************************************************************************************************
-type SingleValueExpectation<S> = for<'a> fn(&'a RequestRequirements) -> Option<Vec<&'a S>>;
+pub(crate) type SingleValueExpectation<S> = for<'a> fn(&'a RequestRequirements) -> Option<Vec<&'a S>>;
 
-type MultiValueExpectation<EK, EV> = for<'a> fn(&'a RequestRequirements) -> Option<Vec<(&'a EK, Option<&'a EV>)>>;
-type MultiValueRequest<RK, RV> = fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>;
+pub(crate) type MultiValueExpectation<EK, EV> =
+    for<'a> fn(&'a RequestRequirements) -> Option<Vec<(&'a EK, Option<&'a EV>)>>;
+pub(crate) type MultiValueRequest<RK, RV> = fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>;
 
-pub(crate) struct SingleValueMatcher<S, T>
+pub(crate) struct SingleValueMatcher<S, T, C>
 where
     S: Display,
     T: Display,
+    C: ValueComparator<S, T>,
 {
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
     pub matching_strategy: MatchingStrategy,
     pub expectation: SingleValueExpectation<S>,
     pub request_value: fn(&HttpMockRequest) -> Option<T>,
-    pub comparator: Box<dyn ValueComparator<S, T> + Send + Sync>,
+    pub comparator: C,
     pub diff_with: Option<Tokenizer>,
     pub weight: usize,
 }
 
-impl<S, T> SingleValueMatcher<S, T>
+impl<S, T, C> SingleValueMatcher<S, T, C>
 where
     S: Display,
     T: Display,
+    C: ValueComparator<S, T>,
 {
     fn find_unmatched<'a>(&self, req_value: &Option<T>, mock_values: &Option<Vec<&'a S>>) -> Vec<&'a S> {
         let mock_values = match mock_values {
@@ -55,10 +58,11 @@ where
     }
 }
 
-impl<S, T> Matcher for SingleValueMatcher<S, T>
+impl<S, T, C> Matcher for SingleValueMatcher<S, T, C>
 where
     S: Display,
     T: Display,
+    C: ValueComparator<S, T>,
 {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_value = (self.expectation)(mock);
@@ -129,12 +133,14 @@ pub enum MatchingStrategy {
 // ************************************************************************************************
 // MultiValueMatcher
 // ************************************************************************************************
-pub(crate) struct MultiValueMatcher<EK, EV, RK, RV>
+pub(crate) struct MultiValueMatcher<EK, EV, RK, RV, KC, VC>
 where
     EK: Display,
     EV: Display,
     RK: Display,
     RV: Display,
+    KC: ValueComparator<EK, RK>,
+    VC: ValueComparator<EV, RV>,
 {
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
@@ -143,17 +149,19 @@ where
     pub request_value: MultiValueRequest<RK, RV>,
     pub matching_strategy: MatchingStrategy,
     pub key_required: bool,
-    pub key_comparator: Box<dyn ValueComparator<EK, RK> + Send + Sync>,
-    pub value_comparator: Box<dyn ValueComparator<EV, RV> + Send + Sync>,
+    pub key_comparator: KC,
+    pub value_comparator: VC,
     pub weight: usize,
 }
 
-impl<EK, EV, RK, RV> MultiValueMatcher<EK, EV, RK, RV>
+impl<EK, EV, RK, RV, KC, VC> MultiValueMatcher<EK, EV, RK, RV, KC, VC>
 where
     EK: Display,
     EV: Display,
     RK: Display,
     RV: Display,
+    KC: ValueComparator<EK, RK>,
+    VC: ValueComparator<EV, RV>,
 {
     fn find_unmatched<'a>(
         &self,
@@ -225,12 +233,14 @@ where
     }
 }
 
-impl<EK, EV, RK, RV> Matcher for MultiValueMatcher<EK, EV, RK, RV>
+impl<EK, EV, RK, RV, KC, VC> Matcher for MultiValueMatcher<EK, EV, RK, RV, KC, VC>
 where
     EK: Display,
     EV: Display,
     RK: Display,
     RV: Display,
+    KC: ValueComparator<EK, RK>,
+    VC: ValueComparator<EV, RV>,
 {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_values = (self.expectation)(mock).unwrap_or_default();
@@ -312,31 +322,35 @@ where
 // ************************************************************************************************
 // MultiValueCountMatcher
 // ************************************************************************************************
-type MultiValueCountExpectation<EK, EV> =
+pub(crate) type MultiValueCountExpectation<EK, EV> =
     for<'a> fn(&'a RequestRequirements) -> Option<Vec<(Option<&'a EK>, Option<&'a EV>, usize)>>;
 
-pub(crate) struct MultiValueCountMatcher<EK, EV, RK, RV>
+pub(crate) struct MultiValueCountMatcher<EK, EV, RK, RV, KC, VC>
 where
     EK: Display,
     EV: Display,
     RK: Display,
     RV: Display,
+    KC: ValueComparator<EK, RK>,
+    VC: ValueComparator<EV, RV>,
 {
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
     pub expectation: MultiValueCountExpectation<EK, EV>,
     pub request_value: MultiValueRequest<RK, RV>,
-    pub key_comparator: Box<dyn ValueComparator<EK, RK> + Send + Sync>,
-    pub value_comparator: Box<dyn ValueComparator<EV, RV> + Send + Sync>,
+    pub key_comparator: KC,
+    pub value_comparator: VC,
     pub weight: usize,
 }
 
-impl<EK, EV, RK, RV> MultiValueCountMatcher<EK, EV, RK, RV>
+impl<EK, EV, RK, RV, KC, VC> MultiValueCountMatcher<EK, EV, RK, RV, KC, VC>
 where
     EK: Display,
     EV: Display,
     RK: Display,
     RV: Display,
+    KC: ValueComparator<EK, RK>,
+    VC: ValueComparator<EV, RV>,
 {
     fn find_unmatched<'a>(
         &self,
@@ -398,12 +412,14 @@ where
     }
 }
 
-impl<EK, EV, RK, RV> Matcher for MultiValueCountMatcher<EK, EV, RK, RV>
+impl<EK, EV, RK, RV, KC, VC> Matcher for MultiValueCountMatcher<EK, EV, RK, RV, KC, VC>
 where
     EK: Display,
     EV: Display,
     RK: Display,
     RV: Display,
+    KC: ValueComparator<EK, RK>,
+    VC: ValueComparator<EV, RV>,
 {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_values = (self.expectation)(mock).unwrap_or_default();
@@ -481,16 +497,19 @@ where
 // ************************************************************************************************
 // FunctionValueMatcher
 // ************************************************************************************************
-pub(crate) struct FunctionValueMatcher<S, T> {
+pub(crate) struct FunctionValueMatcher<S, T, C> {
     pub entity_name: &'static str,
     pub matcher_function: &'static str,
     pub expectation: SingleValueExpectation<S>,
     pub request_value: for<'a> fn(&'a HttpMockRequest) -> Option<&'a T>,
-    pub comparator: Box<dyn ValueComparator<S, T> + Send + Sync>,
+    pub comparator: C,
     pub weight: usize,
 }
 
-impl<S, T> FunctionValueMatcher<S, T> {
+impl<S, T, C> FunctionValueMatcher<S, T, C>
+where
+    C: ValueComparator<S, T>,
+{
     fn get_unmatched(&self, req_value: &Option<&T>, mock_values: &Option<Vec<&S>>) -> Vec<usize> {
         let mock_values = match mock_values {
             None => return Vec::new(),
@@ -511,7 +530,10 @@ impl<S, T> FunctionValueMatcher<S, T> {
     }
 }
 
-impl<S, T> Matcher for FunctionValueMatcher<S, T> {
+impl<S, T, C> Matcher for FunctionValueMatcher<S, T, C>
+where
+    C: ValueComparator<S, T>,
+{
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_values = (self.expectation)(mock);
         if is_none_or_empty(&mock_values) {

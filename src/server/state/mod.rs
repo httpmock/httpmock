@@ -16,7 +16,6 @@ use crate::{
     prelude::HttpMockRequest,
     server::{
         matchers,
-        matchers::Matcher,
         state::Error::{BodyMethodInvalid, StaticMockError, ValidationError},
     },
 };
@@ -46,7 +45,6 @@ pub(crate) struct MockServerState {
     history_limit: usize,
     pub mocks: BTreeMap<usize, ActiveMock>,
     pub history: Vec<Arc<HttpMockRequest>>,
-    pub matchers: Vec<Box<dyn Matcher + Sync + Send>>,
     #[cfg(feature = "proxy")]
     proxy: proxy::State,
     #[cfg(feature = "record")]
@@ -64,7 +62,6 @@ impl MockServerState {
             history: Vec::new(),
             history_limit,
             next_mock_id: 0,
-            matchers: matchers::all(),
         }
     }
 }
@@ -198,10 +195,10 @@ impl HttpMockStateManager {
         let non_matching_requests: Vec<&Arc<HttpMockRequest>> = state
             .history
             .iter()
-            .filter(|req| !request_matches(&state.matchers, req, requirements))
+            .filter(|req| !request_matches(req, requirements))
             .collect();
 
-        let request_distances = get_distances(&non_matching_requests, &state.matchers, requirements);
+        let request_distances = get_distances(&non_matching_requests, requirements);
         let best_matches = get_min_distance_requests(&request_distances);
 
         let closes_match_request_idx = match best_matches.first() {
@@ -210,7 +207,7 @@ impl HttpMockStateManager {
         };
 
         let req = non_matching_requests.get(closes_match_request_idx).unwrap();
-        let mismatches = get_request_mismatches(req, requirements, &state.matchers);
+        let mismatches = get_request_mismatches(req, requirements);
 
         Ok(Some(ClosestMatch {
             request: HttpMockRequest::clone(req),
@@ -232,7 +229,7 @@ impl HttpMockStateManager {
         let result = state
             .mocks
             .values()
-            .find(|&mock| !mock.is_exhausted() && request_matches(&state.matchers, &req, &mock.definition.request));
+            .find(|&mock| !mock.is_exhausted() && request_matches(&req, &mock.definition.request));
 
         let found_mock_id = result.map(|mock| mock.id);
 
@@ -273,34 +270,21 @@ fn validate_up_to_n_times(count: usize) -> Result<NonZero<usize>, Error> {
     NonZero::new(count).ok_or_else(|| ValidationError("up_to_n_times must be greater than 0".to_string()))
 }
 
-fn request_matches(
-    matchers: &[Box<dyn Matcher + Sync + Send>],
-    req: &HttpMockRequest,
-    request_requirements: &RequestRequirements,
-) -> bool {
+fn request_matches(req: &HttpMockRequest, request_requirements: &RequestRequirements) -> bool {
     tracing::trace!("Matching incoming HTTP request");
-    matchers.iter().all(|x| x.matches(req, request_requirements))
+    matchers::all().all(|x| x.matches(req, request_requirements))
 }
 
-fn get_distances(
-    history: &[&Arc<HttpMockRequest>],
-    matchers: &[Box<dyn Matcher + Sync + Send>],
-    mock_rr: &RequestRequirements,
-) -> BTreeMap<usize, usize> {
+fn get_distances(history: &[&Arc<HttpMockRequest>], mock_rr: &RequestRequirements) -> BTreeMap<usize, usize> {
     history
         .iter()
         .enumerate()
-        .map(|(idx, req)| (idx, get_request_distance(req, mock_rr, matchers)))
+        .map(|(idx, req)| (idx, get_request_distance(req, mock_rr)))
         .collect()
 }
 
-fn get_request_distance(
-    req: &Arc<HttpMockRequest>,
-    mock_request_requirements: &RequestRequirements,
-    matchers: &[Box<dyn Matcher + Sync + Send>],
-) -> usize {
-    matchers
-        .iter()
+fn get_request_distance(req: &Arc<HttpMockRequest>, mock_request_requirements: &RequestRequirements) -> usize {
+    matchers::all()
         .map(|matcher| matcher.distance(req, mock_request_requirements))
         .sum()
 }
@@ -323,12 +307,8 @@ fn get_min_distance_requests(request_distances: &BTreeMap<usize, usize>) -> Vec<
         .collect()
 }
 
-fn get_request_mismatches(
-    req: &Arc<HttpMockRequest>,
-    mock_rr: &RequestRequirements,
-    matchers: &[Box<dyn Matcher + Sync + Send>],
-) -> Vec<Mismatch> {
-    matchers.iter().flat_map(|mat| mat.mismatches(req, mock_rr)).collect()
+fn get_request_mismatches(req: &Arc<HttpMockRequest>, mock_rr: &RequestRequirements) -> Vec<Mismatch> {
+    matchers::all().flat_map(|mat| mat.mismatches(req, mock_rr)).collect()
 }
 
 #[cfg(test)]

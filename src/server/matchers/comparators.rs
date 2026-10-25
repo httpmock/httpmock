@@ -28,8 +28,8 @@ pub trait ValueComparator<S: ?Sized, T: ?Sized> {
 pub struct JsonEqualsComparator {}
 
 impl JsonEqualsComparator {
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        Self {}
     }
 }
 
@@ -61,7 +61,7 @@ pub struct JsonIncludesComparator {
 }
 
 impl JsonIncludesComparator {
-    pub fn new(negated: bool) -> Self {
+    pub const fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
@@ -101,7 +101,7 @@ pub struct HostEqualsComparator {
 }
 
 impl HostEqualsComparator {
-    pub fn new(negated: bool) -> Self {
+    pub const fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
@@ -131,7 +131,7 @@ pub struct StringEqualsComparator {
 }
 
 impl StringEqualsComparator {
-    pub fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
             case_sensitive,
             negated,
@@ -159,7 +159,7 @@ pub struct StringIncludesComparator {
 }
 
 impl StringIncludesComparator {
-    pub fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
             case_sensitive,
             negated,
@@ -237,7 +237,7 @@ pub struct StringPrefixComparator {
 }
 
 impl StringPrefixComparator {
-    pub fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
             case_sensitive,
             negated,
@@ -265,7 +265,7 @@ pub struct StringSuffixComparator {
 }
 
 impl StringSuffixComparator {
-    pub fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
             case_sensitive,
             negated,
@@ -293,7 +293,7 @@ pub struct StringMatchesComparator {
 }
 
 impl StringMatchesComparator {
-    pub fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
         Self {
             case_sensitive,
             negated,
@@ -323,8 +323,8 @@ impl ValueComparator<HttpMockRegex, String> for StringMatchesComparator {
 pub struct BytesMatchesComparator {}
 
 impl BytesMatchesComparator {
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        Self {}
     }
 }
 
@@ -361,7 +361,7 @@ pub struct U16EqualsComparator {
 }
 
 impl U16EqualsComparator {
-    pub fn new(negated: bool) -> Self {
+    pub const fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
@@ -385,7 +385,7 @@ pub struct BytesEqualsComparator {
 }
 
 impl BytesEqualsComparator {
-    pub fn new(negated: bool) -> Self {
+    pub const fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
@@ -413,7 +413,7 @@ pub struct BytesIncludesComparator {
 }
 
 impl BytesIncludesComparator {
-    pub fn new(negated: bool) -> Self {
+    pub const fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
@@ -481,7 +481,7 @@ pub struct BytesPrefixComparator {
 }
 
 impl BytesPrefixComparator {
-    pub fn new(negated: bool) -> Self {
+    pub const fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
@@ -509,7 +509,7 @@ pub struct BytesSuffixComparator {
 }
 
 impl BytesSuffixComparator {
-    pub fn new(negated: bool) -> Self {
+    pub const fn new(negated: bool) -> Self {
         Self { negated }
     }
 }
@@ -532,8 +532,8 @@ impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
 pub struct AnyValueComparator {}
 
 impl AnyValueComparator {
-    pub fn new() -> Self {
-        Self::default()
+    pub const fn new() -> Self {
+        Self {}
     }
 }
 
@@ -555,7 +555,7 @@ pub struct FunctionMatchesRequestComparator {
 }
 
 impl FunctionMatchesRequestComparator {
-    pub fn new(negated: bool) -> Self {
+    pub const fn new(negated: bool) -> Self {
         Self { negated }
     }
 }

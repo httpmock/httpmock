@@ -1,1 +1,5 @@
 comment: false
+
+ignore:
+  # The matcher table is built at compile time, so coverage never sees its code run.
+  - "src/server/matchers.rs"

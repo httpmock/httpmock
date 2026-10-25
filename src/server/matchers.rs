@@ -1,16 +1,26 @@
+use std::fmt::Display;
+
+use serde_json::Value;
+
 use crate::{
-    common::data::{HttpMockRequest, Mismatch, RequestRequirements, Tokenizer},
+    common::{
+        data::{HttpMockRegex, HttpMockRequest, Mismatch, RequestRequirements, Tokenizer},
+        util::HttpMockBytes,
+    },
     server::matchers::{
         comparators::{
             AnyValueComparator, BytesEqualsComparator, BytesIncludesComparator, BytesMatchesComparator,
             BytesPrefixComparator, BytesSuffixComparator, FunctionMatchesRequestComparator, HostEqualsComparator,
             JsonEqualsComparator, JsonIncludesComparator, StringEqualsComparator, StringIncludesComparator,
             StringMatchesComparator, StringPrefixComparator, StringSuffixComparator, U16EqualsComparator,
+            ValueComparator,
         },
         generic::{
-            FunctionValueMatcher, KeyValueOperator, MatchingStrategy, MultiValueCountMatcher, MultiValueMatcher,
-            SingleValueMatcher,
+            FunctionValueMatcher, KeyValueOperator, MatchingStrategy, MultiValueCountExpectation,
+            MultiValueCountMatcher, MultiValueExpectation, MultiValueMatcher, MultiValueRequest,
+            SingleValueExpectation, SingleValueMatcher,
         },
+        readers::{expectations, request_value},
     },
 };
 
@@ -19,219 +29,497 @@ mod comparison;
 pub(crate) mod generic;
 mod readers;
 
-// Builds the matchers of a request part with a single value, like the path or the body. Each
-// variant names the `When` method, which is also the name of its expectation reader, and its
-// comparator. The negated variants match by the value's absence.
-macro_rules! single_value_matchers {
-    (@strategy equals) => { MatchingStrategy::Presence };
-    (@strategy not) => { MatchingStrategy::Absence };
-    (@strategy includes) => { MatchingStrategy::Presence };
-    (@strategy excludes) => { MatchingStrategy::Absence };
-    (@strategy prefix) => { MatchingStrategy::Presence };
-    (@strategy prefix_not) => { MatchingStrategy::Absence };
-    (@strategy suffix) => { MatchingStrategy::Presence };
-    (@strategy suffix_not) => { MatchingStrategy::Absence };
-    (@strategy matches) => { MatchingStrategy::Presence };
-    (
-        $entity:literal, $request_value:ident, weight: $weight:literal, diff_with: $diff_with:expr,
-        $($variant:ident: $method:ident => $comparator:expr),+ $(,)?
-    ) => {
-        vec![$(
-            Box::new(SingleValueMatcher {
-                entity_name: $entity,
-                matcher_method: stringify!($method),
-                matching_strategy: single_value_matchers!(@strategy $variant),
-                comparator: Box::new($comparator),
-                expectation: readers::expectations::$method,
-                request_value: readers::request_value::$request_value,
-                diff_with: $diff_with,
-                weight: $weight,
-            }) as Box<dyn Matcher + Sync + Send>
-        ),+]
-    };
+/// A request part with a single value, like the path or the body.
+struct Part<T> {
+    entity: &'static str,
+    request_value: fn(&HttpMockRequest) -> Option<T>,
+    weight: usize,
+    diff_with: Option<Tokenizer>,
 }
 
-// Builds the twelve matchers of a request part made of key-value pairs, like query parameters or
-// headers. Only the entity, the request reader and whether keys are case-sensitive differ between
-// them. `not`, `excludes`, `prefix_not` and `suffix_not` still require the key to be present and
-// only negate the value comparison, so their key comparator isn't negated.
-macro_rules! key_value_matchers {
-    (
-        @pair $entity:literal, $request_value:ident, $method:ident, $strategy:ident, $operator:ident,
-        key_required: $key_required:literal, key: $key:expr, value: $value:expr
-    ) => {
-        Box::new(MultiValueMatcher {
-            entity_name: $entity,
-            matcher_method: stringify!($method),
-            matching_strategy: MatchingStrategy::$strategy,
-            operator: KeyValueOperator::$operator,
-            expectation: readers::expectations::$method,
-            request_value: readers::request_value::$request_value,
-            key_required: $key_required,
-            key_comparator: Box::new($key),
-            value_comparator: Box::new($value),
+impl<T: Display> Part<T> {
+    /// A matcher for a `When` method like `path_prefix`, which requires a matching value.
+    const fn present<S: Display, C: ValueComparator<S, T>>(
+        &self,
+        method: &'static str,
+        expectation: SingleValueExpectation<S>,
+        comparator: C,
+    ) -> SingleValueMatcher<S, T, C> {
+        self.matcher(method, MatchingStrategy::Presence, expectation, comparator)
+    }
+
+    /// A matcher for a negated `When` method like `path_prefix_not`, which requires the
+    /// value's absence.
+    const fn absent<S: Display, C: ValueComparator<S, T>>(
+        &self,
+        method: &'static str,
+        expectation: SingleValueExpectation<S>,
+        comparator: C,
+    ) -> SingleValueMatcher<S, T, C> {
+        self.matcher(method, MatchingStrategy::Absence, expectation, comparator)
+    }
+
+    const fn matcher<S: Display, C: ValueComparator<S, T>>(
+        &self,
+        method: &'static str,
+        matching_strategy: MatchingStrategy,
+        expectation: SingleValueExpectation<S>,
+        comparator: C,
+    ) -> SingleValueMatcher<S, T, C> {
+        SingleValueMatcher {
+            entity_name: self.entity,
+            matcher_method: method,
+            matching_strategy,
+            expectation,
+            request_value: self.request_value,
+            comparator,
+            diff_with: self.diff_with,
+            weight: self.weight,
+        }
+    }
+}
+
+/// A request part made of key-value pairs, like query parameters or headers. Its twelve `When`
+/// methods only differ in how they compare, so each one gets a constructor here.
+struct KeyValuePart {
+    entity: &'static str,
+    request_value: MultiValueRequest<String, String>,
+    case_sensitive_keys: bool,
+}
+
+type KeyValueExpectation = MultiValueExpectation<String, String>;
+type KeyValueMatcher<C> = MultiValueMatcher<String, String, String, String, StringEqualsComparator, C>;
+type KeyValueRegexMatcher =
+    MultiValueMatcher<HttpMockRegex, HttpMockRegex, String, String, StringMatchesComparator, StringMatchesComparator>;
+type KeyValueCountMatcher = MultiValueCountMatcher<
+    HttpMockRegex,
+    HttpMockRegex,
+    String,
+    String,
+    StringMatchesComparator,
+    StringMatchesComparator,
+>;
+
+// `not`, `excludes`, `prefix_not` and `suffix_not` still require the key to be present and only
+// negate the value comparison, so their key comparator isn't negated. Only `missing` negates
+// the key.
+impl KeyValuePart {
+    const fn equals(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<StringEqualsComparator> {
+        let value = StringEqualsComparator::new(true, false);
+        self.with_key(
+            method,
+            MatchingStrategy::Presence,
+            KeyValueOperator::And,
+            expectation,
+            value,
+        )
+    }
+
+    const fn not(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<StringEqualsComparator> {
+        let value = StringEqualsComparator::new(true, true);
+        self.with_key(
+            method,
+            MatchingStrategy::Absence,
+            KeyValueOperator::Implication,
+            expectation,
+            value,
+        )
+    }
+
+    const fn exists(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<AnyValueComparator> {
+        let value = AnyValueComparator::new();
+        self.with_key(
+            method,
+            MatchingStrategy::Presence,
+            KeyValueOperator::And,
+            expectation,
+            value,
+        )
+    }
+
+    const fn missing(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<AnyValueComparator> {
+        MultiValueMatcher {
+            entity_name: self.entity,
+            matcher_method: method,
+            matching_strategy: MatchingStrategy::Absence,
+            operator: KeyValueOperator::And,
+            expectation,
+            request_value: self.request_value,
+            key_required: false,
+            key_comparator: StringEqualsComparator::new(self.case_sensitive_keys, true),
+            value_comparator: AnyValueComparator::new(),
             weight: 1,
-        }) as Box<dyn Matcher + Sync + Send>
-    };
-    (
-        $entity:literal, $request_value:ident, case_sensitive_keys: $keys:literal,
-        equals: $equals:ident, not: $not:ident, exists: $exists:ident, missing: $missing:ident,
-        includes: $includes:ident, excludes: $excludes:ident, prefix: $prefix:ident,
-        prefix_not: $prefix_not:ident, suffix: $suffix:ident, suffix_not: $suffix_not:ident,
-        matches: $matches:ident, count: $count:ident $(,)?
-    ) => {
-        vec![
-            key_value_matchers!(@pair $entity, $request_value, $equals, Presence, And,
-                key_required: true, key: StringEqualsComparator::new($keys, false),
-                value: StringEqualsComparator::new(true, false)),
-            key_value_matchers!(@pair $entity, $request_value, $not, Absence, Implication,
-                key_required: true, key: StringEqualsComparator::new($keys, false),
-                value: StringEqualsComparator::new(true, true)),
-            key_value_matchers!(@pair $entity, $request_value, $exists, Presence, And,
-                key_required: true, key: StringEqualsComparator::new($keys, false),
-                value: AnyValueComparator::new()),
-            key_value_matchers!(@pair $entity, $request_value, $missing, Absence, And,
-                key_required: false, key: StringEqualsComparator::new($keys, true),
-                value: AnyValueComparator::new()),
-            key_value_matchers!(@pair $entity, $request_value, $includes, Presence, And,
-                key_required: true, key: StringEqualsComparator::new($keys, false),
-                value: StringIncludesComparator::new(true, false)),
-            key_value_matchers!(@pair $entity, $request_value, $excludes, Absence, Implication,
-                key_required: true, key: StringEqualsComparator::new($keys, false),
-                value: StringIncludesComparator::new(true, true)),
-            key_value_matchers!(@pair $entity, $request_value, $prefix, Presence, And,
-                key_required: true, key: StringEqualsComparator::new($keys, false),
-                value: StringPrefixComparator::new(true, false)),
-            key_value_matchers!(@pair $entity, $request_value, $prefix_not, Absence, Implication,
-                key_required: true, key: StringEqualsComparator::new($keys, false),
-                value: StringPrefixComparator::new(true, true)),
-            key_value_matchers!(@pair $entity, $request_value, $suffix, Presence, And,
-                key_required: true, key: StringEqualsComparator::new($keys, false),
-                value: StringSuffixComparator::new(true, false)),
-            key_value_matchers!(@pair $entity, $request_value, $suffix_not, Absence, Implication,
-                key_required: true, key: StringEqualsComparator::new($keys, false),
-                value: StringSuffixComparator::new(true, true)),
-            key_value_matchers!(@pair $entity, $request_value, $matches, Presence, And,
-                key_required: true, key: StringMatchesComparator::new($keys, false),
-                value: StringMatchesComparator::new(true, false)),
-            Box::new(MultiValueCountMatcher {
-                entity_name: $entity,
-                matcher_method: stringify!($count),
-                expectation: readers::expectations::$count,
-                request_value: readers::request_value::$request_value,
-                key_comparator: Box::new(StringMatchesComparator::new($keys, false)),
-                value_comparator: Box::new(StringMatchesComparator::new(true, false)),
-                weight: 1,
-            }),
-        ]
-    };
+        }
+    }
+
+    const fn includes(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<StringIncludesComparator> {
+        let value = StringIncludesComparator::new(true, false);
+        self.with_key(
+            method,
+            MatchingStrategy::Presence,
+            KeyValueOperator::And,
+            expectation,
+            value,
+        )
+    }
+
+    const fn excludes(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<StringIncludesComparator> {
+        let value = StringIncludesComparator::new(true, true);
+        self.with_key(
+            method,
+            MatchingStrategy::Absence,
+            KeyValueOperator::Implication,
+            expectation,
+            value,
+        )
+    }
+
+    const fn prefix(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<StringPrefixComparator> {
+        let value = StringPrefixComparator::new(true, false);
+        self.with_key(
+            method,
+            MatchingStrategy::Presence,
+            KeyValueOperator::And,
+            expectation,
+            value,
+        )
+    }
+
+    const fn prefix_not(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<StringPrefixComparator> {
+        let value = StringPrefixComparator::new(true, true);
+        self.with_key(
+            method,
+            MatchingStrategy::Absence,
+            KeyValueOperator::Implication,
+            expectation,
+            value,
+        )
+    }
+
+    const fn suffix(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<StringSuffixComparator> {
+        let value = StringSuffixComparator::new(true, false);
+        self.with_key(
+            method,
+            MatchingStrategy::Presence,
+            KeyValueOperator::And,
+            expectation,
+            value,
+        )
+    }
+
+    const fn suffix_not(
+        &self,
+        method: &'static str,
+        expectation: KeyValueExpectation,
+    ) -> KeyValueMatcher<StringSuffixComparator> {
+        let value = StringSuffixComparator::new(true, true);
+        self.with_key(
+            method,
+            MatchingStrategy::Absence,
+            KeyValueOperator::Implication,
+            expectation,
+            value,
+        )
+    }
+
+    const fn matches(
+        &self,
+        method: &'static str,
+        expectation: MultiValueExpectation<HttpMockRegex, HttpMockRegex>,
+    ) -> KeyValueRegexMatcher {
+        MultiValueMatcher {
+            entity_name: self.entity,
+            matcher_method: method,
+            matching_strategy: MatchingStrategy::Presence,
+            operator: KeyValueOperator::And,
+            expectation,
+            request_value: self.request_value,
+            key_required: true,
+            key_comparator: StringMatchesComparator::new(self.case_sensitive_keys, false),
+            value_comparator: StringMatchesComparator::new(true, false),
+            weight: 1,
+        }
+    }
+
+    const fn count(
+        &self,
+        method: &'static str,
+        expectation: MultiValueCountExpectation<HttpMockRegex, HttpMockRegex>,
+    ) -> KeyValueCountMatcher {
+        MultiValueCountMatcher {
+            entity_name: self.entity,
+            matcher_method: method,
+            expectation,
+            request_value: self.request_value,
+            key_comparator: StringMatchesComparator::new(self.case_sensitive_keys, false),
+            value_comparator: StringMatchesComparator::new(true, false),
+            weight: 1,
+        }
+    }
+
+    /// A matcher that requires the key and compares it exactly.
+    const fn with_key<C: ValueComparator<String, String>>(
+        &self,
+        method: &'static str,
+        matching_strategy: MatchingStrategy,
+        operator: KeyValueOperator,
+        expectation: KeyValueExpectation,
+        value_comparator: C,
+    ) -> KeyValueMatcher<C> {
+        MultiValueMatcher {
+            entity_name: self.entity,
+            matcher_method: method,
+            matching_strategy,
+            operator,
+            expectation,
+            request_value: self.request_value,
+            key_required: true,
+            key_comparator: StringEqualsComparator::new(self.case_sensitive_keys, false),
+            value_comparator,
+            weight: 1,
+        }
+    }
 }
 
-pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
-    [
-        single_value_matchers!("scheme", scheme, weight: 3, diff_with: None,
-            equals: scheme => StringEqualsComparator::new(false, false),
-            not: scheme_not => StringEqualsComparator::new(false, true),
-        ),
-        single_value_matchers!("method", method, weight: 3, diff_with: None,
-            equals: method => StringEqualsComparator::new(false, false),
-            not: method_not => StringEqualsComparator::new(false, true),
-        ),
-        single_value_matchers!("host", host, weight: 3, diff_with: None,
-            equals: host => HostEqualsComparator::new(false),
-            not: host_not => HostEqualsComparator::new(true),
-            includes: host_includes => StringIncludesComparator::new(false, false),
-            excludes: host_excludes => StringIncludesComparator::new(false, true),
-            prefix: host_prefix => StringPrefixComparator::new(false, false),
-            prefix_not: host_prefix_not => StringPrefixComparator::new(false, true),
-            suffix: host_suffix => StringSuffixComparator::new(false, false),
-            suffix_not: host_suffix_not => StringSuffixComparator::new(false, true),
-            matches: host_matches => StringMatchesComparator::new(true, false),
-        ),
-        single_value_matchers!("port", port, weight: 2, diff_with: None,
-            equals: port => U16EqualsComparator::new(false),
-            not: port_not => U16EqualsComparator::new(true),
-        ),
-        single_value_matchers!("path", path, weight: 10, diff_with: None,
-            equals: path => StringEqualsComparator::new(true, false),
-            not: path_not => StringEqualsComparator::new(true, true),
-            includes: path_includes => StringIncludesComparator::new(true, false),
-            excludes: path_excludes => StringIncludesComparator::new(true, true),
-            prefix: path_prefix => StringPrefixComparator::new(true, false),
-            prefix_not: path_prefix_not => StringPrefixComparator::new(true, true),
-            suffix: path_suffix => StringSuffixComparator::new(true, false),
-            suffix_not: path_suffix_not => StringSuffixComparator::new(true, true),
-            matches: path_matches => StringMatchesComparator::new(true, false),
-        ),
-        key_value_matchers!("query parameter", query_params, case_sensitive_keys: true,
-            equals: query_param, not: query_param_not, exists: query_param_exists,
-            missing: query_param_missing, includes: query_param_includes,
-            excludes: query_param_excludes, prefix: query_param_prefix,
-            prefix_not: query_param_prefix_not, suffix: query_param_suffix,
-            suffix_not: query_param_suffix_not, matches: query_param_matches,
-            count: query_param_count,
-        ),
-        key_value_matchers!("header", headers, case_sensitive_keys: false,
-            equals: header, not: header_not, exists: header_exists, missing: header_missing,
-            includes: header_includes, excludes: header_excludes, prefix: header_prefix,
-            prefix_not: header_prefix_not, suffix: header_suffix, suffix_not: header_suffix_not,
-            matches: header_matches, count: header_count,
-        ),
-        #[cfg(feature = "cookies")]
-        key_value_matchers!("cookie", cookies, case_sensitive_keys: true,
-            equals: cookie, not: cookie_not, exists: cookie_exists, missing: cookie_missing,
-            includes: cookie_includes, excludes: cookie_excludes, prefix: cookie_prefix,
-            prefix_not: cookie_prefix_not, suffix: cookie_suffix, suffix_not: cookie_suffix_not,
-            matches: cookie_matches, count: cookie_count,
-        ),
-        single_value_matchers!("body", body, weight: 1, diff_with: Some(Tokenizer::Line),
-            equals: body => BytesEqualsComparator::new(false),
-            not: body_not => BytesEqualsComparator::new(true),
-            includes: body_includes => BytesIncludesComparator::new(false),
-            excludes: body_excludes => BytesIncludesComparator::new(true),
-            prefix: body_prefix => BytesPrefixComparator::new(false),
-            prefix_not: body_prefix_not => BytesPrefixComparator::new(true),
-            suffix: body_suffix => BytesSuffixComparator::new(false),
-            suffix_not: body_suffix_not => BytesSuffixComparator::new(true),
-            matches: body_matches => BytesMatchesComparator::new(),
-        ),
-        single_value_matchers!("body", json_body, weight: 1, diff_with: Some(Tokenizer::Line),
-            equals: json_body => JsonEqualsComparator::new(),
-        ),
-        single_value_matchers!("JSON body", json_body, weight: 1, diff_with: Some(Tokenizer::Line),
-            includes: json_body_includes => JsonIncludesComparator::new(false),
-            excludes: json_body_excludes => JsonIncludesComparator::new(true),
-        ),
-        vec![
-            Box::new(FunctionValueMatcher {
-                entity_name: "custom matcher function",
-                matcher_function: "is_true",
-                comparator: Box::new(FunctionMatchesRequestComparator::new(false)),
-                expectation: readers::expectations::is_true,
-                request_value: readers::request_value::full_request,
-                weight: 1,
-            }) as Box<dyn Matcher + Sync + Send>,
-            Box::new(FunctionValueMatcher {
-                entity_name: "custom matcher function",
-                matcher_function: "is_false",
-                comparator: Box::new(FunctionMatchesRequestComparator::new(true)),
-                expectation: readers::expectations::is_false,
-                request_value: readers::request_value::full_request,
-                weight: 1,
-            }),
-        ],
-        key_value_matchers!("form-urlencoded body", form_urlencoded_body, case_sensitive_keys: true,
-            equals: form_urlencoded_tuple, not: form_urlencoded_tuple_not,
-            exists: form_urlencoded_tuple_exists, missing: form_urlencoded_tuple_missing,
-            includes: form_urlencoded_tuple_includes, excludes: form_urlencoded_tuple_excludes,
-            prefix: form_urlencoded_tuple_prefix, prefix_not: form_urlencoded_tuple_prefix_not,
-            suffix: form_urlencoded_tuple_suffix, suffix_not: form_urlencoded_tuple_suffix_not,
-            matches: form_urlencoded_tuple_matches, count: form_urlencoded_tuple_count,
-        ),
-    ]
-    .into_iter()
-    .flatten()
-    .collect()
+const SCHEME: Part<String> = Part {
+    entity: "scheme",
+    request_value: request_value::scheme,
+    weight: 3,
+    diff_with: None,
+};
+const METHOD: Part<String> = Part {
+    entity: "method",
+    request_value: request_value::method,
+    ..SCHEME
+};
+const HOST: Part<String> = Part {
+    entity: "host",
+    request_value: request_value::host,
+    ..SCHEME
+};
+const PORT: Part<u16> = Part {
+    entity: "port",
+    request_value: request_value::port,
+    weight: 2,
+    diff_with: None,
+};
+const PATH: Part<String> = Part {
+    entity: "path",
+    request_value: request_value::path,
+    weight: 10,
+    diff_with: None,
+};
+const BODY: Part<HttpMockBytes> = Part {
+    entity: "body",
+    request_value: request_value::body,
+    weight: 1,
+    diff_with: Some(Tokenizer::Line),
+};
+const JSON_BODY: Part<Value> = Part {
+    entity: "body",
+    request_value: request_value::json_body,
+    weight: 1,
+    diff_with: Some(Tokenizer::Line),
+};
+// `json_body_includes` and `json_body_excludes` report their mismatches under a name of their own.
+const PARTIAL_JSON_BODY: Part<Value> = Part {
+    entity: "JSON body",
+    ..JSON_BODY
+};
+
+const QUERY_PARAMS: KeyValuePart = KeyValuePart {
+    entity: "query parameter",
+    request_value: request_value::query_params,
+    case_sensitive_keys: true,
+};
+const HEADERS: KeyValuePart = KeyValuePart {
+    entity: "header",
+    request_value: request_value::headers,
+    case_sensitive_keys: false,
+};
+#[cfg(feature = "cookies")]
+const COOKIES: KeyValuePart = KeyValuePart {
+    entity: "cookie",
+    request_value: request_value::cookies,
+    case_sensitive_keys: true,
+};
+const FORM: KeyValuePart = KeyValuePart {
+    entity: "form-urlencoded body",
+    request_value: request_value::form_urlencoded_body,
+    case_sensitive_keys: true,
+};
+
+// Grouped by request part, so the cookie matchers can be left out as a whole. One matcher per
+// line reads better than what rustfmt makes of these calls.
+#[rustfmt::skip]
+static MATCHERS: &[&[&(dyn Matcher + Sync)]] = &[
+    &[
+        &SCHEME.present("scheme", expectations::scheme, StringEqualsComparator::new(false, false)),
+        &SCHEME.absent("scheme_not", expectations::scheme_not, StringEqualsComparator::new(false, true)),
+    ],
+    &[
+        &METHOD.present("method", expectations::method, StringEqualsComparator::new(false, false)),
+        &METHOD.absent("method_not", expectations::method_not, StringEqualsComparator::new(false, true)),
+    ],
+    &[
+        &HOST.present("host", expectations::host, HostEqualsComparator::new(false)),
+        &HOST.absent("host_not", expectations::host_not, HostEqualsComparator::new(true)),
+        &HOST.present("host_includes", expectations::host_includes, StringIncludesComparator::new(false, false)),
+        &HOST.absent("host_excludes", expectations::host_excludes, StringIncludesComparator::new(false, true)),
+        &HOST.present("host_prefix", expectations::host_prefix, StringPrefixComparator::new(false, false)),
+        &HOST.absent("host_prefix_not", expectations::host_prefix_not, StringPrefixComparator::new(false, true)),
+        &HOST.present("host_suffix", expectations::host_suffix, StringSuffixComparator::new(false, false)),
+        &HOST.absent("host_suffix_not", expectations::host_suffix_not, StringSuffixComparator::new(false, true)),
+        &HOST.present("host_matches", expectations::host_matches, StringMatchesComparator::new(true, false)),
+    ],
+    &[
+        &PORT.present("port", expectations::port, U16EqualsComparator::new(false)),
+        &PORT.absent("port_not", expectations::port_not, U16EqualsComparator::new(true)),
+    ],
+    &[
+        &PATH.present("path", expectations::path, StringEqualsComparator::new(true, false)),
+        &PATH.absent("path_not", expectations::path_not, StringEqualsComparator::new(true, true)),
+        &PATH.present("path_includes", expectations::path_includes, StringIncludesComparator::new(true, false)),
+        &PATH.absent("path_excludes", expectations::path_excludes, StringIncludesComparator::new(true, true)),
+        &PATH.present("path_prefix", expectations::path_prefix, StringPrefixComparator::new(true, false)),
+        &PATH.absent("path_prefix_not", expectations::path_prefix_not, StringPrefixComparator::new(true, true)),
+        &PATH.present("path_suffix", expectations::path_suffix, StringSuffixComparator::new(true, false)),
+        &PATH.absent("path_suffix_not", expectations::path_suffix_not, StringSuffixComparator::new(true, true)),
+        &PATH.present("path_matches", expectations::path_matches, StringMatchesComparator::new(true, false)),
+    ],
+    &[
+        &QUERY_PARAMS.equals("query_param", expectations::query_param),
+        &QUERY_PARAMS.not("query_param_not", expectations::query_param_not),
+        &QUERY_PARAMS.exists("query_param_exists", expectations::query_param_exists),
+        &QUERY_PARAMS.missing("query_param_missing", expectations::query_param_missing),
+        &QUERY_PARAMS.includes("query_param_includes", expectations::query_param_includes),
+        &QUERY_PARAMS.excludes("query_param_excludes", expectations::query_param_excludes),
+        &QUERY_PARAMS.prefix("query_param_prefix", expectations::query_param_prefix),
+        &QUERY_PARAMS.prefix_not("query_param_prefix_not", expectations::query_param_prefix_not),
+        &QUERY_PARAMS.suffix("query_param_suffix", expectations::query_param_suffix),
+        &QUERY_PARAMS.suffix_not("query_param_suffix_not", expectations::query_param_suffix_not),
+        &QUERY_PARAMS.matches("query_param_matches", expectations::query_param_matches),
+        &QUERY_PARAMS.count("query_param_count", expectations::query_param_count),
+    ],
+    &[
+        &HEADERS.equals("header", expectations::header),
+        &HEADERS.not("header_not", expectations::header_not),
+        &HEADERS.exists("header_exists", expectations::header_exists),
+        &HEADERS.missing("header_missing", expectations::header_missing),
+        &HEADERS.includes("header_includes", expectations::header_includes),
+        &HEADERS.excludes("header_excludes", expectations::header_excludes),
+        &HEADERS.prefix("header_prefix", expectations::header_prefix),
+        &HEADERS.prefix_not("header_prefix_not", expectations::header_prefix_not),
+        &HEADERS.suffix("header_suffix", expectations::header_suffix),
+        &HEADERS.suffix_not("header_suffix_not", expectations::header_suffix_not),
+        &HEADERS.matches("header_matches", expectations::header_matches),
+        &HEADERS.count("header_count", expectations::header_count),
+    ],
+    #[cfg(feature = "cookies")]
+    &[
+        &COOKIES.equals("cookie", expectations::cookie),
+        &COOKIES.not("cookie_not", expectations::cookie_not),
+        &COOKIES.exists("cookie_exists", expectations::cookie_exists),
+        &COOKIES.missing("cookie_missing", expectations::cookie_missing),
+        &COOKIES.includes("cookie_includes", expectations::cookie_includes),
+        &COOKIES.excludes("cookie_excludes", expectations::cookie_excludes),
+        &COOKIES.prefix("cookie_prefix", expectations::cookie_prefix),
+        &COOKIES.prefix_not("cookie_prefix_not", expectations::cookie_prefix_not),
+        &COOKIES.suffix("cookie_suffix", expectations::cookie_suffix),
+        &COOKIES.suffix_not("cookie_suffix_not", expectations::cookie_suffix_not),
+        &COOKIES.matches("cookie_matches", expectations::cookie_matches),
+        &COOKIES.count("cookie_count", expectations::cookie_count),
+    ],
+    &[
+        &BODY.present("body", expectations::body, BytesEqualsComparator::new(false)),
+        &BODY.absent("body_not", expectations::body_not, BytesEqualsComparator::new(true)),
+        &BODY.present("body_includes", expectations::body_includes, BytesIncludesComparator::new(false)),
+        &BODY.absent("body_excludes", expectations::body_excludes, BytesIncludesComparator::new(true)),
+        &BODY.present("body_prefix", expectations::body_prefix, BytesPrefixComparator::new(false)),
+        &BODY.absent("body_prefix_not", expectations::body_prefix_not, BytesPrefixComparator::new(true)),
+        &BODY.present("body_suffix", expectations::body_suffix, BytesSuffixComparator::new(false)),
+        &BODY.absent("body_suffix_not", expectations::body_suffix_not, BytesSuffixComparator::new(true)),
+        &BODY.present("body_matches", expectations::body_matches, BytesMatchesComparator::new()),
+    ],
+    &[
+        &JSON_BODY.present("json_body", expectations::json_body, JsonEqualsComparator::new()),
+        &PARTIAL_JSON_BODY
+            .present("json_body_includes", expectations::json_body_includes, JsonIncludesComparator::new(false)),
+        &PARTIAL_JSON_BODY
+            .absent("json_body_excludes", expectations::json_body_excludes, JsonIncludesComparator::new(true)),
+    ],
+    &[
+        &FunctionValueMatcher {
+            entity_name: "custom matcher function",
+            matcher_function: "is_true",
+            comparator: FunctionMatchesRequestComparator::new(false),
+            expectation: expectations::is_true,
+            request_value: request_value::full_request,
+            weight: 1,
+        },
+        &FunctionValueMatcher {
+            entity_name: "custom matcher function",
+            matcher_function: "is_false",
+            comparator: FunctionMatchesRequestComparator::new(true),
+            expectation: expectations::is_false,
+            request_value: request_value::full_request,
+            weight: 1,
+        },
+    ],
+    &[
+        &FORM.equals("form_urlencoded_tuple", expectations::form_urlencoded_tuple),
+        &FORM.not("form_urlencoded_tuple_not", expectations::form_urlencoded_tuple_not),
+        &FORM.exists("form_urlencoded_tuple_exists", expectations::form_urlencoded_tuple_exists),
+        &FORM.missing("form_urlencoded_tuple_missing", expectations::form_urlencoded_tuple_missing),
+        &FORM.includes("form_urlencoded_tuple_includes", expectations::form_urlencoded_tuple_includes),
+        &FORM.excludes("form_urlencoded_tuple_excludes", expectations::form_urlencoded_tuple_excludes),
+        &FORM.prefix("form_urlencoded_tuple_prefix", expectations::form_urlencoded_tuple_prefix),
+        &FORM.prefix_not("form_urlencoded_tuple_prefix_not", expectations::form_urlencoded_tuple_prefix_not),
+        &FORM.suffix("form_urlencoded_tuple_suffix", expectations::form_urlencoded_tuple_suffix),
+        &FORM.suffix_not("form_urlencoded_tuple_suffix_not", expectations::form_urlencoded_tuple_suffix_not),
+        &FORM.matches("form_urlencoded_tuple_matches", expectations::form_urlencoded_tuple_matches),
+        &FORM.count("form_urlencoded_tuple_count", expectations::form_urlencoded_tuple_count),
+    ],
+];
+
+pub(crate) fn all() -> impl Iterator<Item = &'static (dyn Matcher + Sync)> {
+    MATCHERS.iter().flat_map(|part| part.iter().copied())
 }
 
 pub(crate) trait Matcher {
