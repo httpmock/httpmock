@@ -32,11 +32,6 @@ use thiserror::Error;
 
 #[cfg(feature = "record")]
 use crate::common::data::RecordingRuleConfig;
-#[cfg(feature = "proxy")]
-use crate::{
-    common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig},
-    server::handler::Error::InvalidHeader,
-};
 use crate::{
     common::{
         data,
@@ -50,6 +45,14 @@ use crate::{
         },
         state,
     },
+};
+#[cfg(feature = "proxy")]
+use crate::{
+    common::{
+        data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig},
+        http::Error as HttpClientError,
+    },
+    server::handler::Error::InvalidHeader,
 };
 
 #[derive(Error, Debug)]
@@ -70,6 +73,11 @@ pub enum Error {
     State(#[from] state::Error),
     #[error("cannot convert request to internal data structure: {0}")]
     RequestConversion(String),
+    // The transport sends forwarded and proxied requests, but a failed one stays a handler error
+    // as in 0.9.0, since a new variant in the public `server::Error` would be a breaking change.
+    #[cfg(feature = "proxy")]
+    #[error("failed to send HTTP request: {0}")]
+    HttpClient(#[from] HttpClientError),
     #[error("invalid header: {0}")]
     InvalidHeader(String),
 }

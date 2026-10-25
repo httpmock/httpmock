@@ -22,7 +22,7 @@ use tokio::{
 use tokio_rustls::TlsAcceptor;
 
 #[cfg(feature = "proxy")]
-use crate::common::http::{Error as HttpClientError, HttpMockHttpClient};
+use crate::common::http::HttpMockHttpClient;
 #[cfg(feature = "https")]
 use crate::common::util::crypto_provider;
 use crate::{
@@ -52,9 +52,6 @@ pub enum Error {
     HTTPError(#[from] http::Error),
     #[error("cannot process request: {0}")]
     RouterError(#[from] server::handler::Error),
-    #[cfg(feature = "proxy")]
-    #[error("failed to send HTTP request: {0}")]
-    UpstreamError(#[from] HttpClientError),
     #[error("HTTPS error: {0}")]
     TlsError(String),
     #[error("Server configuration error: {0}")]
@@ -300,7 +297,11 @@ impl HttpMockServer {
                 response
             }
             #[cfg(feature = "proxy")]
-            Reply::Forward(upstream) | Reply::Proxy(upstream) => self.http_client.send(upstream).await?,
+            Reply::Forward(upstream) | Reply::Proxy(upstream) => self
+                .http_client
+                .send(upstream)
+                .await
+                .map_err(server::handler::Error::from)?,
         };
 
         Ok(self.handler.finish(served, start.elapsed(), response)?)

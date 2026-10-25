@@ -93,3 +93,29 @@ fn delete_forwarding_rule_on_remote_server_test() {
         .unwrap();
     assert_eq!(response.status().as_u16(), 404);
 }
+
+#[test]
+fn forwarding_to_an_unreachable_target_answers_with_500() {
+    // A port that was free a moment ago, so nothing accepts the forwarded request.
+    let port = std::net::TcpListener::bind("127.0.0.1:0")
+        .unwrap()
+        .local_addr()
+        .unwrap()
+        .port();
+
+    let server = MockServer::start();
+    server.forward_to(format!("http://127.0.0.1:{port}"), |rule| {
+        rule.filter(|when| {
+            when.any_request();
+        });
+    });
+
+    let response = Client::new().get(server.url("/get")).send().unwrap();
+    assert_eq!(response.status().as_u16(), 500);
+    assert!(
+        response
+            .text()
+            .unwrap()
+            .starts_with("cannot process request: failed to send HTTP request:")
+    );
+}
