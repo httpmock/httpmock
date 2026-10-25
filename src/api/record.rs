@@ -8,12 +8,14 @@ use std::{
 
 use bytes::Bytes;
 
+use pollster::FutureExt;
+
 use crate::{
     When,
     api::server::MockServer,
     common::{
         data::RecordingRuleConfig,
-        util::{Join, lock_mutex, take_from_mutex, update_mutex, write_file},
+        util::{lock_mutex, take_from_mutex, update_mutex, write_file},
     },
 };
 
@@ -46,7 +48,7 @@ impl<'a> Recording<'a> {
     /// Panics if the deletion fails, which can occur if the recording does not exist,
     /// or there are server connectivity issues.
     pub fn delete(&mut self) {
-        self.delete_async().join();
+        self.delete_async().block_on();
     }
 
     /// Asynchronously deletes the recording from the mock server.
@@ -76,7 +78,7 @@ impl<'a> Recording<'a> {
     /// # Errors
     /// Errors if the recording cannot be created due to serialization issues or issues with connecting to a remote server.
     pub fn export(&self) -> Result<Option<Bytes>, Box<dyn std::error::Error>> {
-        self.export_async().join()
+        self.export_async().block_on()
     }
 
     /// Asynchronously export the recording as YAML.
@@ -116,7 +118,7 @@ impl<'a> Recording<'a> {
         dir: PathRef,
         scenario_name: IntoString,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        self.save_to_async(dir, scenario_name).join()
+        self.save_to_async(dir, scenario_name).block_on()
     }
 
     /// Asynchronously saves the recording to the specified directory with a scenario-specific and timestamped filename.
@@ -173,7 +175,7 @@ impl<'a> Recording<'a> {
         &self,
         scenario_name: IntoString,
     ) -> Result<PathBuf, Box<dyn std::error::Error>> {
-        self.save_async(scenario_name).join()
+        self.save_async(scenario_name).block_on()
     }
 
     /// Asynchronously saves the recording to the default directory structured under `target/httpmock/recordings`.
