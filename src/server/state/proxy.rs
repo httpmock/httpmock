@@ -105,7 +105,7 @@ impl HttpMockStateManager {
             .proxy
             .forwarding_rules
             .values()
-            .find(|&rule| request_matches(&state.matchers, req, &rule.config.request_requirements))
+            .find(|&rule| request_matches(req, &rule.config.request_requirements))
             .cloned();
 
         Ok(result)
@@ -118,7 +118,7 @@ impl HttpMockStateManager {
             .proxy
             .proxy_rules
             .values()
-            .find(|&rule| request_matches(&state.matchers, req, &rule.config.request_requirements))
+            .find(|&rule| request_matches(req, &rule.config.request_requirements))
             .cloned();
 
         Ok(result)

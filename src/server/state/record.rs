@@ -117,7 +117,7 @@ impl HttpMockStateManager {
             .recording
             .recordings
             .values()
-            .filter(|rec| request_matches(&state.matchers, &req, &rec.config.request_requirements))
+            .filter(|rec| request_matches(&req, &rec.config.request_requirements))
             .map(|r| r.id)
             .collect();
 
