@@ -12,6 +12,9 @@
   If your own code relies on rustls picking ring from its crate features, install it as the
   default in your tests with `rustls::crypto::ring::default_provider().install_default()`.
 
+- A CA certificate or key passed to `https_ca_key_pair` or `https_ca_key_pair_files` that can't
+  be parsed now fails when the server is built, instead of panicking on the first HTTPS request.
+
 - Recording rules can limit which response headers end up in recorded mocks with
   `record_response_header` and `record_response_headers`
   ([#207](https://github.com/httpmock/httpmock/pull/207)). Without them, all response headers
