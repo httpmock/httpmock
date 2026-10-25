@@ -33,6 +33,42 @@ pub struct KeyValuePatternCountTriple {
     count: usize,
 }
 
+impl From<(String, String)> for NameValueStringPair {
+    fn from((name, value): (String, String)) -> Self {
+        Self { name, value }
+    }
+}
+
+impl From<NameValueStringPair> for (String, String) {
+    fn from(pair: NameValueStringPair) -> Self {
+        (pair.name, pair.value)
+    }
+}
+
+impl From<(HttpMockRegex, HttpMockRegex)> for NameValuePatternPair {
+    fn from((name, value): (HttpMockRegex, HttpMockRegex)) -> Self {
+        Self { name, value }
+    }
+}
+
+impl From<NameValuePatternPair> for (HttpMockRegex, HttpMockRegex) {
+    fn from(pair: NameValuePatternPair) -> Self {
+        (pair.name, pair.value)
+    }
+}
+
+impl From<(HttpMockRegex, HttpMockRegex, usize)> for KeyValuePatternCountTriple {
+    fn from((name, value, count): (HttpMockRegex, HttpMockRegex, usize)) -> Self {
+        Self { name, value, count }
+    }
+}
+
+impl From<KeyValuePatternCountTriple> for (HttpMockRegex, HttpMockRegex, usize) {
+    fn from(triple: KeyValuePatternCountTriple) -> Self {
+        (triple.name, triple.value, triple.count)
+    }
+}
+
 #[derive(Debug, Serialize, Deserialize)]
 pub struct StaticRequestRequirements {
     // Scheme-related fields
@@ -327,45 +363,45 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
                 method: self.when.method.map(|m| m.to_string()),
                 method_not: from_method_vec(self.when.method_not),
                 // Query Parameter-related fields
-                query_param: from_name_value_string_pair_vec(self.when.query_param),
-                query_param_not: from_name_value_string_pair_vec(self.when.query_param_not),
+                query_param: convert(self.when.query_param),
+                query_param_not: convert(self.when.query_param_not),
                 query_param_exists: self.when.query_param_exists,
                 query_param_missing: self.when.query_param_missing,
-                query_param_includes: from_name_value_string_pair_vec(self.when.query_param_contains),
-                query_param_excludes: from_name_value_string_pair_vec(self.when.query_param_excludes),
-                query_param_prefix: from_name_value_string_pair_vec(self.when.query_param_prefix),
-                query_param_suffix: from_name_value_string_pair_vec(self.when.query_param_suffix),
-                query_param_prefix_not: from_name_value_string_pair_vec(self.when.query_param_prefix_not),
-                query_param_suffix_not: from_name_value_string_pair_vec(self.when.query_param_suffix_not),
-                query_param_matches: from_name_value_pattern_pair_vec(self.when.query_param_matches),
-                query_param_count: from_key_value_pattern_count_triple_vec(self.when.query_param_count),
+                query_param_includes: convert(self.when.query_param_contains),
+                query_param_excludes: convert(self.when.query_param_excludes),
+                query_param_prefix: convert(self.when.query_param_prefix),
+                query_param_suffix: convert(self.when.query_param_suffix),
+                query_param_prefix_not: convert(self.when.query_param_prefix_not),
+                query_param_suffix_not: convert(self.when.query_param_suffix_not),
+                query_param_matches: convert(self.when.query_param_matches),
+                query_param_count: convert(self.when.query_param_count),
 
                 // Header-related fields
-                header: from_name_value_string_pair_vec(self.when.header),
-                header_not: from_name_value_string_pair_vec(self.when.header_not),
+                header: convert(self.when.header),
+                header_not: convert(self.when.header_not),
                 header_exists: self.when.header_exists,
                 header_missing: self.when.header_missing,
-                header_includes: from_name_value_string_pair_vec(self.when.header_contains),
-                header_excludes: from_name_value_string_pair_vec(self.when.header_excludes),
-                header_prefix: from_name_value_string_pair_vec(self.when.header_prefix),
-                header_suffix: from_name_value_string_pair_vec(self.when.header_suffix),
-                header_prefix_not: from_name_value_string_pair_vec(self.when.header_prefix_not),
-                header_suffix_not: from_name_value_string_pair_vec(self.when.header_suffix_not),
-                header_matches: from_name_value_pattern_pair_vec(self.when.header_matches),
-                header_count: from_key_value_pattern_count_triple_vec(self.when.header_count),
+                header_includes: convert(self.when.header_contains),
+                header_excludes: convert(self.when.header_excludes),
+                header_prefix: convert(self.when.header_prefix),
+                header_suffix: convert(self.when.header_suffix),
+                header_prefix_not: convert(self.when.header_prefix_not),
+                header_suffix_not: convert(self.when.header_suffix_not),
+                header_matches: convert(self.when.header_matches),
+                header_count: convert(self.when.header_count),
                 // Cookie-related fields
-                cookie: from_name_value_string_pair_vec(self.when.cookie),
-                cookie_not: from_name_value_string_pair_vec(self.when.cookie_not),
+                cookie: convert(self.when.cookie),
+                cookie_not: convert(self.when.cookie_not),
                 cookie_exists: self.when.cookie_exists,
                 cookie_missing: self.when.cookie_missing,
-                cookie_includes: from_name_value_string_pair_vec(self.when.cookie_contains),
-                cookie_excludes: from_name_value_string_pair_vec(self.when.cookie_excludes),
-                cookie_prefix: from_name_value_string_pair_vec(self.when.cookie_prefix),
-                cookie_suffix: from_name_value_string_pair_vec(self.when.cookie_suffix),
-                cookie_prefix_not: from_name_value_string_pair_vec(self.when.cookie_prefix_not),
-                cookie_suffix_not: from_name_value_string_pair_vec(self.when.cookie_suffix_not),
-                cookie_matches: from_name_value_pattern_pair_vec(self.when.cookie_matches),
-                cookie_count: from_key_value_pattern_count_triple_vec(self.when.cookie_count),
+                cookie_includes: convert(self.when.cookie_contains),
+                cookie_excludes: convert(self.when.cookie_excludes),
+                cookie_prefix: convert(self.when.cookie_prefix),
+                cookie_suffix: convert(self.when.cookie_suffix),
+                cookie_prefix_not: convert(self.when.cookie_prefix_not),
+                cookie_suffix_not: convert(self.when.cookie_suffix_not),
+                cookie_matches: convert(self.when.cookie_matches),
+                cookie_count: convert(self.when.cookie_count),
 
                 // Body-related fields
                 body: from_string_to_bytes_choose(self.when.body, self.when.body_base64),
@@ -385,19 +421,19 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
                 json_body_excludes: self.when.json_body_excludes,
 
                 // x-www-form-urlencoded fields
-                form_urlencoded_tuple: from_name_value_string_pair_vec(self.when.form_urlencoded_tuple),
-                form_urlencoded_tuple_not: from_name_value_string_pair_vec(self.when.form_urlencoded_tuple_not),
+                form_urlencoded_tuple: convert(self.when.form_urlencoded_tuple),
+                form_urlencoded_tuple_not: convert(self.when.form_urlencoded_tuple_not),
                 form_urlencoded_tuple_exists: self.when.form_urlencoded_key_exists,
                 form_urlencoded_tuple_missing: self.when.form_urlencoded_key_missing,
-                form_urlencoded_tuple_includes: from_name_value_string_pair_vec(self.when.form_urlencoded_contains),
-                form_urlencoded_tuple_excludes: from_name_value_string_pair_vec(self.when.form_urlencoded_excludes),
-                form_urlencoded_tuple_prefix: from_name_value_string_pair_vec(self.when.form_urlencoded_prefix),
-                form_urlencoded_tuple_suffix: from_name_value_string_pair_vec(self.when.form_urlencoded_suffix),
-                form_urlencoded_tuple_prefix_not: from_name_value_string_pair_vec(self.when.form_urlencoded_prefix_not),
-                form_urlencoded_tuple_suffix_not: from_name_value_string_pair_vec(self.when.form_urlencoded_suffix_not),
-                form_urlencoded_tuple_matches: from_name_value_pattern_pair_vec(self.when.form_urlencoded_matches),
+                form_urlencoded_tuple_includes: convert(self.when.form_urlencoded_contains),
+                form_urlencoded_tuple_excludes: convert(self.when.form_urlencoded_excludes),
+                form_urlencoded_tuple_prefix: convert(self.when.form_urlencoded_prefix),
+                form_urlencoded_tuple_suffix: convert(self.when.form_urlencoded_suffix),
+                form_urlencoded_tuple_prefix_not: convert(self.when.form_urlencoded_prefix_not),
+                form_urlencoded_tuple_suffix_not: convert(self.when.form_urlencoded_suffix_not),
+                form_urlencoded_tuple_matches: convert(self.when.form_urlencoded_matches),
 
-                form_urlencoded_tuple_count: from_key_value_pattern_count_triple_vec(self.when.form_urlencoded_count),
+                form_urlencoded_tuple_count: convert(self.when.form_urlencoded_count),
 
                 // Boolean dynamic checks
                 is_true: None,
@@ -405,7 +441,7 @@ impl TryInto<MockDefinition> for StaticMockDefinition {
             },
             response: MockServerHttpResponse {
                 status: self.then.status,
-                headers: from_name_value_string_pair_vec(self.then.header),
+                headers: convert(self.then.header),
                 body: response_body,
                 delay: self.then.delay,
                 respond_with: None,
@@ -423,52 +459,9 @@ fn from_method_vec(value: Option<Vec<Method>>) -> Option<Vec<String>> {
     value.map(|vec| vec.iter().map(|m| m.to_string()).collect())
 }
 
-fn from_name_value_string_pair_vec(kvp: Option<Vec<NameValueStringPair>>) -> Option<Vec<(String, String)>> {
-    kvp.map(|vec| vec.into_iter().map(|nvp| (nvp.name, nvp.value)).collect())
-}
-
-fn from_name_value_pattern_pair_vec(
-    kvp: Option<Vec<NameValuePatternPair>>,
-) -> Option<Vec<(HttpMockRegex, HttpMockRegex)>> {
-    kvp.map(|vec| vec.into_iter().map(|pair| (pair.name, pair.value)).collect())
-}
-
-fn from_key_value_pattern_count_triple_vec(
-    input: Option<Vec<KeyValuePatternCountTriple>>,
-) -> Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>> {
-    input.map(|vec| {
-        vec.into_iter()
-            .map(|triple| (triple.name, triple.value, triple.count))
-            .collect()
-    })
-}
-
-fn to_name_value_string_pair_vec(vec: Option<Vec<(String, String)>>) -> Option<Vec<NameValueStringPair>> {
-    vec.map(|vec| {
-        vec.into_iter()
-            .map(|(name, value)| NameValueStringPair { name, value })
-            .collect()
-    })
-}
-
-fn to_name_value_pattern_pair_vec(
-    vec: Option<Vec<(HttpMockRegex, HttpMockRegex)>>,
-) -> Option<Vec<NameValuePatternPair>> {
-    vec.map(|vec| {
-        vec.into_iter()
-            .map(|(name, value)| NameValuePatternPair { name, value })
-            .collect()
-    })
-}
-
-fn to_key_value_pattern_count_triple_vec(
-    vec: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>,
-) -> Option<Vec<KeyValuePatternCountTriple>> {
-    vec.map(|vec| {
-        vec.into_iter()
-            .map(|(name, value, count)| KeyValuePatternCountTriple { name, value, count })
-            .collect()
-    })
+/// Converts a list of name/value pairs or triples between their tuple and YAML forms.
+fn convert<T: Into<U>, U>(vec: Option<Vec<T>>) -> Option<Vec<U>> {
+    vec.map(|vec| vec.into_iter().map(Into::into).collect())
 }
 
 fn from_bytes_to_string(data: Option<HttpMockBytes>) -> (Option<String>, Option<String>) {
@@ -629,47 +622,47 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 path_matches: value.request.path_matches,
 
                 // Header-related fields
-                header: to_name_value_string_pair_vec(value.request.header),
-                header_not: to_name_value_string_pair_vec(value.request.header_not),
+                header: convert(value.request.header),
+                header_not: convert(value.request.header_not),
                 header_exists: value.request.header_exists,
                 header_missing: value.request.header_missing,
-                header_contains: to_name_value_string_pair_vec(value.request.header_includes),
-                header_excludes: to_name_value_string_pair_vec(value.request.header_excludes),
-                header_prefix: to_name_value_string_pair_vec(value.request.header_prefix),
-                header_suffix: to_name_value_string_pair_vec(value.request.header_suffix),
-                header_prefix_not: to_name_value_string_pair_vec(value.request.header_prefix_not),
-                header_suffix_not: to_name_value_string_pair_vec(value.request.header_suffix_not),
-                header_matches: to_name_value_pattern_pair_vec(value.request.header_matches),
-                header_count: to_key_value_pattern_count_triple_vec(value.request.header_count),
+                header_contains: convert(value.request.header_includes),
+                header_excludes: convert(value.request.header_excludes),
+                header_prefix: convert(value.request.header_prefix),
+                header_suffix: convert(value.request.header_suffix),
+                header_prefix_not: convert(value.request.header_prefix_not),
+                header_suffix_not: convert(value.request.header_suffix_not),
+                header_matches: convert(value.request.header_matches),
+                header_count: convert(value.request.header_count),
 
                 // Cookie-related fields
-                cookie: to_name_value_string_pair_vec(value.request.cookie),
-                cookie_not: to_name_value_string_pair_vec(value.request.cookie_not),
+                cookie: convert(value.request.cookie),
+                cookie_not: convert(value.request.cookie_not),
                 cookie_exists: value.request.cookie_exists,
                 cookie_missing: value.request.cookie_missing,
-                cookie_contains: to_name_value_string_pair_vec(value.request.cookie_includes),
-                cookie_excludes: to_name_value_string_pair_vec(value.request.cookie_excludes),
-                cookie_prefix: to_name_value_string_pair_vec(value.request.cookie_prefix),
-                cookie_suffix: to_name_value_string_pair_vec(value.request.cookie_suffix),
-                cookie_prefix_not: to_name_value_string_pair_vec(value.request.cookie_prefix_not),
-                cookie_suffix_not: to_name_value_string_pair_vec(value.request.cookie_suffix_not),
-                cookie_matches: to_name_value_pattern_pair_vec(value.request.cookie_matches),
+                cookie_contains: convert(value.request.cookie_includes),
+                cookie_excludes: convert(value.request.cookie_excludes),
+                cookie_prefix: convert(value.request.cookie_prefix),
+                cookie_suffix: convert(value.request.cookie_suffix),
+                cookie_prefix_not: convert(value.request.cookie_prefix_not),
+                cookie_suffix_not: convert(value.request.cookie_suffix_not),
+                cookie_matches: convert(value.request.cookie_matches),
 
-                cookie_count: to_key_value_pattern_count_triple_vec(value.request.cookie_count),
+                cookie_count: convert(value.request.cookie_count),
 
                 // Query Parameter-related fields
-                query_param: to_name_value_string_pair_vec(value.request.query_param),
-                query_param_not: to_name_value_string_pair_vec(value.request.query_param_not),
+                query_param: convert(value.request.query_param),
+                query_param_not: convert(value.request.query_param_not),
                 query_param_exists: value.request.query_param_exists,
                 query_param_missing: value.request.query_param_missing,
-                query_param_contains: to_name_value_string_pair_vec(value.request.query_param_includes),
-                query_param_excludes: to_name_value_string_pair_vec(value.request.query_param_excludes),
-                query_param_prefix: to_name_value_string_pair_vec(value.request.query_param_prefix),
-                query_param_suffix: to_name_value_string_pair_vec(value.request.query_param_suffix),
-                query_param_prefix_not: to_name_value_string_pair_vec(value.request.query_param_prefix_not),
-                query_param_suffix_not: to_name_value_string_pair_vec(value.request.query_param_suffix_not),
-                query_param_matches: to_name_value_pattern_pair_vec(value.request.query_param_matches),
-                query_param_count: to_key_value_pattern_count_triple_vec(value.request.query_param_count),
+                query_param_contains: convert(value.request.query_param_includes),
+                query_param_excludes: convert(value.request.query_param_excludes),
+                query_param_prefix: convert(value.request.query_param_prefix),
+                query_param_suffix: convert(value.request.query_param_suffix),
+                query_param_prefix_not: convert(value.request.query_param_prefix_not),
+                query_param_suffix_not: convert(value.request.query_param_suffix_not),
+                query_param_matches: convert(value.request.query_param_matches),
+                query_param_count: convert(value.request.query_param_count),
 
                 // Body-related fields
                 body: request_body,
@@ -697,27 +690,23 @@ impl TryFrom<&MockDefinition> for StaticMockDefinition {
                 json_body_excludes: value.request.json_body_excludes,
 
                 // Form URL-encoded fields
-                form_urlencoded_tuple: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple),
-                form_urlencoded_tuple_not: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_not),
+                form_urlencoded_tuple: convert(value.request.form_urlencoded_tuple),
+                form_urlencoded_tuple_not: convert(value.request.form_urlencoded_tuple_not),
                 form_urlencoded_key_exists: value.request.form_urlencoded_tuple_exists,
                 form_urlencoded_key_missing: value.request.form_urlencoded_tuple_missing,
-                form_urlencoded_contains: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_includes),
-                form_urlencoded_excludes: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_excludes),
-                form_urlencoded_prefix: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_prefix),
-                form_urlencoded_suffix: to_name_value_string_pair_vec(value.request.form_urlencoded_tuple_suffix),
-                form_urlencoded_prefix_not: to_name_value_string_pair_vec(
-                    value.request.form_urlencoded_tuple_prefix_not,
-                ),
-                form_urlencoded_suffix_not: to_name_value_string_pair_vec(
-                    value.request.form_urlencoded_tuple_suffix_not,
-                ),
-                form_urlencoded_matches: to_name_value_pattern_pair_vec(value.request.form_urlencoded_tuple_matches),
+                form_urlencoded_contains: convert(value.request.form_urlencoded_tuple_includes),
+                form_urlencoded_excludes: convert(value.request.form_urlencoded_tuple_excludes),
+                form_urlencoded_prefix: convert(value.request.form_urlencoded_tuple_prefix),
+                form_urlencoded_suffix: convert(value.request.form_urlencoded_tuple_suffix),
+                form_urlencoded_prefix_not: convert(value.request.form_urlencoded_tuple_prefix_not),
+                form_urlencoded_suffix_not: convert(value.request.form_urlencoded_tuple_suffix_not),
+                form_urlencoded_matches: convert(value.request.form_urlencoded_tuple_matches),
 
-                form_urlencoded_count: to_key_value_pattern_count_triple_vec(value.request.form_urlencoded_tuple_count),
+                form_urlencoded_count: convert(value.request.form_urlencoded_tuple_count),
             },
             then: StaticHTTPResponse {
                 status: value.response.status,
-                header: to_name_value_string_pair_vec(value.response.headers),
+                header: convert(value.response.headers),
                 body: response_body,
                 body_base64: response_body_base64,
                 json_body: None,
