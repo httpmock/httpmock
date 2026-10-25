@@ -12,6 +12,8 @@ use hyper_util::{
 use thiserror::Error;
 use tokio::runtime::Runtime;
 
+#[cfg(any(feature = "remote-https", feature = "https"))]
+use crate::common::util::crypto_provider;
 use crate::server::RequestMetadata;
 
 #[derive(Error, Debug)]
@@ -35,16 +37,8 @@ pub(crate) struct HttpMockHttpClient {
 impl HttpMockHttpClient {
     #[cfg(any(feature = "remote-https", feature = "https"))]
     pub(crate) fn new(runtime: Option<Arc<Runtime>>) -> Self {
-        // see https://github.com/rustls/rustls/issues/1938
-        // `install_default` fails if a default provider is already installed, including
-        // when a concurrently created client wins the race to install it. Either way a
-        // default provider is in place afterwards, so the error can be ignored.
-        if rustls::crypto::CryptoProvider::get_default().is_none() {
-            let _ = rustls::crypto::ring::default_provider().install_default();
-        }
-
         let builder = hyper_rustls::HttpsConnectorBuilder::new()
-            .with_native_roots()
+            .with_provider_and_native_roots(crypto_provider())
             .expect("cannot set up using native root certificates")
             .https_or_http()
             .enable_http1();

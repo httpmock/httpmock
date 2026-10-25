@@ -1,7 +1,7 @@
 //! Ensures that the HTTPS mock server respects the application's installed rustls crypto provider.
 //!
 //! A provider supplies TLS algorithms and cipher suites. Replacing an application's installed
-//! provider with a fresh ring default would silently discard its configuration.
+//! provider with httpmock's own aws-lc-rs default would silently discard its configuration.
 //!
 //! httpmock supports TLS 1.3. This test deliberately removes TLS 1.3 cipher suites from its test
 //! provider to make the server's choice observable:
@@ -12,7 +12,7 @@
 //!
 //! The client uses a separate provider that supports both versions, so only the server is restricted.
 //!
-//! This covers an already-installed provider; it does not test the ring fallback when none is installed.
+//! This covers an already-installed provider; it does not test the aws-lc-rs fallback when none is installed.
 //!
 //! Keep this in its own integration-test binary: rustls's default provider can only be installed once
 //! per process, so sharing it with other TLS tests would make the result depend on test order.
@@ -27,8 +27,10 @@ use std::{
 };
 
 use httpmock::MockServer;
-use rustls::{ClientConfig, ClientConnection, RootCertStore, SupportedProtocolVersion};
-use rustls_pki_types::{CertificateDer, ServerName, pem::PemObject};
+use rustls::{
+    ClientConfig, ClientConnection, RootCertStore, SupportedProtocolVersion,
+    pki_types::{CertificateDer, ServerName, pem::PemObject},
+};
 
 /// Make a real HTTPS request with exactly the requested TLS version and return its HTTP response.
 ///
@@ -41,9 +43,9 @@ fn request(server: &MockServer, version: &'static SupportedProtocolVersion) -> s
         .add(CertificateDer::from_pem_slice(httpmock::server::DEFAULT_CA_CERTIFICATE.as_bytes()).unwrap())
         .unwrap();
 
-    // Use an independent, unrestricted ring provider for the client. Using the global provider
+    // Use an independent, unrestricted aws-lc-rs provider for the client. Using the global provider
     // would prevent the client itself from attempting TLS 1.3 and would not test the server's choice.
-    let config = ClientConfig::builder_with_provider(Arc::new(rustls::crypto::ring::default_provider()))
+    let config = ClientConfig::builder_with_provider(Arc::new(rustls::crypto::aws_lc_rs::default_provider()))
         .with_protocol_versions(&[version])
         .unwrap()
         .with_root_certificates(roots)
@@ -72,8 +74,8 @@ fn request(server: &MockServer, version: &'static SupportedProtocolVersion) -> s
 /// The two client attempts expose whether httpmock uses the installed provider or replaces it.
 #[test]
 fn application_tls_provider_is_respected() {
-    // Create the application's provider; the client creates its own independent ring provider.
-    let mut provider = rustls::crypto::ring::default_provider();
+    // Create the application's provider; the client creates its own independent aws-lc-rs provider.
+    let mut provider = rustls::crypto::aws_lc_rs::default_provider();
 
     // Deliberately retain only TLS 1.2 cipher suites. rustls cannot negotiate TLS 1.3 without a
     // TLS 1.3 cipher suite, even if the server's configured protocol list includes that version.
@@ -103,7 +105,7 @@ fn application_tls_provider_is_respected() {
     );
 
     // The TLS 1.3-only client cannot fall back to TLS 1.2. If httpmock replaces the application's
-    // provider with unrestricted ring defaults, this request succeeds and the assertion fails.
+    // provider with unrestricted aws-lc-rs defaults, this request succeeds and the assertion fails.
     assert!(request(&server, &rustls::version::TLS13).is_err());
 
     // Only the TLS 1.2 request should reach HTTP matching; the rejected handshake adds no mock call.
