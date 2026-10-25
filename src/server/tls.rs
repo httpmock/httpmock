@@ -1,10 +1,11 @@
 use std::{
-    collections::HashMap,
+    collections::{HashMap, HashSet},
     fmt::Debug,
-    sync::{Arc, Mutex, RwLock},
+    net::{IpAddr, SocketAddr},
+    sync::{Arc, Mutex, OnceLock},
 };
 
-use rcgen::{CertificateParams, Issuer, KeyPair, SanType};
+use rcgen::{CertificateParams, Issuer, KeyPair};
 use rustls::{
     ContentType,
     server::{ClientHello, ResolvesServerCert},
@@ -30,19 +31,16 @@ pub trait CertificateResolverFactory {
 }
 
 struct SharedState {
-    certificates: RwLock<HashMap<String, Arc<CertifiedKey>>>,
-    locks: RwLock<HashMap<String, Arc<Mutex<()>>>>,
-    ca_cert_str: String,
-    ca_key_str: String,
+    issuer: Issuer<'static, KeyPair>,
+    // One cell per hostname, so each certificate is generated once without other hosts waiting.
+    certificates: Mutex<HashMap<String, Arc<OnceLock<Arc<CertifiedKey>>>>>,
 }
 
-impl std::fmt::Debug for SharedState {
+impl Debug for SharedState {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("SharedState")
-            .field("certificates", &self.certificates.read().unwrap().keys())
-            .field("locks", &self.locks.read().unwrap().keys())
-            .field("ca_cert_str", &self.ca_cert_str)
-            .field("ca_key_str", &self.ca_key_str)
+            .field("issuer", &self.issuer)
+            .field("certificates", &self.certificates.lock().unwrap().keys())
             .finish()
     }
 }
@@ -54,12 +52,14 @@ pub struct GeneratingCertificateResolverFactory {
 
 impl GeneratingCertificateResolverFactory {
     pub fn new<IntoString: Into<String>>(ca_cert: IntoString, ca_key: IntoString) -> Result<Self, Error> {
+        let ca_key = KeyPair::from_pem(&ca_key.into())
+            .map_err(|err| CaCertificateError(format!("cannot parse the CA key as PEM: {err:?}")))?;
+        let issuer = Issuer::from_ca_cert_pem(&ca_cert.into(), ca_key)
+            .map_err(|err| CaCertificateError(format!("cannot parse the CA certificate as PEM: {err:?}")))?;
         Ok(Self {
             state: Arc::new(SharedState {
-                certificates: RwLock::new(HashMap::new()),
-                locks: RwLock::new(HashMap::new()),
-                ca_cert_str: ca_cert.into(),
-                ca_key_str: ca_key.into(),
+                issuer,
+                certificates: Mutex::default(),
             }),
         })
     }
@@ -81,197 +81,101 @@ pub struct GeneratingCertificateResolver {
 }
 
 impl GeneratingCertificateResolver {
-    fn authority_ip(&self) -> Option<std::net::IpAddr> {
-        let auth = self.authority.as_deref()?;
-
-        // 1) Full socket address like "127.0.0.1:8080" or "[::1]:443"
-        if let Ok(sa) = auth.parse::<std::net::SocketAddr>() {
-            return Some(sa.ip());
-        }
-
-        // 2) Bracketed IPv6 without port: "[::1]"
-        if let Some(inner) = auth.strip_prefix('[').and_then(|s| s.strip_suffix(']'))
-            && let Ok(ip) = inner.parse::<std::net::IpAddr>()
-        {
-            return Some(ip);
-        }
-
-        // 3) Parse as HTTP authority and take the host (handles bracketed IPv6 and ports)
-        if let Ok(a) = auth.parse::<http::uri::Authority>()
-            && let Ok(ip) = a.host().parse::<std::net::IpAddr>()
-        {
-            return Some(ip);
-        }
-
-        // 4) Plain IP literal (v4 or v6)
-        if let Ok(ip) = auth.parse::<std::net::IpAddr>() {
-            return Some(ip);
-        }
-
-        // 5) Conservative host:port split only if there's exactly one ':' (avoids mangling IPv6)
-        if auth.matches(':').count() == 1
-            && let Some((host, _)) = auth.rsplit_once(':')
-            && let Ok(ip) = host.parse::<std::net::IpAddr>()
-        {
-            return Some(ip);
-        }
-
-        None
-    }
-
     pub fn generate_host_certificate(&self, hostname: &str) -> Result<Arc<CertifiedKey>, Error> {
-        // Create a key pair for the CA from the provided PEM
-        let ca_key = KeyPair::from_pem(&self.state.ca_key_str).map_err(|err| {
-            CaCertificateError(format!(
-                "Expected CA key to be provided in PEM format but failed to parse it (host: {}: error: {:?})",
-                hostname, err
-            ))
-        })?;
-
-        // Set up certificate parameters for the new certificate
-        let params = if let Ok(ip) = hostname.parse::<std::net::IpAddr>() {
-            // If the hostname is an IP address, place it into IP SANs unless it's unspecified (0.0.0.0 / ::)
-            let mut p = CertificateParams::default();
-            if !ip.is_unspecified() {
-                p.subject_alt_names.push(SanType::IpAddress(ip));
-            }
-
-            // If this call originated from a no-SNI fallback, hostname equals the
-            // local TCP address of this resolver. In that case, enrich the cert
-            // with local-friendly SANs and any extras from HTTPMOCK_EXTRA_SANS.
-            if self.authority.is_none() || self.authority_ip().is_some_and(|a| a == ip) {
-                // No-SNI fallback or no authority: add localhost variants, all local IPs, and extras from env
-                if let Ok(localhost_dns) =
-                    <rcgen::string::Ia5String as std::convert::TryFrom<&str>>::try_from("localhost")
-                {
-                    p.subject_alt_names.push(SanType::DnsName(localhost_dns));
-                }
-                if let Ok(loopback_v4) = "127.0.0.1".parse::<std::net::IpAddr>() {
-                    p.subject_alt_names.push(SanType::IpAddress(loopback_v4));
-                }
-                if let Ok(loopback_v6) = "::1".parse::<std::net::IpAddr>() {
-                    p.subject_alt_names.push(SanType::IpAddress(loopback_v6));
-                }
-                // Add all local interface IPs
-                let locals = collect_local_ips();
-                let local_sans: Vec<SanType> = locals.into_iter().map(SanType::IpAddress).collect();
-                push_unique_sans(&mut p.subject_alt_names, local_sans);
-                // Merge extras from env, avoiding duplicates
-                let extra_sans = parse_extra_sans_from_env();
-                push_unique_sans(&mut p.subject_alt_names, extra_sans);
-            }
-            p
-        } else {
-            // Otherwise, treat it as a DNS name
-            // When SNI is provided (DNS case), we intentionally do NOT add extra
-            // SANs like localhost/loopbacks by default. If users need more SANs
-            // here, they can still set HTTPMOCK_EXTRA_SANS explicitly; however the
-            // requirement is to only add extras when there is no hostname.
-            CertificateParams::new(vec![hostname.to_owned()]).map_err(|err| {
-                GenerateCertificateError(format!(
-                    "Cannot generate Certificate (host: {}: error: {:?})",
-                    hostname, err
-                ))
-            })?
-        };
-
-        let key_pair = KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256).map_err(|err| {
-            GenerateCertificateError(format!(
-                "Cannot generate new key pair (host: {}: error: {:?})",
-                hostname, err
-            ))
-        })?;
-
-        // Build an issuer from the CA certificate, signing new certificates with the CA's private key
-        let issuer = Issuer::from_ca_cert_pem(&self.state.ca_cert_str, &ca_key).map_err(|err| {
-            GenerateCertificateError(format!(
-                "Cannot create issuer from CA certificate (host: {}: error: {:?})",
-                hostname, err
-            ))
-        })?;
-
-        let new_host_cert = params.signed_by(&key_pair, &issuer).map_err(|err| {
-            GenerateCertificateError(format!(
-                "Cannot generate new host certificate (host: {}: error: {:?})",
-                hostname, err
-            ))
-        })?;
-
-        let chain = vec![new_host_cert.der().clone()];
-        let certified_key = CertifiedKey::from_der(chain, key_pair.into(), &crypto_provider()).map_err(|err| {
-            GenerateCertificateError(format!(
-                "Cannot convert generated private key to signing key (host: {}: error: {:?})",
-                hostname, err
-            ))
-        })?;
-
+        let params = CertificateParams::new(self.subject_alt_names(hostname))
+            .map_err(failed("cannot create the certificate parameters", hostname))?;
+        let key_pair = KeyPair::generate_for(&rcgen::PKCS_ECDSA_P256_SHA256)
+            .map_err(failed("cannot generate a key pair", hostname))?;
+        let certificate = params
+            .signed_by(&key_pair, &self.state.issuer)
+            .map_err(failed("cannot sign the certificate", hostname))?;
+        let certified_key =
+            CertifiedKey::from_der(vec![certificate.der().clone()], key_pair.into(), &crypto_provider())
+                .map_err(failed("cannot load the generated key", hostname))?;
         Ok(Arc::new(certified_key))
     }
 
-    fn get_lock_for_hostname(&self, hostname: &str) -> Arc<Mutex<()>> {
-        let mut locks = self.state.locks.write().unwrap();
-        locks
-            .entry(hostname.to_string())
-            .or_insert_with(|| Arc::new(Mutex::new(())))
+    // An SNI name gets only itself. An IP address gets itself unless it's unspecified, and when it's
+    // the no-SNI fallback for this connection, also localhost, the loopback and local interface
+    // addresses and the names from HTTPMOCK_EXTRA_SANS.
+    fn subject_alt_names(&self, hostname: &str) -> Vec<String> {
+        let Ok(ip) = hostname.parse::<IpAddr>() else {
+            return vec![hostname.to_owned()];
+        };
+
+        let mut names = Vec::new();
+        if !ip.is_unspecified() {
+            names.push(ip.to_string());
+        }
+        if self
+            .authority
+            .as_deref()
+            .is_none_or(|authority| authority_ip(authority) == Some(ip))
+        {
+            names.extend(["localhost", "127.0.0.1", "::1"].map(String::from));
+            names.extend(collect_local_ips().map(|ip| ip.to_string()));
+            names.extend(extra_sans(&std::env::var("HTTPMOCK_EXTRA_SANS").unwrap_or_default()));
+        }
+
+        let mut seen = HashSet::new();
+        names.retain(|name| seen.insert(name.clone()));
+        names
+    }
+
+    fn generate(&self, hostname: &str) -> Arc<CertifiedKey> {
+        let certificate = Arc::clone(
+            self.state
+                .certificates
+                .lock()
+                .unwrap()
+                .entry(hostname.to_owned())
+                .or_default(),
+        );
+        certificate
+            .get_or_init(|| {
+                self.generate_host_certificate(hostname)
+                    .unwrap_or_else(|error| panic!("Cannot generate certificate for host {hostname}: {error:?}"))
+            })
             .clone()
     }
-
-    fn generate(&self, hostname: &str) -> Result<Arc<CertifiedKey>, Error> {
-        {
-            let configs = self.state.certificates.read().unwrap();
-            if let Some(config) = configs.get(hostname) {
-                return Ok(config.clone());
-            }
-        }
-
-        let lock = self.get_lock_for_hostname(hostname);
-        let _guard = lock.lock();
-        {
-            let certs = self.state.certificates.read().unwrap();
-            if let Some(bundle) = certs.get(hostname) {
-                return Ok(bundle.clone());
-            }
-        }
-
-        let key = self.generate_host_certificate(hostname).unwrap();
-        {
-            let mut certs = self.state.certificates.write().unwrap();
-            certs.insert(hostname.to_string(), key.clone());
-        }
-
-        Ok(key)
-    }
 }
 
-// Parses HTTPMOCK_EXTRA_SANS (comma-separated) into SAN entries. Non-IP tokens are treated as DNS names.
-fn parse_extra_sans_from_env() -> Vec<SanType> {
-    let raw = match std::env::var("HTTPMOCK_EXTRA_SANS") {
-        Ok(v) => v,
-        Err(_) => return Vec::new(),
+// Names the failed generation step and the host in the error.
+fn failed<E: Debug>(step: &str, hostname: &str) -> impl FnOnce(E) -> Error {
+    move |err| GenerateCertificateError(format!("{step} (host: {hostname}, error: {err:?})"))
+}
+
+// The IP address in an authority like "10.0.0.1:443", "[::1]:443", "[::1]", "::1" or "10.0.0.1".
+// User info is ignored, like `http::uri::Authority::host` does.
+fn authority_ip(authority: &str) -> Option<IpAddr> {
+    let host_port = authority.rsplit_once('@').map_or(authority, |(_, host_port)| host_port);
+    if let Ok(address) = host_port.parse::<SocketAddr>() {
+        return Some(address.ip());
+    }
+
+    // `SocketAddr` rejects ports like "abc" or "99999". A bare IPv6 address has colons of its own,
+    // so only a single colon separates a port.
+    let host = match host_port.split_once(':') {
+        Some((host, port)) if !port.contains(':') => host,
+        _ => host_port,
     };
-    let mut out = Vec::new();
-    for item in raw.split(',').map(|s| s.trim()).filter(|s| !s.is_empty()) {
-        if let Ok(ip) = item.parse::<std::net::IpAddr>() {
-            out.push(SanType::IpAddress(ip));
-        } else if let Ok(dns) = <rcgen::string::Ia5String as std::convert::TryFrom<&str>>::try_from(item) {
-            out.push(SanType::DnsName(dns));
-        }
-    }
-    out
+    host.strip_prefix('[')
+        .and_then(|host| host.strip_suffix(']'))
+        .unwrap_or(host)
+        .parse()
+        .ok()
 }
 
-// Deduplicate SANs before pushing extras.
-fn push_unique_sans(target: &mut Vec<SanType>, extras: Vec<SanType>) {
-    for e in extras {
-        let exists = target.iter().any(|t| match (t, &e) {
-            (SanType::DnsName(a), SanType::DnsName(b)) => a == b,
-            (SanType::IpAddress(a), SanType::IpAddress(b)) => a == b,
-            _ => false,
-        });
-        if !exists {
-            target.push(e);
-        }
-    }
+// The comma separated IPs and DNS names of HTTPMOCK_EXTRA_SANS. IPs are normalised so duplicates are
+// found, and names that can't go into a certificate (non-ASCII) are skipped.
+fn extra_sans(raw: &str) -> impl Iterator<Item = String> {
+    raw.split(',')
+        .map(str::trim)
+        .filter(|name| !name.is_empty() && name.is_ascii())
+        .map(|name| {
+            name.parse::<IpAddr>()
+                .map_or_else(|_| name.to_owned(), |ip| ip.to_string())
+        })
 }
 
 // TODO: Change ResolvesServerCert to acceptor so that async operations are supported
@@ -286,10 +190,7 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
         if let Some(hostname) = client_hello.server_name() {
             tracing::info!("have hostname: {}", hostname);
 
-            return Some(
-                self.generate(hostname)
-                    .unwrap_or_else(|error| panic!("Cannot generate certificate for host {}: {:?}", hostname, error)),
-            );
+            return Some(self.generate(hostname));
         }
 
         // According to https://datatracker.ietf.org/doc/html/rfc6066#section-3
@@ -297,11 +198,13 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
         // messages. If there is no SNI extension, we assume the client used an IP address instead
         // of a hostname.
         let hostname = self
-            .authority_ip()
+            .authority
+            .as_deref()
+            .and_then(authority_ip)
             .map(|ip| ip.to_string())
             .unwrap_or_else(|| "0.0.0.0".to_string());
         tracing::debug!("no hostname using: {}", hostname);
-        Some(self.generate(&hostname).expect("Cannot generate fallback certificate"))
+        Some(self.generate(&hostname))
     }
 }
 
@@ -320,26 +223,24 @@ pub async fn starts_with_tls_handshake(stream: &tokio::net::TcpStream) -> std::i
         .map(|peeked| peeked == 1 && ContentType::from(first_byte[0]) == ContentType::Handshake)
 }
 
-// Collect all local interface IP addresses (IPv4 and IPv6), excluding unspecified.
-fn collect_local_ips() -> Vec<std::net::IpAddr> {
-    let mut out = Vec::new();
-    if let Ok(ifaces) = if_addrs::get_if_addrs() {
-        for iface in ifaces {
-            let ip = iface.ip();
-            if !ip.is_unspecified() && !out.contains(&ip) {
-                out.push(ip);
-            }
-        }
-    }
-    out
+// The addresses of all local network interfaces, IPv4 and IPv6, without unspecified ones.
+fn collect_local_ips() -> impl Iterator<Item = IpAddr> {
+    if_addrs::get_if_addrs()
+        .into_iter()
+        .flatten()
+        .map(|interface| interface.ip())
+        .filter(|ip| !ip.is_unspecified())
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{sync::Arc, time::Duration};
+    use std::{net::IpAddr, sync::Arc, time::Duration};
 
     use rustls::{
-        ClientConfig, ClientConnection, RootCertStore, crypto::aws_lc_rs::default_provider, pki_types::ServerName,
+        ClientConfig, ClientConnection, RootCertStore,
+        client::{WebPkiServerVerifier, danger::ServerCertVerifier},
+        crypto::aws_lc_rs::default_provider,
+        pki_types::{CertificateDer, ServerName, UnixTime, pem::PemObject},
     };
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt},
@@ -347,7 +248,11 @@ mod tests {
         time::timeout,
     };
 
-    use super::starts_with_tls_handshake;
+    use super::{
+        GeneratingCertificateResolver, GeneratingCertificateResolverFactory, authority_ip, collect_local_ips,
+        extra_sans, starts_with_tls_handshake,
+    };
+    use crate::server::{DEFAULT_CA_CERTIFICATE, DEFAULT_CA_PRIVATE_KEY};
 
     // The first flight a real rustls client sends, i.e. a handshake record carrying the ClientHello.
     fn client_hello() -> Vec<u8> {
@@ -438,5 +343,108 @@ mod tests {
                 .await
                 .is_err()
         );
+    }
+
+    fn certificate_for(hostname: &str, authority: Option<&str>) -> CertificateDer<'static> {
+        let factory =
+            GeneratingCertificateResolverFactory::new(DEFAULT_CA_CERTIFICATE, DEFAULT_CA_PRIVATE_KEY).unwrap();
+        let resolver = GeneratingCertificateResolver {
+            state: factory.state,
+            authority: authority.map(str::to_owned),
+        };
+        resolver.generate_host_certificate(hostname).unwrap().cert[0].clone()
+    }
+
+    fn is_valid_for(certificate: &CertificateDer<'_>, name: &str) -> bool {
+        let mut roots = RootCertStore::empty();
+        roots
+            .add(CertificateDer::from_pem_slice(DEFAULT_CA_CERTIFICATE.as_bytes()).unwrap())
+            .unwrap();
+        WebPkiServerVerifier::builder_with_provider(Arc::new(roots), Arc::new(default_provider()))
+            .build()
+            .unwrap()
+            .verify_server_cert(
+                certificate,
+                &[],
+                &ServerName::try_from(name.to_owned()).unwrap(),
+                &[],
+                UnixTime::now(),
+            )
+            .is_ok()
+    }
+
+    #[test]
+    fn sni_certificate_is_only_valid_for_the_requested_name() {
+        let certificate = certificate_for("example.test", Some("example.test:443"));
+        assert!(is_valid_for(&certificate, "example.test"));
+        assert!(!is_valid_for(&certificate, "localhost"));
+        assert!(!is_valid_for(&certificate, "127.0.0.1"));
+    }
+
+    #[test]
+    fn fallback_certificate_is_valid_for_local_names() {
+        let certificate = certificate_for("127.0.0.1", Some("127.0.0.1:443"));
+        for name in ["127.0.0.1", "localhost", "::1"] {
+            assert!(is_valid_for(&certificate, name), "{name}");
+        }
+        for ip in collect_local_ips() {
+            assert!(is_valid_for(&certificate, &ip.to_string()), "{ip}");
+        }
+    }
+
+    #[test]
+    fn certificate_without_authority_is_valid_for_local_names() {
+        let certificate = certificate_for("192.0.2.1", None);
+        assert!(is_valid_for(&certificate, "192.0.2.1"));
+        assert!(is_valid_for(&certificate, "localhost"));
+    }
+
+    #[test]
+    fn unspecified_address_is_left_out() {
+        let certificate = certificate_for("0.0.0.0", None);
+        assert!(is_valid_for(&certificate, "localhost"));
+        assert!(!is_valid_for(&certificate, "0.0.0.0"));
+    }
+
+    #[test]
+    fn ip_of_another_authority_gets_no_local_names() {
+        let certificate = certificate_for("192.0.2.1", Some("198.51.100.1:443"));
+        assert!(is_valid_for(&certificate, "192.0.2.1"));
+        assert!(!is_valid_for(&certificate, "localhost"));
+        assert!(!is_valid_for(&certificate, "198.51.100.1"));
+    }
+
+    #[test]
+    fn invalid_ca_is_rejected_when_building_the_factory() {
+        assert!(GeneratingCertificateResolverFactory::new(DEFAULT_CA_CERTIFICATE, "not a key").is_err());
+        assert!(GeneratingCertificateResolverFactory::new("not a certificate", DEFAULT_CA_PRIVATE_KEY).is_err());
+    }
+
+    #[test]
+    fn extra_sans_are_trimmed_normalised_and_filtered() {
+        let names: Vec<_> = extra_sans(" 10.0.0.1, example.test,,0:0:0:0:0:0:0:1, bücher.example ").collect();
+        assert_eq!(names, ["10.0.0.1", "example.test", "::1"]);
+    }
+
+    #[test]
+    fn authority_ip_accepts_common_authority_forms() {
+        let ip = |ip: &str| Some(ip.parse::<IpAddr>().unwrap());
+        let cases = [
+            ("127.0.0.1:8080", ip("127.0.0.1")),
+            ("[::1]:443", ip("::1")),
+            ("[::1]", ip("::1")),
+            ("::1", ip("::1")),
+            ("10.0.0.1", ip("10.0.0.1")),
+            ("10.0.0.1:abc", ip("10.0.0.1")),
+            ("10.0.0.1:99999", ip("10.0.0.1")),
+            ("user@10.0.0.1:80", ip("10.0.0.1")),
+            ("[::1]:abc", None),
+            ("localhost:443", None),
+            ("example.com", None),
+            ("", None),
+        ];
+        for (authority, expected) in cases {
+            assert_eq!(authority_ip(authority), expected, "{authority}");
+        }
     }
 }
