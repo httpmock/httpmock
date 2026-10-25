@@ -27,8 +27,10 @@ use std::{
 };
 
 use httpmock::MockServer;
-use rustls::{ClientConfig, ClientConnection, RootCertStore, SupportedProtocolVersion};
-use rustls_pki_types::{CertificateDer, ServerName, pem::PemObject};
+use rustls::{
+    ClientConfig, ClientConnection, RootCertStore, SupportedProtocolVersion,
+    pki_types::{CertificateDer, ServerName, pem::PemObject},
+};
 
 /// Make a real HTTPS request with exactly the requested TLS version and return its HTTP response.
 ///
