@@ -9,6 +9,8 @@
   already uses one of them no longer compiles both backends. A crypto provider the application
   installed is still used when there is one, and httpmock no longer installs a process-wide
   default itself, so `CryptoProvider::install_default` also works after a mock server started.
+  If your own code relies on rustls picking ring from its crate features, install it as the
+  default in your tests with `rustls::crypto::ring::default_provider().install_default()`.
 
 - Recording rules can limit which response headers end up in recorded mocks with
   `record_response_header` and `record_response_headers`
