@@ -4,6 +4,14 @@
 
 ### Changes
 
+- The `record` feature now reads and writes YAML with
+  [serde-saphyr](https://github.com/bourumir-wyngs/serde-saphyr) instead of the deprecated
+  `serde_yaml`, which raises the minimum supported Rust version to 1.89. Mock files and
+  recordings are read as before, except that empty YAML documents are now skipped instead of
+  failing, a `~` where text is expected (like a header value) is now an error instead of the
+  string `~`, and an unquoted value with a leading zero in a `json_body` mapping, like
+  `zip: 01234`, becomes a number, so quote it to keep it a string.
+
 - TLS now uses aws-lc-rs instead of ring, which is also what rustls, hyper-rustls and reqwest
   use by default ([#293](https://github.com/httpmock/httpmock/issues/293)). A test build that
   already uses one of them no longer compiles both backends. A crypto provider the application
