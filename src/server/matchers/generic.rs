@@ -119,9 +119,25 @@ where
     }
 }
 
-pub enum KeyValueOperator {
-    And,
-    Implication,
+/// What a key-value matcher requires of the request for one expected pair.
+pub enum KeyValueRule {
+    /// A pair with the key and a matching value, like `header` or `header_prefix`.
+    Present,
+    /// The key, but none of its values matching, like `header_not` or `header_excludes`. These
+    /// matchers get a negated value comparator, which has to pass for every value of the key.
+    ValueAbsent,
+    /// No pair with the key, like `header_missing`. This matcher gets a negated key comparator,
+    /// which has to pass for every key of the request.
+    KeyAbsent,
+}
+
+impl KeyValueRule {
+    fn matching_strategy(&self) -> MatchingStrategy {
+        match self {
+            KeyValueRule::Present => MatchingStrategy::Presence,
+            KeyValueRule::ValueAbsent | KeyValueRule::KeyAbsent => MatchingStrategy::Absence,
+        }
+    }
 }
 
 #[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
@@ -144,11 +160,9 @@ where
 {
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
-    pub operator: KeyValueOperator,
+    pub rule: KeyValueRule,
     pub expectation: MultiValueExpectation<EK, EV>,
     pub request_value: MultiValueRequest<RK, RV>,
-    pub matching_strategy: MatchingStrategy,
-    pub key_required: bool,
     pub key_comparator: KC,
     pub value_comparator: VC,
     pub weight: usize,
@@ -171,34 +185,20 @@ where
         mock_values
             .iter()
             .filter(|(ek, ev)| {
-                if self.key_required {
-                    let key_present = req_values
-                        .iter()
-                        .any(|(rk, _): &(RK, Option<RV>)| self.key_comparator.matches(&Some(ek), &Some(rk)));
-
-                    if !key_present {
-                        // We negate here, since we are filtering for "unmatched" expectations -> true = unmatched
-                        return true;
-                    }
-                }
-
-                let request_value_matches = |(rk, rv): &(RK, Option<RV>)| {
-                    let key_matches = self.key_comparator.matches(&Some(ek), &Some(rk));
-                    let value_matches = match (ev, rv) {
-                        (Some(_), None) => false, // Mock required a value but none was present
-                        (Some(ev), Some(rv)) => self.value_comparator.matches(&Some(ev), &Some(rv)),
-                        _ => true,
-                    };
-
-                    match self.operator {
-                        KeyValueOperator::And => key_matches && value_matches,
-                        KeyValueOperator::Implication => !key_matches || value_matches,
-                    }
+                let key_matches = |rk: &RK| self.key_comparator.matches(&Some(ek), &Some(rk));
+                let value_matches = |rv: &Option<RV>| match (ev, rv) {
+                    (Some(_), None) => false, // Mock required a value but none was present
+                    (Some(ev), Some(rv)) => self.value_comparator.matches(&Some(ev), &Some(rv)),
+                    _ => true,
                 };
 
-                let is_match = match self.matching_strategy {
-                    MatchingStrategy::Absence => req_values.iter().all(request_value_matches),
-                    MatchingStrategy::Presence => req_values.iter().any(request_value_matches),
+                let is_match = match self.rule {
+                    KeyValueRule::Present => req_values.iter().any(|(rk, rv)| key_matches(rk) && value_matches(rv)),
+                    KeyValueRule::ValueAbsent => {
+                        req_values.iter().any(|(rk, _)| key_matches(rk))
+                            && req_values.iter().all(|(rk, rv)| !key_matches(rk) || value_matches(rv))
+                    }
+                    KeyValueRule::KeyAbsent => req_values.iter().all(|(rk, rv)| key_matches(rk) && value_matches(rv)),
                 };
 
                 // We negate here, since we are filtering for "unmatched" expectations -> true = unmatched
@@ -310,7 +310,7 @@ where
                             })
                             .collect(),
                     }),
-                    matching_strategy: Some(self.matching_strategy.clone()),
+                    matching_strategy: Some(self.rule.matching_strategy()),
                     diff: None,
                     best_match: best_match.is_some(),
                 }
