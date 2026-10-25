@@ -34,6 +34,19 @@ pub(crate) fn take_from_mutex<T: Default>(mutex: &Mutex<T>) -> T {
 }
 
 // ===============================================================================================
+// TLS
+// ===============================================================================================
+// Respects the application's installed rustls crypto provider and falls back to aws-lc-rs
+// otherwise. The explicit fallback avoids rustls' crate-feature auto-detection, which panics when
+// both ring and aws-lc-rs are enabled, and leaves the process-wide default to the application.
+#[cfg(any(feature = "https", feature = "remote-https"))]
+pub(crate) fn crypto_provider() -> Arc<rustls::crypto::CryptoProvider> {
+    rustls::crypto::CryptoProvider::get_default()
+        .cloned()
+        .unwrap_or_else(|| Arc::new(rustls::crypto::aws_lc_rs::default_provider()))
+}
+
+// ===============================================================================================
 // Retry
 // ===============================================================================================
 #[doc(hidden)]

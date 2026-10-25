@@ -8,7 +8,6 @@ use std::{
 use rcgen::{CertificateParams, Issuer, KeyPair, SanType};
 use rustls::{
     ContentType,
-    crypto::ring::sign::any_supported_type,
     pki_types::{CertificateDer, PrivateKeyDer},
     server::{ClientHello, ResolvesServerCert},
     sign::CertifiedKey,
@@ -16,7 +15,10 @@ use rustls::{
 use rustls_pki_types::pem::PemObject;
 use thiserror::Error;
 
-use crate::server::tls::Error::{CaCertificateError, GenerateCertificateError};
+use crate::{
+    common::util::crypto_provider,
+    server::tls::Error::{CaCertificateError, GenerateCertificateError},
+};
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -82,7 +84,7 @@ pub struct GeneratingCertificateResolver {
 }
 
 impl<'a> GeneratingCertificateResolver {
-    fn load_certificates(cert_pem: String) -> Result<Vec<CertificateDer<'a>>, Error> {
+    fn load_certificates(cert_pem: String) -> Result<Vec<CertificateDer<'static>>, Error> {
         let cert_pem_reader = Cursor::new(cert_pem.into_bytes());
         let mut certificates = Vec::new();
         let certs_iterator = CertificateDer::pem_reader_iter(cert_pem_reader);
@@ -95,7 +97,7 @@ impl<'a> GeneratingCertificateResolver {
         Ok(certificates)
     }
 
-    fn load_private_key(key_pem: String) -> Result<PrivateKeyDer<'a>, Error> {
+    fn load_private_key(key_pem: String) -> Result<PrivateKeyDer<'static>, Error> {
         let cert_pem_reader = Cursor::new(key_pem.into_bytes());
         let private_key = PrivateKeyDer::from_pem_reader(cert_pem_reader)
             .map_err(|err| GenerateCertificateError(format!("cannot use generated private key: {:?}", err)))?;
@@ -237,14 +239,14 @@ impl<'a> GeneratingCertificateResolver {
             ))
         })?;
 
-        let signing_key = any_supported_type(&private_key).map_err(|err| {
+        let certified_key = CertifiedKey::from_der(certificates, private_key, &crypto_provider()).map_err(|err| {
             GenerateCertificateError(format!(
                 "Cannot convert generated private key to signing key (host: {}: error: {:?})",
                 hostname, err
             ))
         })?;
 
-        Ok(Arc::new(CertifiedKey::new(certificates, signing_key)))
+        Ok(Arc::new(certified_key))
     }
 
     fn get_lock_for_hostname(&self, hostname: &str) -> Arc<Mutex<()>> {
@@ -378,7 +380,7 @@ mod tests {
     use std::{sync::Arc, time::Duration};
 
     use rustls::{
-        ClientConfig, ClientConnection, RootCertStore, crypto::ring::default_provider, pki_types::ServerName,
+        ClientConfig, ClientConnection, RootCertStore, crypto::aws_lc_rs::default_provider, pki_types::ServerName,
     };
     use tokio::{
         io::{AsyncReadExt, AsyncWriteExt},

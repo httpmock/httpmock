@@ -4,6 +4,12 @@
 
 ### Changes
 
+- TLS now uses aws-lc-rs instead of ring, which is also what rustls, hyper-rustls and reqwest
+  use by default ([#293](https://github.com/httpmock/httpmock/issues/293)). A test build that
+  already uses one of them no longer compiles both backends. A crypto provider the application
+  installed is still used when there is one, and httpmock no longer installs a process-wide
+  default itself, so `CryptoProvider::install_default` also works after a mock server started.
+
 - Recording rules can limit which response headers end up in recorded mocks with
   `record_response_header` and `record_response_headers`
   ([#207](https://github.com/httpmock/httpmock/pull/207)). Without them, all response headers

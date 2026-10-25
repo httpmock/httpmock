@@ -23,6 +23,8 @@ use tokio_rustls::TlsAcceptor;
 
 #[cfg(feature = "proxy")]
 use crate::common::http::{Error as HttpClientError, HttpMockHttpClient};
+#[cfg(feature = "https")]
+use crate::common::util::crypto_provider;
 use crate::{
     common::runtime,
     server::{
@@ -352,12 +354,7 @@ where
 {
     // Build the TLS acceptor for this connection.
     let cert_resolver = server.config.https.cert_resolver_factory.build(authority);
-    // Respect the application's provider. An explicit fallback avoids ambiguous
-    // crate-feature auto-detection when both ring and aws-lc-rs are enabled.
-    let provider = rustls::crypto::CryptoProvider::get_default()
-        .cloned()
-        .unwrap_or_else(|| Arc::new(rustls::crypto::ring::default_provider()));
-    let mut server_config = ServerConfig::builder_with_provider(provider)
+    let mut server_config = ServerConfig::builder_with_provider(crypto_provider())
         .with_safe_default_protocol_versions()
         .map_err(|e| Error::TlsError(format!("cannot build TLS server config: {:?}", e)))?
         .with_no_client_auth()
