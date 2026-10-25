@@ -160,6 +160,16 @@ fn generate_data() -> MultiValueMatcherTestSet<&'static str, &'static str, usize
     MultiValueMatcherTestSet::generate("form_urlencoded_tuple", "Form-urlencoded Body Mismatch")
 }
 
+#[test]
+fn form_urlencoded_tuple_prefix_not_ignores_keys_that_differ_in_case() {
+    run_test(
+        "form_urlencoded_tuple_prefix_not with a differently cased key",
+        |when| when.form_urlencoded_tuple_prefix_not("name", "abc"),
+        vec![("name", "xyz"), ("NAME", "abcdef")],
+        None,
+    );
+}
+
 fn run_test<F, S>(
     name: S,
     set_expectation: F,

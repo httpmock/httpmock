@@ -679,7 +679,7 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matching_strategy: MatchingStrategy::Absence,
             key_required: true,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
-            key_comparator: Box::new(StringEqualsComparator::new(false, false)),
+            key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringPrefixComparator::new(true, true)),
             weight: 1,
         }),
@@ -706,7 +706,7 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matching_strategy: MatchingStrategy::Absence,
             key_required: true,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
-            key_comparator: Box::new(StringEqualsComparator::new(false, false)),
+            key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringSuffixComparator::new(true, true)),
             weight: 1,
         }),
@@ -974,7 +974,7 @@ pub(crate) fn all() -> Vec<Box<dyn Matcher + Sync + Send>> {
             matching_strategy: MatchingStrategy::Absence,
             key_required: true,
             // TODO: ATTENTION: still false, because it is expected that the key appears in the request!
-            key_comparator: Box::new(StringEqualsComparator::new(false, false)),
+            key_comparator: Box::new(StringEqualsComparator::new(true, false)),
             value_comparator: Box::new(StringPrefixComparator::new(true, true)),
             weight: 1,
         }),
