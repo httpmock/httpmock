@@ -24,6 +24,12 @@
   `respond_with` closure now runs before the mock's configured delay instead of after it, and
   its own runtime no longer counts towards the delay a recording stores for the response.
 
+### Bug fixes
+
+- `cookie_prefix_not`, `cookie_suffix_not` and `form_urlencoded_tuple_prefix_not` compared names
+  case-insensitively, unlike every other cookie and form matcher, so a cookie or form field whose
+  name only differed in case could make the mock fail.
+
 ## Version 0.9.0
 
 The crate was upgraded to the Rust 2024 edition. The minimum supported Rust version

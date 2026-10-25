@@ -149,6 +149,26 @@ fn cookie_count() {
     }
 }
 
+#[test]
+fn cookie_prefix_not_ignores_cookies_whose_name_differs_in_case() {
+    run_test(
+        "cookie_prefix_not with a differently cased cookie name",
+        |when| when.cookie_prefix_not("session", "abc"),
+        vec![("session", "xyz"), ("SESSION", "abcdef")],
+        None,
+    );
+}
+
+#[test]
+fn cookie_suffix_not_ignores_cookies_whose_name_differs_in_case() {
+    run_test(
+        "cookie_suffix_not with a differently cased cookie name",
+        |when| when.cookie_suffix_not("session", "def"),
+        vec![("session", "xyz"), ("SESSION", "abcdef")],
+        None,
+    );
+}
+
 fn generate_data() -> MultiValueMatcherTestSet<&'static str, &'static str, usize, &'static str> {
     MultiValueMatcherTestSet::generate("cookie", "Cookie Mismatch")
 }
