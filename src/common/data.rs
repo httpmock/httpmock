@@ -265,6 +265,17 @@ fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)
         .collect()
 }
 
+// The scheme the server received the request with, which a request built elsewhere doesn't carry.
+// Then it's the URI's, or "http" for an origin-form URI.
+fn request_scheme<B>(req: &http::Request<B>) -> String {
+    req.extensions()
+        .get::<RequestMetadata>()
+        .map(|metadata| metadata.scheme)
+        .or_else(|| req.uri().scheme_str())
+        .unwrap_or("http")
+        .to_string()
+}
+
 impl<B> TryFrom<&http::Request<B>> for HttpMockRequest
 where
     B: Clone + Into<HttpMockBytes>,
@@ -272,17 +283,12 @@ where
     type Error = Error;
 
     fn try_from(value: &http::Request<B>) -> Result<Self, Self::Error> {
-        let metadata = value
-            .extensions()
-            .get::<RequestMetadata>()
-            .unwrap_or_else(|| panic!("request metadata was not added to the request"));
-
         let headers = http_headers_to_vec(value)?;
 
         let body = value.body().clone().into();
 
         Ok(HttpMockRequest::new(
-            metadata.scheme.to_string(),
+            request_scheme(value),
             value.uri().to_string(),
             value.method().to_string(),
             headers,
@@ -297,12 +303,7 @@ where
     B: Into<HttpMockBytes>,
 {
     fn from(req: http::Request<B>) -> Self {
-        let scheme = req
-            .extensions()
-            .get::<RequestMetadata>()
-            .expect("request metadata was not added to the request")
-            .scheme
-            .to_string();
+        let scheme = request_scheme(&req);
         let headers = http_headers_to_vec(&req).expect("invalid headers in http::Request");
         let (parts, body) = req.into_parts();
 
@@ -539,6 +540,18 @@ mod http_body_conversion_tests {
 
         assert_eq!(request.body().as_ref(), b"request");
         assert_eq!(response.body.as_ref().unwrap().as_ref(), b"response");
+    }
+
+    #[test]
+    fn requests_without_metadata_take_the_scheme_from_the_uri() {
+        let request = http::Request::builder()
+            .uri("https://example.com/")
+            .body(Vec::new())
+            .unwrap();
+        assert_eq!(HttpMockRequest::try_from(&request).unwrap().scheme(), "https");
+
+        let request: HttpMockRequest = http::Request::builder().uri("/path").body(Vec::new()).unwrap().into();
+        assert_eq!(request.scheme(), "http");
     }
 
     #[test]
