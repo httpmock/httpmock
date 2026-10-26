@@ -68,13 +68,13 @@ tracing-subscriber = { version = "0.3", features = ["env-filter"] }
 
 [features]
 default = ["cookies"]
-standalone =  ["dep:clap", "tokio/signal", "dep:tracing-subscriber", "record", "http2", "cookies", "remote", "remote-https"] # enables standalone mode
-color = ["dep:colored"] # enables colorful output in standalone mode
+standalone =  ["dep:clap", "tokio/signal", "dep:tracing-subscriber", "record", "http2", "cookies", "remote"] # enables standalone mode
+color = ["dep:colored"] # colors the diff in the failure output of Mock::assert
 cookies = ["dep:headers"] # enables support for matching cookies
 remote = ["hyper-util/client-legacy", "hyper-util/http2"] # allows to connect to remote mock servers
-remote-https = ["remote", "dep:rustls", "rustls/aws_lc_rs", "dep:hyper-rustls", "hyper-rustls/http2"] # allows to connect to remote mock servers via HTTPS
-proxy = ["remote-https", "hyper-util/client-legacy", "hyper-util/http2", "dep:hyper-rustls", "hyper-rustls/http2"] # enables proxy functionality
-https = ["dep:rustls", "dep:rcgen", "dep:tokio-rustls", "dep:hyper-rustls", "rustls/aws_lc_rs", "dep:if-addrs"] # enables httpmock server support for TLS/HTTPS
+remote-https = ["proxy"] # deprecated, use proxy: the remote client never used HTTPS. Removed in 0.10
+proxy = ["remote", "dep:rustls", "rustls/aws_lc_rs", "dep:hyper-rustls", "hyper-rustls/http2"] # enables proxy functionality, with an HTTPS client for upstream requests
+https = ["dep:rustls", "dep:rcgen", "dep:tokio-rustls", "rustls/aws_lc_rs", "dep:if-addrs"] # enables httpmock server support for TLS/HTTPS
 http2 = ["hyper/http2", "hyper-util/http2", "hyper-util/server-auto", "hyper-rustls?/http2"] # enables httpmocks server support for HTTP2
 record = ["proxy", "dep:serde-saphyr"]
 

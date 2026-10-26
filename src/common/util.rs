@@ -8,7 +8,7 @@ use std::{
     time::Duration,
 };
 
-#[cfg(any(feature = "https", feature = "remote-https"))]
+#[cfg(any(feature = "https", feature = "proxy"))]
 use std::sync::Arc;
 #[cfg(feature = "record")]
 use std::{fs::create_dir_all, io::Write};
@@ -39,7 +39,7 @@ pub(crate) fn take_from_mutex<T: Default>(mutex: &Mutex<T>) -> T {
 // Respects the application's installed rustls crypto provider and falls back to aws-lc-rs
 // otherwise. The explicit fallback avoids rustls' crate-feature auto-detection, which panics when
 // both ring and aws-lc-rs are enabled, and leaves the process-wide default to the application.
-#[cfg(any(feature = "https", feature = "remote-https"))]
+#[cfg(any(feature = "https", feature = "proxy"))]
 pub(crate) fn crypto_provider() -> Arc<rustls::crypto::CryptoProvider> {
     rustls::crypto::CryptoProvider::get_default()
         .cloned()
