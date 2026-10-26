@@ -284,7 +284,7 @@ impl Handler {
 
     fn handle_add_mock(&self, req: &Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let definition: MockDefinition = parse_json_body(req)?;
-        let active_mock = self.state.add_mock(definition, false)?;
+        let active_mock = self.state.add_mock(definition)?;
         response(StatusCode::CREATED, Some(active_mock))
     }
 
@@ -701,7 +701,7 @@ mod tests {
     #[test]
     fn matched_mock_is_served_with_its_delay() {
         let handler = handler();
-        handler.state.add_mock(mock("/hello", 202, Some(150)), false).unwrap();
+        handler.state.add_mock(mock("/hello", 202, Some(150))).unwrap();
 
         let (delay, response) = expect_mock_reply(handler.handle(request("GET", "http://localhost/hello")).unwrap());
 
@@ -712,7 +712,7 @@ mod tests {
     #[test]
     fn serving_a_mock_counts_the_call_and_appends_the_request_to_the_history() {
         let handler = handler();
-        let id = handler.state.add_mock(mock("/hello", 200, None), false).unwrap().id;
+        let id = handler.state.add_mock(mock("/hello", 200, None)).unwrap().id;
 
         handler.handle(request("GET", "http://localhost/hello")).unwrap();
 
@@ -734,7 +734,7 @@ mod tests {
         let handler = handler();
         let mut definition = mock("/once", 200, None);
         definition.up_to_n_times = Some(1);
-        handler.state.add_mock(definition, false).unwrap();
+        handler.state.add_mock(definition).unwrap();
 
         let first = expect_mock_reply(handler.handle(request("GET", "http://localhost/once")).unwrap());
         let second = expect_mock_reply(handler.handle(request("GET", "http://localhost/once")).unwrap());
@@ -837,7 +837,7 @@ mod tests {
                 record_response_delays: true,
                 record_response_headers: Vec::new(),
             });
-            handler.state.add_mock(mock("/recorded", 201, None), false).unwrap();
+            handler.state.add_mock(mock("/recorded", 201, None)).unwrap();
 
             let Action::Serve { reply, pending } = handler.handle(request("GET", "http://localhost/recorded")).unwrap()
             else {
@@ -870,7 +870,7 @@ mod tests {
                 ("content-type".to_string(), "text/plain".to_string()),
                 ("set-cookie".to_string(), "session=secret".to_string()),
             ]);
-            handler.state.add_mock(mock, false).unwrap();
+            handler.state.add_mock(mock).unwrap();
 
             let Action::Serve { reply, pending } = handler.handle(request("GET", "http://localhost/recorded")).unwrap()
             else {

@@ -91,7 +91,18 @@ impl HttpMockStateManager {
         self.delete_all_recordings();
     }
 
-    pub(crate) fn add_mock(&self, mut definition: MockDefinition, is_static: bool) -> Result<ActiveMock, Error> {
+    pub(crate) fn add_mock(&self, definition: MockDefinition) -> Result<ActiveMock, Error> {
+        self.insert_mock(definition, false)
+    }
+
+    /// Adds a mock that survives resets and can't be deleted or limited, like the ones read
+    /// from the static mock directory.
+    #[cfg(any(test, feature = "record"))]
+    pub(crate) fn add_static_mock(&self, definition: MockDefinition) -> Result<ActiveMock, Error> {
+        self.insert_mock(definition, true)
+    }
+
+    fn insert_mock(&self, mut definition: MockDefinition, is_static: bool) -> Result<ActiveMock, Error> {
         validate_request_requirements(&definition.request)?;
         let up_to_n_times = definition
             .up_to_n_times
@@ -362,7 +373,7 @@ mod tests {
     #[test]
     fn exhausted_mock_stops_matching_but_keeps_its_call_counter() {
         let manager = HttpMockStateManager::default();
-        let id = manager.add_mock(limited_mock(Some(2)), false).unwrap().id;
+        let id = manager.add_mock(limited_mock(Some(2))).unwrap().id;
 
         let served: Vec<bool> = (0..3)
             .map(|_| manager.serve_mock(&dummy_request()).unwrap().is_some())
@@ -375,7 +386,7 @@ mod tests {
     #[test]
     fn up_to_n_times_counts_calls_served_before_the_limit_was_set() {
         let manager = HttpMockStateManager::default();
-        let id = manager.add_mock(limited_mock(None), false).unwrap().id;
+        let id = manager.add_mock(limited_mock(None)).unwrap().id;
         for _ in 0..3 {
             assert!(manager.serve_mock(&dummy_request()).unwrap().is_some());
         }
@@ -389,7 +400,7 @@ mod tests {
     #[test]
     fn raising_up_to_n_times_lets_an_exhausted_mock_match_again() {
         let manager = HttpMockStateManager::default();
-        let id = manager.add_mock(limited_mock(Some(1)), false).unwrap().id;
+        let id = manager.add_mock(limited_mock(Some(1))).unwrap().id;
         assert!(manager.serve_mock(&dummy_request()).unwrap().is_some());
         assert!(manager.serve_mock(&dummy_request()).unwrap().is_none());
 
@@ -412,7 +423,7 @@ mod tests {
     #[test]
     fn up_to_n_times_on_static_mock_is_rejected() {
         let manager = HttpMockStateManager::default();
-        let id = manager.add_mock(limited_mock(None), true).unwrap().id;
+        let id = manager.add_static_mock(limited_mock(None)).unwrap().id;
 
         assert!(matches!(manager.set_up_to_n_times(id, 1), Err(StaticMockError)));
     }
@@ -420,7 +431,7 @@ mod tests {
     #[test]
     fn reset_lets_exhausted_static_mocks_match_again() {
         let manager = HttpMockStateManager::default();
-        let id = manager.add_mock(limited_mock(Some(1)), true).unwrap().id;
+        let id = manager.add_static_mock(limited_mock(Some(1))).unwrap().id;
         assert!(manager.serve_mock(&dummy_request()).unwrap().is_some());
         assert!(manager.serve_mock(&dummy_request()).unwrap().is_none());
 
@@ -435,11 +446,11 @@ mod tests {
         let manager = HttpMockStateManager::default();
 
         assert!(matches!(
-            manager.add_mock(limited_mock(Some(0)), false),
+            manager.add_mock(limited_mock(Some(0))),
             Err(ValidationError(_))
         ));
 
-        let id = manager.add_mock(limited_mock(None), false).unwrap().id;
+        let id = manager.add_mock(limited_mock(None)).unwrap().id;
         assert!(matches!(manager.set_up_to_n_times(id, 0), Err(ValidationError(_))));
         assert!(manager.read_mock(id).unwrap().unwrap().up_to_n_times.is_none());
     }
@@ -447,7 +458,7 @@ mod tests {
     #[test]
     fn exhausted_mock_round_trips_through_serialization() {
         let manager = HttpMockStateManager::default();
-        let id = manager.add_mock(limited_mock(Some(1)), false).unwrap().id;
+        let id = manager.add_mock(limited_mock(Some(1))).unwrap().id;
         assert!(manager.serve_mock(&dummy_request()).unwrap().is_some());
 
         let json = serde_json::to_string(&manager.read_mock(id).unwrap().unwrap()).unwrap();

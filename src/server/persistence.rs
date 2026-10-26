@@ -39,7 +39,7 @@ pub enum Error {
 
 pub fn read_static_mock_definitions(path_opt: PathBuf, state: &state::HttpMockStateManager) -> Result<(), Error> {
     for def in read_static_mocks(path_opt)? {
-        state.add_mock(def, true)?;
+        state.add_static_mock(def)?;
     }
 
     Ok(())

@@ -95,7 +95,7 @@ impl HttpMockStateManager {
                 .try_into()
                 .map_err(|err: data::Error| DataConversionError(err.to_string()))?;
 
-            let active_mock = self.add_mock(mock_def, false)?;
+            let active_mock = self.add_mock(mock_def)?;
             mock_ids.push(active_mock.id);
         }
 
@@ -159,6 +159,8 @@ fn build_mock_definition(
         }
     }
 
+    let target = is_proxied.then(|| request.uri());
+
     let request = RequestRequirements {
         /* Authority and scheme are assumed to always exist for proxies requests for the
         following reasons:
@@ -179,21 +181,9 @@ fn build_mock_definition(
         "An example absolute-form of request-line would be:
         GET http://www.example.org/pub/WWW/TheProject.html HTTP/1.1"
         */
-        host: if is_proxied {
-            request.uri().host().map(|h| h.to_string())
-        } else {
-            None
-        },
-        port: if is_proxied {
-            request.uri().port().map(|h| h.as_u16())
-        } else {
-            None
-        },
-        scheme: if is_proxied {
-            request.uri().scheme().map(|h| h.to_string())
-        } else {
-            None
-        },
+        host: target.as_ref().and_then(|uri| uri.host()).map(str::to_string),
+        port: target.as_ref().and_then(|uri| uri.port_u16()),
+        scheme: target.as_ref().and_then(|uri| uri.scheme_str()).map(str::to_string),
         path: Some(request.uri().path().to_string()),
         method: Some(request.method().to_string()),
         header: if !headers.is_empty() { Some(headers) } else { None },

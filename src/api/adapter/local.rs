@@ -51,7 +51,7 @@ impl MockServerAdapter for LocalMockServerAdapter {
     async fn create_mock(&self, mock: &MockDefinition) -> Result<ActiveMock, ServerAdapterError> {
         let active_mock = self
             .state
-            .add_mock(mock.clone(), false)
+            .add_mock(mock.clone())
             .map_err(|e| UpstreamError(e.to_string()))?;
         Ok(active_mock)
     }
