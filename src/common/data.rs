@@ -831,94 +831,94 @@ impl fmt::Display for HttpMockRegex {
 #[derive(Serialize, Deserialize, Clone, Default)]
 pub struct RequestRequirements {
     pub scheme: Option<String>,
-    pub scheme_not: Option<String>, // NEW
+    pub scheme_not: Option<String>,
     pub host: Option<String>,
-    pub host_not: Option<Vec<String>>,        // NEW
-    pub host_contains: Option<Vec<String>>,   // NEW
-    pub host_excludes: Option<Vec<String>>,   // NEW
-    pub host_prefix: Option<Vec<String>>,     // NEW
-    pub host_suffix: Option<Vec<String>>,     // NEW
-    pub host_prefix_not: Option<Vec<String>>, // NEW
-    pub host_suffix_not: Option<Vec<String>>, // NEW
+    pub host_not: Option<Vec<String>>,
+    pub host_contains: Option<Vec<String>>,
+    pub host_excludes: Option<Vec<String>>,
+    pub host_prefix: Option<Vec<String>>,
+    pub host_suffix: Option<Vec<String>>,
+    pub host_prefix_not: Option<Vec<String>>,
+    pub host_suffix_not: Option<Vec<String>>,
     pub host_matches: Option<Vec<HttpMockRegex>>,
     pub port: Option<u16>,
-    pub port_not: Option<Vec<u16>>, // NEW
+    pub port_not: Option<Vec<u16>>,
     pub method: Option<String>,
-    pub method_not: Option<Vec<String>>, // NEW
+    pub method_not: Option<Vec<String>>,
     pub path: Option<String>,
-    pub path_not: Option<Vec<String>>,        // NEW
-    pub path_includes: Option<Vec<String>>,   // NEW
-    pub path_excludes: Option<Vec<String>>,   // NEW
-    pub path_prefix: Option<Vec<String>>,     // NEW
-    pub path_suffix: Option<Vec<String>>,     // NEW
-    pub path_prefix_not: Option<Vec<String>>, // NEW
-    pub path_suffix_not: Option<Vec<String>>, // NEW
+    pub path_not: Option<Vec<String>>,
+    pub path_includes: Option<Vec<String>>,
+    pub path_excludes: Option<Vec<String>>,
+    pub path_prefix: Option<Vec<String>>,
+    pub path_suffix: Option<Vec<String>>,
+    pub path_prefix_not: Option<Vec<String>>,
+    pub path_suffix_not: Option<Vec<String>>,
     pub path_matches: Option<Vec<HttpMockRegex>>,
     pub query_param: Option<Vec<(String, String)>>,
-    pub query_param_not: Option<Vec<(String, String)>>, // NEW
+    pub query_param_not: Option<Vec<(String, String)>>,
     pub query_param_exists: Option<Vec<String>>,
-    pub query_param_missing: Option<Vec<String>>,              // NEW
-    pub query_param_includes: Option<Vec<(String, String)>>,   // NEW
-    pub query_param_excludes: Option<Vec<(String, String)>>,   // NEW
-    pub query_param_prefix: Option<Vec<(String, String)>>,     // NEW
-    pub query_param_suffix: Option<Vec<(String, String)>>,     // NEW
-    pub query_param_prefix_not: Option<Vec<(String, String)>>, // NEW
-    pub query_param_suffix_not: Option<Vec<(String, String)>>, // NEW
-    pub query_param_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>, // NEW
-    pub query_param_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>, // NEW
-    pub header: Option<Vec<(String, String)>>,                 // CHANGED from headers to header
-    pub header_not: Option<Vec<(String, String)>>,             // NEW
+    pub query_param_missing: Option<Vec<String>>,
+    pub query_param_includes: Option<Vec<(String, String)>>,
+    pub query_param_excludes: Option<Vec<(String, String)>>,
+    pub query_param_prefix: Option<Vec<(String, String)>>,
+    pub query_param_suffix: Option<Vec<(String, String)>>,
+    pub query_param_prefix_not: Option<Vec<(String, String)>>,
+    pub query_param_suffix_not: Option<Vec<(String, String)>>,
+    pub query_param_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>,
+    pub query_param_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>,
+    pub header: Option<Vec<(String, String)>>,
+    pub header_not: Option<Vec<(String, String)>>,
     pub header_exists: Option<Vec<String>>,
-    pub header_missing: Option<Vec<String>>,                              // NEW
-    pub header_includes: Option<Vec<(String, String)>>,                   // NEW
-    pub header_excludes: Option<Vec<(String, String)>>,                   // NEW
-    pub header_prefix: Option<Vec<(String, String)>>,                     // NEW
-    pub header_suffix: Option<Vec<(String, String)>>,                     // NEW
-    pub header_prefix_not: Option<Vec<(String, String)>>,                 // NEW
-    pub header_suffix_not: Option<Vec<(String, String)>>,                 // NEW
-    pub header_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>,      // NEW
-    pub header_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>, // NEW
-    pub cookie: Option<Vec<(String, String)>>,                            // CHANGED from cookies to cookie
-    pub cookie_not: Option<Vec<(String, String)>>,                        // NEW
+    pub header_missing: Option<Vec<String>>,
+    pub header_includes: Option<Vec<(String, String)>>,
+    pub header_excludes: Option<Vec<(String, String)>>,
+    pub header_prefix: Option<Vec<(String, String)>>,
+    pub header_suffix: Option<Vec<(String, String)>>,
+    pub header_prefix_not: Option<Vec<(String, String)>>,
+    pub header_suffix_not: Option<Vec<(String, String)>>,
+    pub header_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>,
+    pub header_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>,
+    pub cookie: Option<Vec<(String, String)>>,
+    pub cookie_not: Option<Vec<(String, String)>>,
     pub cookie_exists: Option<Vec<String>>,
-    pub cookie_missing: Option<Vec<String>>,                              // NEW
-    pub cookie_includes: Option<Vec<(String, String)>>,                   // NEW
-    pub cookie_excludes: Option<Vec<(String, String)>>,                   // NEW
-    pub cookie_prefix: Option<Vec<(String, String)>>,                     // NEW
-    pub cookie_suffix: Option<Vec<(String, String)>>,                     // NEW
-    pub cookie_prefix_not: Option<Vec<(String, String)>>,                 // NEW
-    pub cookie_suffix_not: Option<Vec<(String, String)>>,                 // NEW
-    pub cookie_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>,      // NEW
-    pub cookie_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>, // NEW          // NEW
+    pub cookie_missing: Option<Vec<String>>,
+    pub cookie_includes: Option<Vec<(String, String)>>,
+    pub cookie_excludes: Option<Vec<(String, String)>>,
+    pub cookie_prefix: Option<Vec<(String, String)>>,
+    pub cookie_suffix: Option<Vec<(String, String)>>,
+    pub cookie_prefix_not: Option<Vec<(String, String)>>,
+    pub cookie_suffix_not: Option<Vec<(String, String)>>,
+    pub cookie_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>,
+    pub cookie_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>,
     pub body: Option<HttpMockBytes>,
-    pub body_not: Option<Vec<HttpMockBytes>>,        // NEW
-    pub body_includes: Option<Vec<HttpMockBytes>>,   // CHANG
-    pub body_excludes: Option<Vec<HttpMockBytes>>,   // NEW
-    pub body_prefix: Option<Vec<HttpMockBytes>>,     // NEW
-    pub body_suffix: Option<Vec<HttpMockBytes>>,     // NEW
-    pub body_prefix_not: Option<Vec<HttpMockBytes>>, //
-    pub body_suffix_not: Option<Vec<HttpMockBytes>>, //
-    pub body_matches: Option<Vec<HttpMockRegex>>,    // NEW
+    pub body_not: Option<Vec<HttpMockBytes>>,
+    pub body_includes: Option<Vec<HttpMockBytes>>,
+    pub body_excludes: Option<Vec<HttpMockBytes>>,
+    pub body_prefix: Option<Vec<HttpMockBytes>>,
+    pub body_suffix: Option<Vec<HttpMockBytes>>,
+    pub body_prefix_not: Option<Vec<HttpMockBytes>>,
+    pub body_suffix_not: Option<Vec<HttpMockBytes>>,
+    pub body_matches: Option<Vec<HttpMockRegex>>,
     pub json_body: Option<Value>,
-    pub json_body_not: Option<Value>, // NEW
+    pub json_body_not: Option<Value>,
     pub json_body_includes: Option<Vec<Value>>,
-    pub json_body_excludes: Option<Vec<Value>>, // NEW
+    pub json_body_excludes: Option<Vec<Value>>,
     pub form_urlencoded_tuple: Option<Vec<(String, String)>>,
-    pub form_urlencoded_tuple_not: Option<Vec<(String, String)>>, // NEW
+    pub form_urlencoded_tuple_not: Option<Vec<(String, String)>>,
     pub form_urlencoded_tuple_exists: Option<Vec<String>>,
-    pub form_urlencoded_tuple_missing: Option<Vec<String>>, // NEW
-    pub form_urlencoded_tuple_includes: Option<Vec<(String, String)>>, // NEW
-    pub form_urlencoded_tuple_excludes: Option<Vec<(String, String)>>, // NEW
-    pub form_urlencoded_tuple_prefix: Option<Vec<(String, String)>>, // NEW
-    pub form_urlencoded_tuple_suffix: Option<Vec<(String, String)>>, // NEW
-    pub form_urlencoded_tuple_prefix_not: Option<Vec<(String, String)>>, // NEW
-    pub form_urlencoded_tuple_suffix_not: Option<Vec<(String, String)>>, // NEW
-    pub form_urlencoded_tuple_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>, // NEW
-    pub form_urlencoded_tuple_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>, // NEW
+    pub form_urlencoded_tuple_missing: Option<Vec<String>>,
+    pub form_urlencoded_tuple_includes: Option<Vec<(String, String)>>,
+    pub form_urlencoded_tuple_excludes: Option<Vec<(String, String)>>,
+    pub form_urlencoded_tuple_prefix: Option<Vec<(String, String)>>,
+    pub form_urlencoded_tuple_suffix: Option<Vec<(String, String)>>,
+    pub form_urlencoded_tuple_prefix_not: Option<Vec<(String, String)>>,
+    pub form_urlencoded_tuple_suffix_not: Option<Vec<(String, String)>>,
+    pub form_urlencoded_tuple_matches: Option<Vec<(HttpMockRegex, HttpMockRegex)>>,
+    pub form_urlencoded_tuple_count: Option<Vec<(HttpMockRegex, HttpMockRegex, usize)>>,
     #[serde(skip)]
-    pub is_true: Option<Vec<RequestPredicate>>, // NEW + DEPRECATE matches() -> point to using "is_true" instead
+    pub is_true: Option<Vec<RequestPredicate>>,
     #[serde(skip)]
-    pub is_false: Option<Vec<RequestPredicate>>, // NEW
+    pub is_false: Option<Vec<RequestPredicate>>,
 }
 
 /// A Request that is made to set a new mock.

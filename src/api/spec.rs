@@ -2373,7 +2373,7 @@ impl When {
         };
 
         let key_pattern = key_pattern.try_into().expect("cannot convert key to regex");
-        let value_pattern = value_pattern.try_into().expect("cannot convert key to regex");
+        let value_pattern = value_pattern.try_into().expect("cannot convert value to regex");
 
         update_mutex(&self.expectations, |e| {
             push_to(&mut e.header_count, (key_pattern, value_pattern, count))
