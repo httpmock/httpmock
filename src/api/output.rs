@@ -183,20 +183,11 @@ fn handle_key_value_comparison(
                 (key.to_string(), key.to_string())
             }
             (None, None) => {
-                let msg = match &mismatch.matching_strategy {
-                    None => "but none was provided",
-                    Some(v) => match v {
-                        MatchingStrategy::Presence => "to be in the request, but none was provided.",
-                        MatchingStrategy::Absence => "not to be present, but the request contained it.",
-                    },
-                };
-
-                writeln!(out, "\n{}", msg).unwrap();
+                print_value_not_in_request(out, &mismatch.matching_strategy);
                 (String::new(), String::new())
             }
         };
 
-        // print_value_not_in_request(out, &mismatch.matching_strategy);
         print_all_request_values(out, &mismatch.entity, &comparison.all);
 
         return result;
@@ -216,11 +207,10 @@ fn print_all_request_values(out: &mut String, entity: &str, all: &[KeyValueCompa
     writeln!(out, "\nAll received {} values:", entity).unwrap();
 
     for (index, pair) in all.iter().enumerate() {
-        let value = if pair.value.is_some() {
-            format!("={}", pair.value.clone().unwrap())
-        } else {
-            String::new()
-        };
+        let value = pair
+            .value
+            .as_ref()
+            .map_or_else(String::new, |value| format!("={value}"));
 
         let text = format!("{}{}", pair.key, value);
         writeln!(out, "{INDENT}{}. {}", index + 1, text).unwrap();
@@ -233,10 +223,8 @@ fn print_value_not_in_request(out: &mut String, matching_strategy: &Option<Match
         "\n{}",
         match matching_strategy {
             None => "but none was provided",
-            Some(v) => match v {
-                MatchingStrategy::Presence => "to be in the request, but none was provided.",
-                MatchingStrategy::Absence => "not to be present, but the request contained it.",
-            },
+            Some(MatchingStrategy::Presence) => "to be in the request, but none was provided.",
+            Some(MatchingStrategy::Absence) => "not to be present, but the request contained it.",
         }
     )
     .unwrap();
@@ -252,10 +240,7 @@ fn handle_function_comparison(out: &mut String, mismatch: &Mismatch, comparison:
 }
 
 fn write_footer(out: &mut String, mismatch: &Mismatch) {
-    let mut version = env!("CARGO_PKG_VERSION");
-    if version.trim().is_empty() {
-        version = "latest";
-    }
+    let version = env!("CARGO_PKG_VERSION");
 
     let link = format!(
         "https://docs.rs/httpmock/{}/httpmock/struct.When.html#method.{}",
