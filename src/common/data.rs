@@ -224,16 +224,13 @@ impl HttpMockRequest {
     }
 
     pub fn version(&self) -> http::Version {
-        match self.version.as_ref() {
-            "HTTP/0.9" => http::Version::HTTP_09,
-            "HTTP/1.0" => http::Version::HTTP_10,
-            "HTTP/1.1" => http::Version::HTTP_11,
-            "HTTP/2.0" => http::Version::HTTP_2,
-            "HTTP/3.0" => http::Version::HTTP_3,
+        VERSION_NAMES
+            .iter()
+            .find(|(_, name)| *name == self.version)
+            .map(|(version, _)| *version)
             // Attention: This scenario is highly unlikely, so we panic here for the users
             // convenience (user does not need to deal with errors for this reason alone).
-            _ => panic!("unknown HTTP version: {:?}", self.version),
-        }
+            .unwrap_or_else(|| panic!("unknown HTTP version: {:?}", self.version))
     }
 
     pub fn version_ref(&self) -> &str {
@@ -252,6 +249,23 @@ impl HttpMockRequest {
 
         Ok(result)
     }
+}
+
+// How a request stores its HTTP version. These are the names `http` prints with `Debug`, which
+// the strings came from before, so serialized requests keep the same format.
+const VERSION_NAMES: [(http::Version, &str); 5] = [
+    (http::Version::HTTP_09, "HTTP/0.9"),
+    (http::Version::HTTP_10, "HTTP/1.0"),
+    (http::Version::HTTP_11, "HTTP/1.1"),
+    (http::Version::HTTP_2, "HTTP/2.0"),
+    (http::Version::HTTP_3, "HTTP/3.0"),
+];
+
+fn version_name(version: http::Version) -> String {
+    VERSION_NAMES
+        .iter()
+        .find(|(known, _)| *known == version)
+        .map_or_else(|| format!("{version:?}"), |(_, name)| name.to_string())
 }
 
 fn http_headers_to_vec<T>(req: &http::Request<T>) -> Result<Vec<(String, String)>, Error> {
@@ -292,7 +306,7 @@ where
             value.uri().to_string(),
             value.method().to_string(),
             headers,
-            format!("{:?}", value.version()),
+            version_name(value.version()),
             body,
         ))
     }
@@ -312,7 +326,7 @@ where
             parts.uri.to_string(),
             parts.method.to_string(),
             headers,
-            format!("{:?}", parts.version),
+            version_name(parts.version),
             body.into(),
         )
     }
@@ -552,6 +566,26 @@ mod http_body_conversion_tests {
 
         let request: HttpMockRequest = http::Request::builder().uri("/path").body(Vec::new()).unwrap().into();
         assert_eq!(request.scheme(), "http");
+    }
+
+    #[test]
+    fn every_http_version_keeps_its_name() {
+        for (version, name) in [
+            (http::Version::HTTP_09, "HTTP/0.9"),
+            (http::Version::HTTP_10, "HTTP/1.0"),
+            (http::Version::HTTP_11, "HTTP/1.1"),
+            (http::Version::HTTP_2, "HTTP/2.0"),
+            (http::Version::HTTP_3, "HTTP/3.0"),
+        ] {
+            let request: HttpMockRequest = http::Request::builder()
+                .version(version)
+                .uri("/")
+                .body(Vec::new())
+                .unwrap()
+                .into();
+            assert_eq!(request.version(), version);
+            assert_eq!(request.version_ref(), name);
+        }
     }
 
     #[test]
