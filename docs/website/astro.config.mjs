@@ -4,6 +4,20 @@ import starlight from '@astrojs/starlight';
 // https://astro.build/config
 export default defineConfig({
     site: 'https://httpmock.rs',
+    // The method pages that the docs.rs API reference replaced.
+    redirects: {
+        '/matching_requests/path/': '/matching_requests/',
+        '/matching_requests/method/': '/matching_requests/',
+        '/matching_requests/query/': '/matching_requests/',
+        '/matching_requests/headers/': '/matching_requests/',
+        '/matching_requests/body/': '/matching_requests/',
+        '/matching_requests/cookies/': '/matching_requests/',
+        '/matching_requests/host/': '/matching_requests/',
+        '/matching_requests/port/': '/matching_requests/',
+        '/matching_requests/scheme/': '/matching_requests/',
+        '/mocking_responses/all/': '/mocking_responses/',
+        '/mocking_responses/delay/': '/mocking_responses/',
+    },
     integrations: [
         starlight({
             title: 'httpmock Tutorial',

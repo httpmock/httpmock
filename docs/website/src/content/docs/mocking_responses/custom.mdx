@@ -19,6 +19,6 @@ The closure runs on the mock server's request handling path, once per matched re
 
 ## Example
 
-This test from the repository answers with a different status on every call by counting requests in a `Mutex`:
+This test from the repository answers with a different status on every call by counting requests in an atomic:
 
 <Code code={snippet(raw, 'respond_with')} lang="rust" />

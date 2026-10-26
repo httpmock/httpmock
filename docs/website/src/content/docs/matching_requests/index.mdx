@@ -7,7 +7,7 @@ Every mock has a `when` part. Each method you call on it adds one criterion, and
 
 The methods follow one naming scheme across all request parts. The plain name (`path`, `header`, `cookie`) requires an exact match. `_not` requires that the value is not equal, `_includes` and `_excludes` look for a substring, `_prefix` and `_suffix` check the start and end of a value, `_prefix_not` and `_suffix_not` are their negations, and `_matches` takes a regular expression. Key-value parts such as query parameters, headers, cookies and form fields also have `_exists` and `_missing`, which only look at the name, and `_count`, which checks how many pairs match a pair of regular expressions.
 
-Case sensitivity depends on the part. Scheme, method and host are compared case-insensitively, as the respective standards require. The request body is compared byte by byte, so body matchers are case-sensitive since version 0.8 (0.7 and earlier compared bodies case-insensitively).
+Case sensitivity depends on the part. Scheme, method and host are compared case-insensitively, as the respective standards require, except for `host_matches`, where the regular expression decides (start it with `(?i)` to ignore case). Header names are compared case-insensitively too, header values and query parameter, cookie and form names case-sensitively. The request body is compared byte by byte, so body matchers are case-sensitive since version 0.8 (0.7 and earlier compared bodies case-insensitively).
 
 Each method has its own example in the API reference on docs.rs, so this page only maps the groups and links to them. If the built-in matchers are not enough, [custom matchers](/matching_requests/custom/) let you run your own function against the request.
 
@@ -129,7 +129,7 @@ Cookie matchers read the `Cookie` request header and match individual cookies by
 
 ## Host
 
-Host matchers look at the host name the request was sent to, which mostly matters when the mock server acts as a proxy or when several names resolve to it. Host names are compared case-insensitively.
+Host matchers look at the host name the request was sent to, which mostly matters when the mock server acts as a proxy or when several names resolve to it. Host names are compared case-insensitively, except by `host_matches`. An IPv6 host keeps its brackets, as in `[::1]`.
 
 - [`host`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host)
 - [`host_not`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.host_not)

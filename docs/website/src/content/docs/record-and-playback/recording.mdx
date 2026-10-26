@@ -97,8 +97,9 @@ CA certificate for that; the [HTTPS page](/server/https/) explains how.
 
 Forwarding and proxy rules only decide where requests go. The recording itself is started with
 [`MockServer::record`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.record). Its rule
-builder takes a `filter` that selects what gets recorded, again using `When`, and two options:
-`record_request_headers` lists the request headers to store (by default none are recorded), and
+builder takes a `filter` that selects what gets recorded, again using `When`, and these options:
+`record_request_headers` lists the request headers to store (by default none are recorded),
+`record_response_headers` limits the response headers to the listed ones (by default all are kept), and
 `record_response_delays(true)` stores how long the real service took so playback can reproduce the delay. See
 [`RecordingRuleBuilder`](https://docs.rs/httpmock/latest/httpmock/struct.RecordingRuleBuilder.html) for the
 details.

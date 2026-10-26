@@ -19,8 +19,8 @@ change. The feature is also what lets the [proxy and record](/record-and-playbac
 HTTPS traffic to other hosts.
 
 The administrative communication between the Rust API and the mock server stays plain HTTP on the same port, so
-nothing changes in how tests create and verify mocks. To talk to a standalone server over HTTPS from the client
-side, enable the `remote-https` feature as well.
+nothing changes in how tests create and verify mocks. That also holds for a standalone server: the client always
+connects to it over plain HTTP.
 
 ## Unified Port
 
@@ -131,9 +131,9 @@ sudo update-ca-certificates
 
 ## Crypto Provider
 
-The TLS implementation is [`rustls`](https://docs.rs/rustls/latest/rustls/). The `https` feature enables the
-`ring` provider, and the server uses whatever crypto provider your application has installed as the process-wide
-default. Only if none is installed does it fall back to `ring`, so an application that has installed `aws-lc-rs`
-or a custom provider keeps its configuration, and compiling several providers into one binary no longer causes a
-panic at startup. The client side (`remote-https` and the proxy) installs `ring` as the process default when
-nothing is installed yet.
+The TLS implementation is [`rustls`](https://docs.rs/rustls/latest/rustls/) with the aws-lc-rs provider, which is
+also what rustls, hyper-rustls and reqwest use by default. The server and the proxy client use whatever crypto
+provider your application has installed as the process-wide default and only fall back to aws-lc-rs when none is
+installed. They never install a default themselves, so `CryptoProvider::install_default` also works after a mock
+server started. If your own code relies on rustls picking `ring` from its crate features, install it as the
+default in your tests with `rustls::crypto::ring::default_provider().install_default()`.

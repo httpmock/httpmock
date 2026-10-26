@@ -16,7 +16,7 @@ As with the matchers, every method has an example in the API reference on docs.r
 There are four ways to set the body, depending on where the content comes from.
 
 - [`body`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.body) takes a string or any byte slice and sends it as is, so it also covers binary responses.
-- [`body_from_file`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.body_from_file) reads the body from a file at mock creation time. The path is resolved relative to the working directory of the process the mock server runs in, which for a test is the crate root, and the call panics if the file cannot be read.
+- [`body_from_file`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.body_from_file) reads the body from a file when the mock is created, in your test process. A relative path is resolved against `CARGO_MANIFEST_DIR`, so against your crate root under `cargo test`, and the call panics if the file cannot be read.
 - [`json_body`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.json_body) takes a `serde_json::Value`, typically built with the `json!` macro, and serializes it.
 - [`json_body_obj`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.json_body_obj) serializes any value that implements `Serialize`, which is the easiest way to respond with your own response types.
 

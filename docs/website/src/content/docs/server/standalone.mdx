@@ -57,7 +57,7 @@ docker run -p 5050:5050 \
   httpmock/httpmock
 ```
 
-The same setup with Docker Compose, mirroring the
+The same setup with Docker Compose, similar to the
 [`docker-compose.yml`](https://github.com/httpmock/httpmock/blob/master/docker-compose.yml) in the repository:
 
 ```yaml
@@ -214,9 +214,9 @@ each test uses its own mock server.
 You can use a standalone mock server independently, without needing Rust to configure mock behavior. `httpmock`
 allows you to define mocks in YAML files, which follow the same when/then pattern as the Rust API. Point the server
 at a directory with `--mock-files-dir` (or `HTTPMOCK_MOCK_FILES_DIR`); every `.yaml` or `.yml` file in it is
-loaded once at startup, so changes to the files require a restart. Files with another extension are skipped, so
-body files for `body_from_file` can sit next to the mock files, but entries without an extension (including
-subdirectories) are read as YAML and fail the startup. A file can hold several mock definitions, separated by the
+loaded once at startup, so changes to the files require a restart. Files with another extension and subdirectories
+are skipped, so body files for `body_from_file` can sit next to the mock files or in a folder of their own. Files
+without an extension are read as YAML, though, and fail the startup if they aren't valid mock definitions. A file can hold several mock definitions, separated by the
 YAML document separator `---`:
 
 ```yaml

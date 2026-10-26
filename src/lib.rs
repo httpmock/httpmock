@@ -111,17 +111,18 @@
 //!   Pulls in the `colored` crate.
 //! * `remote`: connecting to a mock server running in standalone mode with
 //!   [`MockServer::connect`] and [`MockServer::connect_from_env`]. Enables the `hyper-util` client.
-//! * `remote-https`: the same connection over HTTPS, using `rustls` with the `ring` provider and
-//!   `hyper-rustls`. Implies `remote`.
+//! * `remote-https`: TLS for the HTTP client (`rustls` with the aws-lc-rs provider and
+//!   `hyper-rustls`), which forwarding, proxying and recording need for HTTPS targets. The
+//!   connection to a standalone server itself always uses plain HTTP. Implies `remote`.
 //! * `proxy`: forwarding and proxy rules, see [`MockServer::forward_to`] and
 //!   [`MockServer::proxy`]. Implies `remote-https`.
 //! * `record`: recording traffic with [`MockServer::record`] and reading mock specifications
-//!   from YAML files (`serde_yaml`). Implies `proxy`.
+//!   from YAML files (`serde-saphyr`). Implies `proxy`.
 //! * `https`: the mock server terminates TLS on the same port it serves plain HTTP on, generating
-//!   certificates with `rcgen`. Pulls in `rustls` with the `ring` provider, `tokio-rustls`,
-//!   `hyper-rustls`, `rustls-pki-types` and `if-addrs`.
+//!   certificates with `rcgen`. Pulls in `rustls` with the aws-lc-rs provider, `tokio-rustls`,
+//!   `hyper-rustls` and `if-addrs`.
 //! * `http2`: HTTP/2 support for the mock server (`hyper/http2`, `hyper-util/server-auto`) and,
-//!   when `hyper-rustls` is present, for the remote client.
+//!   when the HTTP client has TLS, for its HTTPS requests.
 //! * `standalone`: builds the `httpmock` binary. Implies `record`, `http2`, `cookies`, `remote`
 //!   and `remote-https` and adds `clap`, `tokio/signal` and `tracing-subscriber`. `color` is not
 //!   implied, so enable it separately or use `--all-features`.
