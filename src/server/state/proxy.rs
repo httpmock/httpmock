@@ -5,7 +5,7 @@ use std::collections::BTreeMap;
 use crate::{
     common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig},
     prelude::HttpMockRequest,
-    server::state::{Error, HttpMockStateManager, request_matches},
+    server::state::{HttpMockStateManager, request_matches},
 };
 
 #[derive(Default)]
@@ -95,32 +95,25 @@ impl HttpMockStateManager {
         tracing::debug!("Deleted all proxy rules");
     }
 
-    pub(crate) fn find_forward_rule<'a>(
-        &'a self,
-        req: &'a HttpMockRequest,
-    ) -> Result<Option<ActiveForwardingRule>, Error> {
+    pub(crate) fn find_forward_rule(&self, req: &HttpMockRequest) -> Option<ActiveForwardingRule> {
         let state = self.state.lock().unwrap();
 
-        let result = state
+        state
             .proxy
             .forwarding_rules
             .values()
             .find(|&rule| request_matches(req, &rule.config.request_requirements))
-            .cloned();
-
-        Ok(result)
+            .cloned()
     }
 
-    pub(crate) fn find_proxy_rule<'a>(&'a self, req: &'a HttpMockRequest) -> Result<Option<ActiveProxyRule>, Error> {
+    pub(crate) fn find_proxy_rule(&self, req: &HttpMockRequest) -> Option<ActiveProxyRule> {
         let state = self.state.lock().unwrap();
 
-        let result = state
+        state
             .proxy
             .proxy_rules
             .values()
             .find(|&rule| request_matches(req, &rule.config.request_requirements))
-            .cloned();
-
-        Ok(result)
+            .cloned()
     }
 }

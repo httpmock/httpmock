@@ -143,7 +143,7 @@ impl<'a> Recording<'a> {
                 0 => format!("{}_{}.yaml", scenario, timestamp),
                 n => format!("{}_{}_{}.yaml", scenario, timestamp, n),
             };
-            match write_file(dir.join(filename), &bytes, true).await {
+            match write_file(dir.join(filename), &bytes).await {
                 Err(e)
                     if e.downcast_ref::<std::io::Error>()
                         .is_some_and(|e| e.kind() == ErrorKind::AlreadyExists) =>

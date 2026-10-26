@@ -340,9 +340,9 @@ impl Handler {
             .map_err(|err: DataError| RequestConversion(err.to_string()))?;
 
         #[cfg(feature = "proxy")]
-        let reply = if let Some(rule) = self.state.find_forward_rule(&request)? {
+        let reply = if let Some(rule) = self.state.find_forward_rule(&request) {
             Reply::Forward(forward_request(rule, req)?)
-        } else if let Some(rule) = self.state.find_proxy_rule(&request)? {
+        } else if let Some(rule) = self.state.find_proxy_rule(&request) {
             Reply::Proxy(proxy_request(rule, req)?)
         } else {
             self.mock_reply(&request)?

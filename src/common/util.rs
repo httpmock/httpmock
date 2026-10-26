@@ -88,7 +88,6 @@ pub fn get_test_resource_file_path(relative_resource_path: &str) -> Result<PathB
 pub async fn write_file<P: AsRef<Path>>(
     resource_path: P,
     content: &Bytes,
-    create_dir: bool,
 ) -> Result<PathBuf, Box<dyn std::error::Error>> {
     let mut path = resource_path.as_ref().to_path_buf();
 
@@ -97,7 +96,7 @@ pub async fn write_file<P: AsRef<Path>>(
         path = current_dir.join(path);
     }
 
-    if create_dir && let Some(parent) = path.parent() {
+    if let Some(parent) = path.parent() {
         create_dir_all(parent)?;
     }
 
