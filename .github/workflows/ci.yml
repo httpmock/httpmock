@@ -74,7 +74,7 @@ jobs:
       # gating mistakes are almost always compile errors, so this cheap check
       # catches most of what full matrix *testing* would. cargo-hack drops
       # combinations that are equivalent under feature implications (e.g.
-      # record -> proxy -> remote-https -> remote), keeping the run small.
+      # record -> proxy -> remote), keeping the run small.
       # The same power set is fully tested in feature-matrix.yml.
       #
       # Without dev-dependencies first: dev-dep feature unification can mask
@@ -85,8 +85,8 @@ jobs:
       # integration tests and examples is checked as well.
       - run: cargo hack check --feature-powerset --depth 2 --all-targets
 
-      # Depth 2 cannot reach this triple: the HTTPS client only gets HTTP/2
-      # when http2 is combined with https but not remote-https.
+      # Depth 2 cannot reach this triple, where the server has TLS and HTTP/2
+      # but the client, which only proxy gives TLS, doesn't.
       - run: cargo check --no-default-features --features remote,https,http2
 
   msrv:
@@ -111,8 +111,8 @@ jobs:
     strategy:
       fail-fast: false
       # Representative feature sets; the full power set is covered by
-      # feature-matrix.yml. "standalone" already implies remote, remote-https,
-      # record, proxy, http2 and cookies.
+      # feature-matrix.yml. "standalone" already implies remote, record, proxy,
+      # http2 and cookies.
       #
       # "https" is tested on its own to cover server-side TLS without the
       # remote client and proxy code compiled in.

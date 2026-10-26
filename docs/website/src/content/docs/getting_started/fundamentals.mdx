@@ -113,14 +113,14 @@ Without this additional list, it would use Docker-internal IPs/hostnames that ar
 The crate provides the following Cargo features:
 
 - `cookies`: Enables request matchers for parsing and matching values in cookies
-- `proxy`: Enables the mock server to function as a proxy server
+- `proxy`: Enables the mock server to function as a proxy server, including to `HTTPS` targets
 - `record`: Enables functionality to record requests and responses (most useful in combination with the `proxy` feature). Enables reading mock specifications from YAML files (e.g., recorded responses)
 - `https`: Enables the mock server to provide a unified port for both, HTTP and HTTPS
 - `http2`: Enables mock server support for HTTP2
 - `standalone`: Enables standalone mode
 - `remote`: Allows to connect to remote (standalone) mock servers
-- `remote-https`: Enables communication to remote (standalone) mock servers via `HTTPS`
-- `color`: enables colorful output in standalone mode
+- `remote-https`: Deprecated, use `proxy` instead. It only ever gave proxying and recording an `HTTPS` client, which `proxy` now brings on its own, and will be removed in 0.10
+- `color`: Colors the diff in the failure output of `Mock::assert`
 
 For example, the command `cargo test --features=remote` enables the functionality in your tests to communicate with remote standalone mock servers.
 

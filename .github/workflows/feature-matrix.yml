@@ -52,7 +52,7 @@ jobs:
 
       # Test every feature alone and every feature pair. Deeper combinations
       # add little: the features form an implication chain
-      # (record -> proxy -> remote-https -> remote, standalone -> most others),
+      # (record -> proxy -> remote, standalone -> most others),
       # so cargo-hack collapses equivalent combos and pairs already cover the
       # realistic interactions. --partition spreads the combinations across
       # four parallel shards.
