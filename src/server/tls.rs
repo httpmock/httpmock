@@ -30,10 +30,14 @@ pub trait CertificateResolverFactory {
     fn build(&self, authority: Option<String>) -> Arc<dyn ResolvesServerCert>;
 }
 
+// A host's certificate, or `None` when it can't be generated. That comes from the name, so a
+// failure is kept too.
+type CertificateCell = Arc<OnceLock<Option<Arc<CertifiedKey>>>>;
+
 struct SharedState {
     issuer: Issuer<'static, KeyPair>,
     // One cell per hostname, so each certificate is generated once without other hosts waiting.
-    certificates: Mutex<HashMap<String, Arc<OnceLock<Arc<CertifiedKey>>>>>,
+    certificates: Mutex<HashMap<String, CertificateCell>>,
 }
 
 impl Debug for SharedState {
@@ -122,7 +126,7 @@ impl GeneratingCertificateResolver {
         names
     }
 
-    fn generate(&self, hostname: &str) -> Arc<CertifiedKey> {
+    fn generate(&self, hostname: &str) -> Option<Arc<CertifiedKey>> {
         let certificate = Arc::clone(
             self.state
                 .certificates
@@ -134,7 +138,8 @@ impl GeneratingCertificateResolver {
         certificate
             .get_or_init(|| {
                 self.generate_host_certificate(hostname)
-                    .unwrap_or_else(|error| panic!("Cannot generate certificate for host {hostname}: {error:?}"))
+                    .inspect_err(|error| tracing::error!("Cannot generate certificate for host {hostname}: {error}"))
+                    .ok()
             })
             .clone()
     }
@@ -178,19 +183,14 @@ fn extra_sans(raw: &str) -> impl Iterator<Item = String> {
         })
 }
 
-// TODO: Change ResolvesServerCert to acceptor so that async operations are supported
+// Resolving is synchronous, so a new host's certificate is generated on the runtime worker doing
+// the handshake. `None` ends the handshake with an alert.
 impl ResolvesServerCert for GeneratingCertificateResolver {
-    // TODO: This implementation is synchronous, which will cause synchronous locking to
-    //  enable certificate caching (lock protected hash map, sync implementation).
-    //  If you look at ResolvesServerCert, it suggests that for async IO, the Acceptor interface
-    //  is recommended for usage. However, it seems to require a significantly larger implementation
-    //  overhead than a ResolvesServerCert. For now, this is an accepted performance loss, but should
-    //  definitely be looked into and improved later!
     fn resolve(&self, client_hello: ClientHello) -> Option<Arc<CertifiedKey>> {
         if let Some(hostname) = client_hello.server_name() {
-            tracing::info!("have hostname: {}", hostname);
+            tracing::debug!("have hostname: {}", hostname);
 
-            return Some(self.generate(hostname));
+            return self.generate(hostname);
         }
 
         // According to https://datatracker.ietf.org/doc/html/rfc6066#section-3
@@ -204,7 +204,7 @@ impl ResolvesServerCert for GeneratingCertificateResolver {
             .map(|ip| ip.to_string())
             .unwrap_or_else(|| "0.0.0.0".to_string());
         tracing::debug!("no hostname using: {}", hostname);
-        Some(self.generate(&hostname))
+        self.generate(&hostname)
     }
 }
 
@@ -343,6 +343,19 @@ mod tests {
                 .await
                 .is_err()
         );
+    }
+
+    #[test]
+    fn host_without_a_certificate_gets_none_instead_of_a_panic() {
+        let factory =
+            GeneratingCertificateResolverFactory::new(DEFAULT_CA_CERTIFICATE, DEFAULT_CA_PRIVATE_KEY).unwrap();
+        let resolver = GeneratingCertificateResolver {
+            state: factory.state,
+            authority: None,
+        };
+
+        // Not ASCII, so it can't be a DNS name in a certificate.
+        assert!(resolver.generate("bücher.example").is_none());
     }
 
     fn certificate_for(hostname: &str, authority: Option<&str>) -> CertificateDer<'static> {
