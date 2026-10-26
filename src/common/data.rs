@@ -129,20 +129,11 @@ impl HttpMockRequest {
     /// # Returns
     ///
     /// An `Option<String>` containing the host if the `Host` header or `:authority` pseudo-header is present, or
-    /// `None` if neither is found.
+    /// `None` if neither is found. An IPv6 address keeps its brackets, as in `[::1]`.
     pub fn host(&self) -> Option<String> {
-        // Check the Host header first (HTTP 1.1)
-        if let Some((_, host)) = self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("host")) {
-            return Some(host.split(':').next().unwrap().to_string());
-        }
-
-        // If Host header is not found, check the URI authority (HTTP/2 and HTTP/3)
-        let uri = self.uri();
-        if let Some(authority) = uri.authority() {
-            return Some(authority.as_str().split(':').next().unwrap().to_string());
-        }
-
-        None
+        self.host_header()
+            .or_else(|| self.uri().authority().cloned())
+            .map(|authority| authority.host().to_string())
     }
 
     /// Returns the port that the request was sent to, based on the `Host` header or `:authority` pseudo-header.
@@ -159,28 +150,18 @@ impl HttpMockRequest {
     /// An `u16` containing the port if the `Host` header or `:authority` pseudo-header is present and includes a valid port,
     /// or 443 (https) or 80 (http) based on the used scheme otherwise.
     pub fn port(&self) -> u16 {
-        // Check the Host header first (HTTP 1.1)
-        if let Some((_, host)) = self.headers.iter().find(|(k, _)| k.eq_ignore_ascii_case("host"))
-            && let Some(port_str) = host.split(':').nth(1)
-            && let Ok(port) = port_str.parse::<u16>()
-        {
-            return port;
-        }
+        self.host_header()
+            .and_then(|authority| authority.port_u16())
+            .or_else(|| self.uri().authority().and_then(|authority| authority.port_u16()))
+            .unwrap_or_else(|| if self.scheme() == "https" { 443 } else { 80 })
+    }
 
-        // If Host header is not found, check the URI authority (HTTP/2 and HTTP/3)
-        let uri = self.uri();
-        if let Some(authority) = uri.authority()
-            && let Some(port_str) = authority.as_str().split(':').nth(1)
-            && let Ok(port) = port_str.parse::<u16>()
-        {
-            return port;
-        }
-
-        if self.scheme().eq("https") {
-            return 443;
-        }
-
-        80
+    // The Host header (HTTP/1.1) as an authority. HTTP/2 and HTTP/3 carry it in the URI instead.
+    fn host_header(&self) -> Option<http::uri::Authority> {
+        self.headers
+            .iter()
+            .find(|(key, _)| key.eq_ignore_ascii_case("host"))
+            .and_then(|(_, host)| host.parse().ok())
     }
 
     pub fn method(&self) -> http::Method {
@@ -565,6 +546,37 @@ mod http_body_conversion_tests {
         let response: HttpMockResponse = http::Response::new(()).into();
 
         assert!(response.body.unwrap().is_empty());
+    }
+}
+
+#[cfg(test)]
+mod host_tests {
+    use super::*;
+
+    fn request_to(host: &str) -> HttpMockRequest {
+        HttpMockRequest::new(
+            "http".to_string(),
+            format!("http://{host}/"),
+            "GET".to_string(),
+            vec![("host".to_string(), host.to_string())],
+            "HTTP/1.1".to_string(),
+            HttpMockBytes::from(""),
+        )
+    }
+
+    #[test]
+    fn host_and_port_are_read_from_the_host_header() {
+        let request = request_to("example.com:8080");
+        assert_eq!(request.host().as_deref(), Some("example.com"));
+        assert_eq!(request.port(), 8080);
+
+        let request = request_to("[::1]:5050");
+        assert_eq!(request.host().as_deref(), Some("[::1]"));
+        assert_eq!(request.port(), 5050);
+
+        let request = request_to("[::1]");
+        assert_eq!(request.host().as_deref(), Some("[::1]"));
+        assert_eq!(request.port(), 80);
     }
 }
 
