@@ -324,11 +324,8 @@ pub fn title_case(s: &str) -> String {
     result
 }
 
-pub fn is_none_or_empty<T>(option: &Option<Vec<T>>) -> bool {
-    match option {
-        None => true,
-        Some(vec) => vec.is_empty(),
-    }
+pub fn is_none_or_empty<T>(option: Option<&[T]>) -> bool {
+    option.is_none_or(<[T]>::is_empty)
 }
 
 pub fn read_file<P: AsRef<Path>>(absolute_resource_path: P) -> Result<Vec<u8>, String> {

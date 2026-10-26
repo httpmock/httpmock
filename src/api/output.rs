@@ -182,7 +182,7 @@ fn handle_key_value_comparison(
                 (key.clone(), key.clone())
             }
             (None, None) => {
-                print_value_not_in_request(out, &mismatch.matching_strategy);
+                print_value_not_in_request(out, mismatch.matching_strategy.as_ref());
                 (String::new(), String::new())
             }
         };
@@ -192,7 +192,7 @@ fn handle_key_value_comparison(
         return result;
     }
 
-    print_value_not_in_request(out, &mismatch.matching_strategy);
+    print_value_not_in_request(out, mismatch.matching_strategy.as_ref());
     print_all_request_values(out, &mismatch.entity, &comparison.all);
 
     (String::new(), String::new())
@@ -216,7 +216,7 @@ fn print_all_request_values(out: &mut String, entity: &str, all: &[KeyValueCompa
     }
 }
 
-fn print_value_not_in_request(out: &mut String, matching_strategy: &Option<MatchingStrategy>) {
+fn print_value_not_in_request(out: &mut String, matching_strategy: Option<&MatchingStrategy>) {
     writeln!(
         out,
         "\n{}",

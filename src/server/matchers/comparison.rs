@@ -7,8 +7,8 @@ use crate::common::{data::HttpMockRegex, util::HttpMockBytes};
 pub fn string_has_prefix(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<&String>,
-    req_value: &Option<&String>,
+    mock_value: Option<&String>,
+    req_value: Option<&String>,
 ) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
@@ -36,87 +36,87 @@ mod string_has_prefix_tests {
     fn test_case_sensitive_prefix_match() {
         let mock_value = "Hello".to_string();
         let req_value = "Hello World".to_string();
-        assert!(string_has_prefix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_prefix(true, false, Some(&mock_value), Some(&req_value),));
 
         let mock_value = "hello".to_string();
         let req_value = "Hello World".to_string();
-        assert!(!string_has_prefix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_prefix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_case_insensitive_prefix_match() {
         let mock_value = "hello".to_string();
         let req_value = "Hello World".to_string();
-        assert!(string_has_prefix(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_prefix(false, false, Some(&mock_value), Some(&req_value),));
 
         let mock_value = "HELLO".to_string();
         let req_value = "Hello World".to_string();
-        assert!(string_has_prefix(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_prefix(false, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_negated_prefix_match() {
         let mock_value = "Hello".to_string();
         let req_value = "Hello World".to_string();
-        assert!(!string_has_prefix(true, true, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_prefix(true, true, Some(&mock_value), Some(&req_value),));
 
         let mock_value = "hello".to_string();
         let req_value = "Hello World".to_string();
-        assert!(string_has_prefix(true, true, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_prefix(true, true, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_prefix_too_short() {
         let mock_value = "Hello World".to_string();
         let req_value = "Hello".to_string();
-        assert!(!string_has_prefix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_prefix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_exact_match() {
         let mock_value = "Hello".to_string();
         let req_value = "Hello".to_string();
-        assert!(string_has_prefix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_prefix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_empty_mock_value() {
         let mock_value = "".to_string();
         let req_value = "Hello World".to_string();
-        assert!(string_has_prefix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_prefix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_empty_req_value() {
         let mock_value = "Hello".to_string();
         let req_value = "".to_string();
-        assert!(!string_has_prefix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_prefix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_both_empty() {
         let mock_value = "".to_string();
         let req_value = "".to_string();
-        assert!(string_has_prefix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_prefix(true, false, Some(&mock_value), Some(&req_value),));
     }
 }
 
 pub fn distance_for_prefix(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<&String>,
-    req_value: &Option<&String>,
+    mock_value: Option<&String>,
+    req_value: Option<&String>,
 ) -> usize {
     if mock_value.map_or(0, |v| v.len()) == 0 {
         return 0;
     }
 
-    let mock_slice = mock_value.as_deref();
+    let mock_slice = mock_value;
     let mock_slice_len = mock_slice.map_or(0, |v| v.len());
 
-    let req_slice = req_value.as_deref().map(|s| leading_window(s, mock_slice_len));
+    let req_slice = req_value.map(|s| leading_window(s, mock_slice_len));
 
-    distance_for_substring(case_sensitive, negated, &mock_slice.map(|v| v.as_str()), &req_slice)
+    distance_for_substring(case_sensitive, negated, mock_slice.map(|v| v.as_str()), req_slice)
 }
 
 #[cfg(test)]
@@ -129,7 +129,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "hello world".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(distance_for_prefix(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_prefix(true, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -138,7 +138,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "hello world".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(distance_for_prefix(false, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_prefix(false, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -147,7 +147,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "hello world".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(distance_for_prefix(true, true, &mock_value, &req_value), 5);
+        assert_eq!(distance_for_prefix(true, true, mock_value, req_value), 5);
     }
 
     #[test]
@@ -156,7 +156,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "hello world".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert!(distance_for_prefix(true, false, &mock_value, &req_value) > 0);
+        assert!(distance_for_prefix(true, false, mock_value, req_value) > 0);
     }
 
     #[test]
@@ -165,7 +165,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "hello world".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(distance_for_prefix(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_prefix(true, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -175,7 +175,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "é".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert!(distance_for_prefix(true, false, &mock_value, &req_value) > 0);
+        assert!(distance_for_prefix(true, false, mock_value, req_value) > 0);
     }
 
     #[test]
@@ -184,7 +184,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "aé".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert!(distance_for_prefix(true, false, &mock_value, &req_value) > 0);
+        assert!(distance_for_prefix(true, false, mock_value, req_value) > 0);
     }
 
     #[test]
@@ -193,7 +193,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "hello world".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(distance_for_prefix(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_prefix(true, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -202,7 +202,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(distance_for_prefix(true, false, &mock_value, &req_value), 5);
+        assert_eq!(distance_for_prefix(true, false, mock_value, req_value), 5);
     }
 
     #[test]
@@ -211,7 +211,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(distance_for_prefix(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_prefix(true, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -219,7 +219,7 @@ mod distance_for_prefix_tests {
         let req_value_str = "hello world".to_string();
         let mock_value: Option<&String> = None;
         let req_value = Some(&req_value_str);
-        assert_eq!(distance_for_prefix(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_prefix(true, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -227,22 +227,22 @@ mod distance_for_prefix_tests {
         let mock_value_str = "hello".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value: Option<&String> = None;
-        assert_eq!(distance_for_prefix(true, false, &mock_value, &req_value), 5);
+        assert_eq!(distance_for_prefix(true, false, mock_value, req_value), 5);
     }
 
     #[test]
     fn test_distance_for_prefix_none_both() {
         let mock_value: Option<&String> = None;
         let req_value: Option<&String> = None;
-        assert_eq!(distance_for_prefix(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_prefix(true, false, mock_value, req_value), 0);
     }
 }
 
 pub fn string_has_suffix(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<&String>,
-    req_value: &Option<&String>,
+    mock_value: Option<&String>,
+    req_value: Option<&String>,
 ) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
@@ -270,83 +270,83 @@ mod string_has_suffix_tests {
     fn test_case_sensitive_suffix_match() {
         let mock_value = "world".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_has_suffix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_suffix(true, false, Some(&mock_value), Some(&req_value),));
         let mock_value = "World".to_string();
-        assert!(!string_has_suffix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_suffix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_case_insensitive_suffix_match() {
         let mock_value = "world".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_has_suffix(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_suffix(false, false, Some(&mock_value), Some(&req_value),));
         let mock_value = "World".to_string();
-        assert!(string_has_suffix(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_suffix(false, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_negated_suffix_match() {
         let mock_value = "world".to_string();
         let req_value = "hello world".to_string();
-        assert!(!string_has_suffix(true, true, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_suffix(true, true, Some(&mock_value), Some(&req_value),));
         let mock_value = "World".to_string();
-        assert!(string_has_suffix(true, true, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_suffix(true, true, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_suffix_too_short() {
         let mock_value = "hello world".to_string();
         let req_value = "world".to_string();
-        assert!(!string_has_suffix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_suffix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_exact_match_case_sensitive() {
         let mock_value = "hello".to_string();
         let req_value = "hello".to_string();
-        assert!(string_has_suffix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_suffix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_exact_match_case_insensitive() {
         let mock_value = "Hello".to_string();
         let req_value = "hello".to_string();
-        assert!(string_has_suffix(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_suffix(false, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_no_match_case_sensitive() {
         let mock_value = "world".to_string();
         let req_value = "hello".to_string();
-        assert!(!string_has_suffix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_suffix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_no_match_case_insensitive() {
         let mock_value = "World".to_string();
         let req_value = "hello".to_string();
-        assert!(!string_has_suffix(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_suffix(false, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_empty_mock_value() {
         let mock_value = "".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_has_suffix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_suffix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_empty_req_value() {
         let mock_value = "hello".to_string();
         let req_value = "".to_string();
-        assert!(!string_has_suffix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_has_suffix(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_both_empty() {
         let mock_value = "".to_string();
         let req_value = "".to_string();
-        assert!(string_has_suffix(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_has_suffix(true, false, Some(&mock_value), Some(&req_value),));
     }
 }
 
@@ -366,8 +366,8 @@ mod string_has_suffix_tests {
 pub fn distance_for_suffix(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<&String>,
-    req_value: &Option<&String>,
+    mock_value: Option<&String>,
+    req_value: Option<&String>,
 ) -> usize {
     // The suffix distance is currently computed identically to the prefix
     // distance (both compare against the leading window of `req_value`).
@@ -386,7 +386,7 @@ mod distance_for_suffix_tests {
         let req_value_str = "é".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert!(distance_for_suffix(true, false, &mock_value, &req_value) > 0);
+        assert!(distance_for_suffix(true, false, mock_value, req_value) > 0);
     }
 
     #[test]
@@ -395,15 +395,15 @@ mod distance_for_suffix_tests {
         let req_value_str = "hello world".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(distance_for_suffix(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_suffix(true, false, mock_value, req_value), 0);
     }
 }
 
 pub fn string_includes(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<&String>,
-    req_value: &Option<&String>,
+    mock_value: Option<&String>,
+    req_value: Option<&String>,
 ) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
@@ -425,73 +425,73 @@ mod string_includes_tests {
     fn test_case_sensitive_includes() {
         let mock_value = "world".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, false, Some(&mock_value), Some(&req_value),));
 
         let mock_value = "World".to_string();
-        assert!(!string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_includes(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_case_insensitive_includes() {
         let mock_value = "world".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_includes(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(false, false, Some(&mock_value), Some(&req_value),));
 
         let mock_value = "World".to_string();
-        assert!(string_includes(false, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(false, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_negated_includes() {
         let mock_value = "world".to_string();
         let req_value = "hello world".to_string();
-        assert!(!string_includes(true, true, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_includes(true, true, Some(&mock_value), Some(&req_value),));
 
         let mock_value = "World".to_string();
-        assert!(string_includes(true, true, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, true, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_includes_substring() {
         let mock_value = "lo wo".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_no_match_includes() {
         let mock_value = "test".to_string();
         let req_value = "hello world".to_string();
-        assert!(!string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_includes(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_empty_mock_value() {
         let mock_value = "".to_string();
         let req_value = "hello world".to_string();
-        assert!(string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_empty_req_value() {
         let mock_value = "hello".to_string();
         let req_value = "".to_string();
-        assert!(!string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(!string_includes(true, false, Some(&mock_value), Some(&req_value),));
     }
 
     #[test]
     fn test_both_empty() {
         let mock_value = "".to_string();
         let req_value = "".to_string();
-        assert!(string_includes(true, false, &Some(&mock_value), &Some(&req_value),));
+        assert!(string_includes(true, false, Some(&mock_value), Some(&req_value),));
     }
 }
 
 pub fn distance_for_substring<T>(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<T>,
-    req_value: &Option<T>,
+    mock_value: Option<T>,
+    req_value: Option<T>,
 ) -> usize
 where
     T: Deref<Target = str> + AsRef<str>,
@@ -520,84 +520,84 @@ mod tests {
     fn test_distance_for_substring_case_sensitive_match() {
         let mock_value = Some("Hello");
         let req_value = Some("Hello World");
-        assert_eq!(distance_for_substring(true, false, &mock_value, &req_value), 6);
+        assert_eq!(distance_for_substring(true, false, mock_value, req_value), 6);
     }
 
     #[test]
     fn test_distance_for_substring_case_sensitive_no_match() {
         let mock_value = Some("Hello");
         let req_value = Some("World");
-        assert_eq!(distance_for_substring(true, false, &mock_value, &req_value), 4);
+        assert_eq!(distance_for_substring(true, false, mock_value, req_value), 4);
     }
 
     #[test]
     fn test_distance_for_substring_case_insensitive_match() {
         let mock_value = Some("hello");
         let req_value = Some("Hello World");
-        assert_eq!(distance_for_substring(false, false, &mock_value, &req_value), 6);
+        assert_eq!(distance_for_substring(false, false, mock_value, req_value), 6);
     }
 
     #[test]
     fn test_distance_for_substring_case_insensitive_no_match() {
         let mock_value = Some("hello");
         let req_value = Some("WORLD");
-        assert_eq!(distance_for_substring(false, false, &mock_value, &req_value), 4);
+        assert_eq!(distance_for_substring(false, false, mock_value, req_value), 4);
     }
 
     #[test]
     fn test_distance_for_substring_negated_match() {
         let mock_value = Some("Hello");
         let req_value = Some("Hello World");
-        assert_eq!(distance_for_substring(true, true, &mock_value, &req_value), 5);
+        assert_eq!(distance_for_substring(true, true, mock_value, req_value), 5);
     }
 
     #[test]
     fn test_distance_for_substring_negated_no_match() {
         let mock_value = Some("Hello");
         let req_value = Some("World");
-        assert_eq!(distance_for_substring(true, true, &mock_value, &req_value), 1);
+        assert_eq!(distance_for_substring(true, true, mock_value, req_value), 1);
     }
 
     #[test]
     fn test_distance_for_substring_empty_mock_value() {
         let mock_value = Some("");
         let req_value = Some("Hello");
-        assert_eq!(distance_for_substring(true, false, &mock_value, &req_value), 5);
+        assert_eq!(distance_for_substring(true, false, mock_value, req_value), 5);
     }
 
     #[test]
     fn test_distance_for_substring_empty_req_value() {
         let mock_value = Some("Hello");
         let req_value = Some("");
-        assert_eq!(distance_for_substring(true, false, &mock_value, &req_value), 5);
+        assert_eq!(distance_for_substring(true, false, mock_value, req_value), 5);
     }
 
     #[test]
     fn test_distance_for_substring_both_empty() {
         let mock_value = Some("");
         let req_value = Some("");
-        assert_eq!(distance_for_substring(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_substring(true, false, mock_value, req_value), 0);
     }
 
     #[test]
     fn test_distance_for_substring_none_mock_value() {
         let req_value = Some("hello");
         let mock_value: Option<&str> = None;
-        assert_eq!(distance_for_substring(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_substring(true, false, mock_value, req_value), 0);
     }
 
     #[test]
     fn test_distance_for_substring_none_req_value() {
         let mock_value = Some("hello");
         let req_value: Option<&str> = None;
-        assert_eq!(distance_for_substring(true, false, &mock_value, &req_value), 5);
+        assert_eq!(distance_for_substring(true, false, mock_value, req_value), 5);
     }
 
     #[test]
     fn test_distance_for_substring_none_both() {
         let mock_value: Option<&str> = None;
         let req_value: Option<&str> = None;
-        assert_eq!(distance_for_substring(true, false, &mock_value, &req_value), 0);
+        assert_eq!(distance_for_substring(true, false, mock_value, req_value), 0);
     }
 }
 
@@ -719,8 +719,8 @@ mod longest_common_substring_tests {
 pub fn string_equals(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<&String>,
-    req_value: &Option<&String>,
+    mock_value: Option<&String>,
+    req_value: Option<&String>,
 ) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
@@ -734,7 +734,7 @@ pub fn string_equals(
     if negated { !result } else { result }
 }
 
-pub fn hostname_equals(negated: bool, mock_value: &Option<&String>, req_value: &Option<&String>) -> bool {
+pub fn hostname_equals(negated: bool, mock_value: Option<&String>, req_value: Option<&String>) -> bool {
     if let (Some(mv), Some(rv)) = (mock_value, req_value) {
         let mv_is = mv.eq_ignore_ascii_case("localhost") || mv.eq_ignore_ascii_case("127.0.0.1");
         let rv_is = rv.eq_ignore_ascii_case("localhost") || rv.eq_ignore_ascii_case("127.0.0.1");
@@ -756,9 +756,9 @@ mod hostname_equals_tests {
         let mock_value_str = "github.com".to_string();
         let req_value_str = "not_github.com".to_string();
 
-        assert!(!hostname_equals(false, &Some(&mock_value_str), &Some(&req_value_str)));
+        assert!(!hostname_equals(false, Some(&mock_value_str), Some(&req_value_str)));
 
-        assert!(hostname_equals(true, &Some(&mock_value_str), &Some(&req_value_str)));
+        assert!(hostname_equals(true, Some(&mock_value_str), Some(&req_value_str)));
     }
 
     #[test]
@@ -766,9 +766,9 @@ mod hostname_equals_tests {
         let mock_value_str = "github.com".to_string();
         let req_value_str = "github.com".to_string();
 
-        assert!(hostname_equals(false, &Some(&mock_value_str), &Some(&req_value_str)));
+        assert!(hostname_equals(false, Some(&mock_value_str), Some(&req_value_str)));
 
-        assert!(!hostname_equals(true, &Some(&mock_value_str), &Some(&req_value_str)));
+        assert!(!hostname_equals(true, Some(&mock_value_str), Some(&req_value_str)));
     }
 
     #[test]
@@ -776,21 +776,21 @@ mod hostname_equals_tests {
         let localhost_str = "localhost".to_string();
         let ip_str = "127.0.0.1".to_string();
 
-        assert!(hostname_equals(false, &Some(&localhost_str), &Some(&localhost_str)));
+        assert!(hostname_equals(false, Some(&localhost_str), Some(&localhost_str)));
 
-        assert!(!hostname_equals(true, &Some(&localhost_str), &Some(&localhost_str)));
+        assert!(!hostname_equals(true, Some(&localhost_str), Some(&localhost_str)));
 
-        assert!(hostname_equals(false, &Some(&localhost_str), &Some(&ip_str)));
+        assert!(hostname_equals(false, Some(&localhost_str), Some(&ip_str)));
 
-        assert!(!hostname_equals(true, &Some(&localhost_str), &Some(&ip_str)));
+        assert!(!hostname_equals(true, Some(&localhost_str), Some(&ip_str)));
 
-        assert!(hostname_equals(false, &Some(&ip_str), &Some(&localhost_str)));
+        assert!(hostname_equals(false, Some(&ip_str), Some(&localhost_str)));
 
-        assert!(!hostname_equals(true, &Some(&ip_str), &Some(&localhost_str)));
+        assert!(!hostname_equals(true, Some(&ip_str), Some(&localhost_str)));
 
-        assert!(hostname_equals(false, &Some(&ip_str), &Some(&ip_str)));
+        assert!(hostname_equals(false, Some(&ip_str), Some(&ip_str)));
 
-        assert!(!hostname_equals(true, &Some(&ip_str), &Some(&ip_str)));
+        assert!(!hostname_equals(true, Some(&ip_str), Some(&ip_str)));
     }
 
     #[test]
@@ -798,13 +798,13 @@ mod hostname_equals_tests {
         let github_str = "github.com".to_string();
         let localhost_str = "localhost".to_string();
 
-        assert!(!hostname_equals(false, &Some(&github_str), &Some(&localhost_str)));
+        assert!(!hostname_equals(false, Some(&github_str), Some(&localhost_str)));
 
-        assert!(hostname_equals(true, &Some(&github_str), &Some(&localhost_str)));
+        assert!(hostname_equals(true, Some(&github_str), Some(&localhost_str)));
 
-        assert!(!hostname_equals(false, &Some(&localhost_str), &Some(&github_str)));
+        assert!(!hostname_equals(false, Some(&localhost_str), Some(&github_str)));
 
-        assert!(hostname_equals(true, &Some(&localhost_str), &Some(&github_str)));
+        assert!(hostname_equals(true, Some(&localhost_str), Some(&github_str)));
     }
 }
 
@@ -825,15 +825,15 @@ mod hostname_equals_tests {
 pub fn string_distance(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<&String>,
-    req_value: &Option<&String>,
+    mock_value: Option<&String>,
+    req_value: Option<&String>,
 ) -> usize {
     if mock_value.is_none() {
         return 0;
     }
 
-    let mock_slice = mock_value.as_deref().map_or("", |s| s.as_str());
-    let req_slice = req_value.as_deref().map_or("", |s| s.as_str());
+    let mock_slice = mock_value.map_or("", |s| s.as_str());
+    let req_slice = req_value.map_or("", |s| s.as_str());
 
     let (mock_slice, req_slice) = if case_sensitive {
         (mock_slice.to_string(), req_slice.to_string())
@@ -860,13 +860,13 @@ mod string_distance_tests {
         let req_value_str = "Hello".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(true, false, &mock_value, &req_value), 0);
+        assert_eq!(string_distance(true, false, mock_value, req_value), 0);
 
         let mock_value_str = "Hello".to_string();
         let req_value_str = "hello".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(true, false, &mock_value, &req_value), 1);
+        assert_eq!(string_distance(true, false, mock_value, req_value), 1);
     }
 
     #[test]
@@ -875,13 +875,13 @@ mod string_distance_tests {
         let req_value_str = "hello".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(false, false, &mock_value, &req_value), 0);
+        assert_eq!(string_distance(false, false, mock_value, req_value), 0);
 
         let mock_value_str = "HELLO".to_string();
         let req_value_str = "hello".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(false, false, &mock_value, &req_value), 0);
+        assert_eq!(string_distance(false, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -890,13 +890,13 @@ mod string_distance_tests {
         let req_value_str = "Hello".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(true, true, &mock_value, &req_value), 5);
+        assert_eq!(string_distance(true, true, mock_value, req_value), 5);
 
         let mock_value_str = "Hello".to_string();
         let req_value_str = "hello".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(true, true, &mock_value, &req_value), 4);
+        assert_eq!(string_distance(true, true, mock_value, req_value), 4);
     }
 
     #[test]
@@ -905,7 +905,7 @@ mod string_distance_tests {
         let req_value_str = "World".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(true, false, &mock_value, &req_value), 4);
+        assert_eq!(string_distance(true, false, mock_value, req_value), 4);
     }
 
     #[test]
@@ -914,7 +914,7 @@ mod string_distance_tests {
         let req_value_str = "hello".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(true, false, &mock_value, &req_value), 5);
+        assert_eq!(string_distance(true, false, mock_value, req_value), 5);
     }
 
     #[test]
@@ -923,7 +923,7 @@ mod string_distance_tests {
         let req_value_str = "".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(true, false, &mock_value, &req_value), 5);
+        assert_eq!(string_distance(true, false, mock_value, req_value), 5);
     }
 
     #[test]
@@ -932,7 +932,7 @@ mod string_distance_tests {
         let req_value_str = "".to_string();
         let mock_value = Some(&mock_value_str);
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(true, false, &mock_value, &req_value), 0);
+        assert_eq!(string_distance(true, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -940,7 +940,7 @@ mod string_distance_tests {
         let req_value_str = "hello".to_string();
         let mock_value: Option<&String> = None;
         let req_value = Some(&req_value_str);
-        assert_eq!(string_distance(true, false, &mock_value, &req_value), 0);
+        assert_eq!(string_distance(true, false, mock_value, req_value), 0);
     }
 }
 
@@ -1039,7 +1039,7 @@ pub fn regex_unmatched_length(text: &str, re: &HttpMockRegex) -> usize {
     total_unmatched_length
 }
 
-pub fn integer_equals<T: PartialEq>(negated: bool, mock_value: &Option<&T>, req_value: &Option<&T>) -> bool {
+pub fn integer_equals<T: PartialEq>(negated: bool, mock_value: Option<&T>, req_value: Option<&T>) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
         (Some(_), None) => return negated,
@@ -1054,56 +1054,56 @@ mod usize_equals_tests {
 
     #[test]
     fn test_usize_equals_equal_values_not_negated() {
-        assert!(integer_equals(false, &Some(&10), &Some(&10)));
+        assert!(integer_equals(false, Some(&10), Some(&10)));
     }
 
     #[test]
     fn test_usize_equals_unequal_values_not_negated() {
-        assert!(!integer_equals(false, &Some(&10), &Some(&20)));
+        assert!(!integer_equals(false, Some(&10), Some(&20)));
     }
 
     #[test]
     fn test_usize_equals_equal_values_negated() {
-        assert!(!integer_equals(true, &Some(&10), &Some(&10)));
+        assert!(!integer_equals(true, Some(&10), Some(&10)));
     }
 
     #[test]
     fn test_usize_equals_unequal_values_negated() {
-        assert!(integer_equals(true, &Some(&10), &Some(&20)));
+        assert!(integer_equals(true, Some(&10), Some(&20)));
     }
 
     #[test]
     fn test_usize_equals_mock_value_none_not_negated() {
-        assert!(integer_equals(false, &None, &Some(&10)));
+        assert!(integer_equals(false, None, Some(&10)));
     }
 
     #[test]
     fn test_usize_equals_req_value_none_not_negated() {
-        assert!(!integer_equals(false, &Some(&10), &None));
+        assert!(!integer_equals(false, Some(&10), None));
     }
 
     #[test]
     fn test_usize_equals_both_none_not_negated() {
-        assert!(integer_equals::<i32>(false, &None, &None));
+        assert!(integer_equals::<i32>(false, None, None));
     }
 
     #[test]
     fn test_usize_equals_mock_value_none_negated() {
-        assert!(integer_equals(true, &None, &Some(&10)));
+        assert!(integer_equals(true, None, Some(&10)));
     }
 
     #[test]
     fn test_usize_equals_req_value_none_negated() {
-        assert!(integer_equals(true, &Some(&10), &None));
+        assert!(integer_equals(true, Some(&10), None));
     }
 
     #[test]
     fn test_usize_equals_both_none_negated() {
-        assert!(integer_equals::<i32>(true, &None, &None));
+        assert!(integer_equals::<i32>(true, None, None));
     }
 }
 
-pub fn bytes_equals(negated: bool, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
+pub fn bytes_equals(negated: bool, mock_value: Option<&HttpMockBytes>, req_value: Option<&HttpMockBytes>) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
         (Some(_), None) => return negated,
@@ -1113,7 +1113,7 @@ pub fn bytes_equals(negated: bool, mock_value: &Option<&HttpMockBytes>, req_valu
     if negated { !result } else { result }
 }
 
-pub fn bytes_includes(negated: bool, mock_value: &Option<&HttpMockBytes>, req_value: &Option<&HttpMockBytes>) -> bool {
+pub fn bytes_includes(negated: bool, mock_value: Option<&HttpMockBytes>, req_value: Option<&HttpMockBytes>) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
         (Some(_), None) => return negated,
@@ -1142,17 +1142,13 @@ mod bytes_includes_test {
     fn test_bytes_includes() {
         assert!(bytes_includes(
             false,
-            &Some(&HttpMockBytes::from(bytes::Bytes::from("   b\n c"))),
-            &Some(&HttpMockBytes::from(bytes::Bytes::from("a   b\n c  \ncd ef"))),
+            Some(&HttpMockBytes::from(bytes::Bytes::from("   b\n c"))),
+            Some(&HttpMockBytes::from(bytes::Bytes::from("a   b\n c  \ncd ef"))),
         ));
     }
 }
 
-pub fn bytes_has_prefix(
-    negated: bool,
-    mock_value: &Option<&HttpMockBytes>,
-    req_value: &Option<&HttpMockBytes>,
-) -> bool {
+pub fn bytes_has_prefix(negated: bool, mock_value: Option<&HttpMockBytes>, req_value: Option<&HttpMockBytes>) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
         (Some(_), None) => return negated,
@@ -1169,11 +1165,7 @@ pub fn bytes_has_prefix(
     if negated { !result } else { result }
 }
 
-pub fn bytes_has_suffix(
-    negated: bool,
-    mock_value: &Option<&HttpMockBytes>,
-    req_value: &Option<&HttpMockBytes>,
-) -> bool {
+pub fn bytes_has_suffix(negated: bool, mock_value: Option<&HttpMockBytes>, req_value: Option<&HttpMockBytes>) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
         (Some(_), None) => return negated,
@@ -1206,7 +1198,7 @@ pub fn bytes_has_suffix(
 ///
 /// Returns a usize representing the distance as defined above.
 ///
-pub fn distance_for_usize<T>(expected: &Option<&T>, actual: &Option<&T>) -> usize
+pub fn distance_for_usize<T>(expected: Option<&T>, actual: Option<&T>) -> usize
 where
     T: TryInto<usize> + Copy,
 {
@@ -1233,18 +1225,18 @@ mod distance_for_usize_test {
 
     #[test]
     fn tree_map_fully_contains_other() {
-        assert_eq!(distance_for_usize::<usize>(&Some(&4), &None), 4);
-        assert_eq!(distance_for_usize::<usize>(&Some(&0), &None), 1);
-        assert_eq!(distance_for_usize::<usize>(&Some(&5), &Some(&3)), 2);
-        assert_eq!(distance_for_usize::<usize>(&None, &None), 0);
+        assert_eq!(distance_for_usize::<usize>(Some(&4), None), 4);
+        assert_eq!(distance_for_usize::<usize>(Some(&0), None), 1);
+        assert_eq!(distance_for_usize::<usize>(Some(&5), Some(&3)), 2);
+        assert_eq!(distance_for_usize::<usize>(None, None), 0);
     }
 }
 
 pub fn string_matches_regex(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<&HttpMockRegex>,
-    req_value: &Option<&String>,
+    mock_value: Option<&HttpMockRegex>,
+    req_value: Option<&String>,
 ) -> bool {
     let result = match (mock_value, req_value) {
         (None, _) => return true,
@@ -1279,10 +1271,10 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
         let req_value = "Hello, world!".to_string();
-        assert!(string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(true, false, Some(&pattern), Some(&req_value)));
 
         let req_value = "Goodbye, world!".to_string();
-        assert!(!string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
+        assert!(!string_matches_regex(true, false, Some(&pattern), Some(&req_value)));
     }
 
     #[test]
@@ -1290,10 +1282,10 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
         let req_value = "Hello, world!".to_string();
-        assert!(!string_matches_regex(true, true, &Some(&pattern), &Some(&req_value)));
+        assert!(!string_matches_regex(true, true, Some(&pattern), Some(&req_value)));
 
         let req_value = "Goodbye, world!".to_string();
-        assert!(string_matches_regex(true, true, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(true, true, Some(&pattern), Some(&req_value)));
     }
 
     #[test]
@@ -1301,10 +1293,10 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^x-\D+$").unwrap());
 
         let req_value = "X-Abc".to_string();
-        assert!(string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(false, false, Some(&pattern), Some(&req_value)));
 
         let req_value = "x-123".to_string();
-        assert!(!string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)));
+        assert!(!string_matches_regex(false, false, Some(&pattern), Some(&req_value)));
     }
 
     #[test]
@@ -1312,7 +1304,7 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"").unwrap());
 
         let req_value = "Anything".to_string();
-        assert!(string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(true, false, Some(&pattern), Some(&req_value)));
     }
 
     #[test]
@@ -1320,7 +1312,7 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
         let req_value = "".to_string();
-        assert!(!string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
+        assert!(!string_matches_regex(true, false, Some(&pattern), Some(&req_value)));
     }
 
     #[test]
@@ -1328,43 +1320,43 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"").unwrap());
 
         let req_value = "".to_string();
-        assert!(string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(true, false, Some(&pattern), Some(&req_value)));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern() {
         let req_value = "Hello, world!".to_string();
-        assert!(string_matches_regex(true, false, &None, &Some(&req_value)));
+        assert!(string_matches_regex(true, false, None, Some(&req_value)));
     }
 
     #[test]
     fn test_string_matches_regex_none_request_value() {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
-        assert!(!string_matches_regex(true, false, &Some(&pattern), &None));
+        assert!(!string_matches_regex(true, false, Some(&pattern), None));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern_and_request_value() {
-        assert!(string_matches_regex(true, false, &None, &None));
+        assert!(string_matches_regex(true, false, None, None));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern_negated() {
         let req_value = "Hello, world!".to_string();
-        assert!(string_matches_regex(true, true, &None, &Some(&req_value)));
+        assert!(string_matches_regex(true, true, None, Some(&req_value)));
     }
 
     #[test]
     fn test_string_matches_regex_none_request_value_negated() {
         let pattern = HttpMockRegex(Regex::new(r"^Hello.*").unwrap());
 
-        assert!(string_matches_regex(true, true, &Some(&pattern), &None));
+        assert!(string_matches_regex(true, true, Some(&pattern), None));
     }
 
     #[test]
     fn test_string_matches_regex_none_pattern_and_request_value_negated() {
-        assert!(string_matches_regex(true, true, &None, &None));
+        assert!(string_matches_regex(true, true, None, None));
     }
 
     #[test]
@@ -1372,10 +1364,10 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"^\d{3}-\d{2}-\d{4}$").unwrap());
 
         let req_value = "123-45-6789".to_string();
-        assert!(string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(true, false, Some(&pattern), Some(&req_value)));
 
         let req_value = "123-45-678".to_string();
-        assert!(!string_matches_regex(true, false, &Some(&pattern), &Some(&req_value)));
+        assert!(!string_matches_regex(true, false, Some(&pattern), Some(&req_value)));
     }
 
     #[test]
@@ -1383,13 +1375,13 @@ mod string_matches_regex_tests {
         let pattern = HttpMockRegex(Regex::new(r"(?i)^hello.*").unwrap());
 
         let req_value = "Hello, world!".to_string();
-        assert!(string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(false, false, Some(&pattern), Some(&req_value)));
 
         let req_value = "hello, world!".to_string();
-        assert!(string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(false, false, Some(&pattern), Some(&req_value)));
 
         let req_value = "HELLO, WORLD!".to_string();
-        assert!(string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)));
+        assert!(string_matches_regex(false, false, Some(&pattern), Some(&req_value)));
     }
 }
 /// Computes the distance between a given string and a regex pattern based on whether the match is negated or not.
@@ -1405,8 +1397,8 @@ mod string_matches_regex_tests {
 pub fn regex_string_distance(
     case_sensitive: bool,
     negated: bool,
-    mock_value: &Option<&HttpMockRegex>,
-    req_value: &Option<&String>,
+    mock_value: Option<&HttpMockRegex>,
+    req_value: Option<&String>,
 ) -> usize {
     if mock_value.is_none() {
         return 0;
@@ -1440,7 +1432,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value_str = String::from("aaaa");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 0);
+        assert_eq!(regex_string_distance(true, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -1449,7 +1441,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value_str = String::from("aaaa");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(true, true, &mock_value, &req_value), 4);
+        assert_eq!(regex_string_distance(true, true, mock_value, req_value), 4);
     }
 
     #[test]
@@ -1458,7 +1450,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value_str = String::from("aaabbb");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 3);
+        assert_eq!(regex_string_distance(true, false, mock_value, req_value), 3);
     }
 
     #[test]
@@ -1467,7 +1459,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value_str = String::from("aaaabbb");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(true, true, &mock_value, &req_value), 4);
+        assert_eq!(regex_string_distance(true, true, mock_value, req_value), 4);
     }
 
     #[test]
@@ -1476,7 +1468,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value_str = String::from("aaabbb");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 6);
+        assert_eq!(regex_string_distance(true, false, mock_value, req_value), 6);
     }
 
     #[test]
@@ -1485,7 +1477,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value_str = String::from("aaabbb");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(true, true, &mock_value, &req_value), 0);
+        assert_eq!(regex_string_distance(true, true, mock_value, req_value), 0);
     }
 
     #[test]
@@ -1493,7 +1485,7 @@ mod regex_string_distance_tests {
         let pattern = HttpMockRegex(Regex::new("a+").unwrap());
         let mock_value = Some(&pattern);
         let req_value: Option<&String> = None;
-        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 2);
+        assert_eq!(regex_string_distance(true, false, mock_value, req_value), 2);
     }
 
     #[test]
@@ -1501,7 +1493,7 @@ mod regex_string_distance_tests {
         let mock_value: Option<&HttpMockRegex> = None;
         let req_value_str = String::from("aaabbb");
         let req_value = Some(&req_value_str);
-        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 0);
+        assert_eq!(regex_string_distance(true, false, mock_value, req_value), 0);
     }
 
     #[test]
@@ -1509,7 +1501,7 @@ mod regex_string_distance_tests {
         let pattern = HttpMockRegex(Regex::new(".*").unwrap());
         let mock_value = Some(&pattern);
         let req_value: Option<&String> = None;
-        assert_eq!(regex_string_distance(true, false, &mock_value, &req_value), 2);
+        assert_eq!(regex_string_distance(true, false, mock_value, req_value), 2);
     }
 
     #[test]
@@ -1518,7 +1510,7 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value: Option<&String> = None; // This will make rv empty
         assert_eq!(
-            regex_string_distance(true, false, &mock_value, &req_value),
+            regex_string_distance(true, false, mock_value, req_value),
             pattern.0.as_str().len()
         );
     }
@@ -1532,7 +1524,7 @@ mod regex_string_distance_tests {
         assert_eq!(
             // When request does not have any value, it is never a match. Since we have "negate=true",
             // it is a match. Hence, distance is 0.
-            regex_string_distance(true, true, &mock_value, &req_value),
+            regex_string_distance(true, true, mock_value, req_value),
             0
         );
     }
@@ -1543,6 +1535,6 @@ mod regex_string_distance_tests {
         let mock_value = Some(&pattern);
         let req_value: Option<&String> = None;
         // Body does not match, but negated = true, so its a match, hence distance is a 0.
-        assert_eq!(regex_string_distance(true, true, &mock_value, &req_value), 0);
+        assert_eq!(regex_string_distance(true, true, mock_value, req_value), 0);
     }
 }

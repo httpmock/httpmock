@@ -45,16 +45,14 @@ where
     T: Display,
     C: ValueComparator<S, T>,
 {
-    fn find_unmatched<'a>(&self, req_value: &Option<T>, mock_values: &Option<Vec<&'a S>>) -> Vec<&'a S> {
-        let mock_values = match mock_values {
-            None => return Vec::new(),
-            Some(mv) => mv.clone(),
-        };
-
-        mock_values
-            .into_iter()
-            .filter(|e| !self.comparator.matches(&Some(e), &req_value.as_ref()))
-            .collect()
+    fn find_unmatched<'a>(&self, req_value: Option<&T>, mock_values: Option<&[&'a S]>) -> Vec<&'a S> {
+        mock_values.map_or_else(Vec::new, |mock_values| {
+            mock_values
+                .iter()
+                .copied()
+                .filter(|e| !self.comparator.matches(Some(e), req_value))
+                .collect()
+        })
     }
 }
 
@@ -66,36 +64,37 @@ where
 {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_value = (self.expectation)(mock);
-        if is_none_or_empty(&mock_value) {
+        if is_none_or_empty(mock_value.as_deref()) {
             return true;
         }
 
         let req_value = (self.request_value)(req);
-        self.find_unmatched(&req_value, &mock_value).is_empty()
+        self.find_unmatched(req_value.as_ref(), mock_value.as_deref())
+            .is_empty()
     }
 
     fn distance(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> usize {
         let mock_values = (self.expectation)(mock);
-        if is_none_or_empty(&mock_values) {
+        if is_none_or_empty(mock_values.as_deref()) {
             return 0;
         }
 
         let req_value = (self.request_value)(req);
-        self.find_unmatched(&req_value, &mock_values)
+        self.find_unmatched(req_value.as_ref(), mock_values.as_deref())
             .into_iter()
-            .map(|s| self.comparator.distance(&Some(s), &req_value.as_ref()))
+            .map(|s| self.comparator.distance(Some(s), req_value.as_ref()))
             .map(|d| d * self.weight)
             .sum()
     }
 
     fn mismatches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> Vec<Mismatch> {
         let mock_value = (self.expectation)(mock);
-        if is_none_or_empty(&mock_value) {
+        if is_none_or_empty(mock_value.as_deref()) {
             return Vec::new();
         }
 
         let req_value = (self.request_value)(req);
-        self.find_unmatched(&req_value, &mock_value)
+        self.find_unmatched(req_value.as_ref(), mock_value.as_deref())
             .into_iter()
             .map(|mock_value| {
                 let mock_value = mock_value.to_string();
@@ -185,10 +184,10 @@ where
         mock_values
             .iter()
             .filter(|(ek, ev)| {
-                let key_matches = |rk: &RK| self.key_comparator.matches(&Some(ek), &Some(rk));
+                let key_matches = |rk: &RK| self.key_comparator.matches(Some(ek), Some(rk));
                 let value_matches = |rv: &Option<RV>| match (ev, rv) {
                     (Some(_), None) => false, // Mock required a value but none was present
-                    (Some(ev), Some(rv)) => self.value_comparator.matches(&Some(ev), &Some(rv)),
+                    (Some(ev), Some(rv)) => self.value_comparator.matches(Some(ev), Some(rv)),
                     _ => true,
                 };
 
@@ -210,7 +209,7 @@ where
     fn find_best_match<'a>(
         &self,
         sk: &EK,
-        sv: &Option<&EV>,
+        sv: Option<&EV>,
         req_values: &'a [(RK, Option<RV>)],
     ) -> Option<(&'a RK, &'a Option<RV>)> {
         if req_values.is_empty() {
@@ -224,8 +223,8 @@ where
         req_values
             .iter()
             .map(|(tk, tv)| {
-                let key_distance = self.key_comparator.distance(&Some(sk), &Some(tk));
-                let value_distance = self.value_comparator.distance(sv, &tv.as_ref());
+                let key_distance = self.key_comparator.distance(Some(sk), Some(tk));
+                let value_distance = self.value_comparator.distance(sv, tv.as_ref());
                 (tk, tv, key_distance + value_distance)
             })
             .min_by(|(_, _, d1), (_, _, d2)| d1.cmp(d2))
@@ -261,11 +260,10 @@ where
         let req_values = (self.request_value)(req).unwrap_or_default();
         self.find_unmatched(&req_values, &mock_values)
             .iter()
-            .map(|(k, v)| match self.find_best_match(k, v, &req_values) {
-                None => self.key_comparator.distance(&Some(k), &None) + self.value_comparator.distance(v, &None),
+            .map(|(k, v)| match self.find_best_match(k, *v, &req_values) {
+                None => self.key_comparator.distance(Some(k), None) + self.value_comparator.distance(*v, None),
                 Some((bmk, bmv)) => {
-                    self.key_comparator.distance(&Some(k), &Some(bmk))
-                        + self.value_comparator.distance(v, &bmv.as_ref())
+                    self.key_comparator.distance(Some(k), Some(bmk)) + self.value_comparator.distance(*v, bmv.as_ref())
                 }
             })
             .map(|d| d * self.weight)
@@ -274,7 +272,7 @@ where
 
     fn mismatches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> Vec<Mismatch> {
         let mock_values = (self.expectation)(mock);
-        if is_none_or_empty(&mock_values) {
+        if is_none_or_empty(mock_values.as_deref()) {
             return Vec::new();
         }
 
@@ -283,7 +281,7 @@ where
         self.find_unmatched(&req_values, &mock_values)
             .iter() // Use iter to avoid ownership issues and unnecessary data moving.
             .map(|(k, v)| {
-                let best_match = self.find_best_match(k, v, &req_values);
+                let best_match = self.find_best_match(k, *v, &req_values);
                 Mismatch {
                     entity: self.entity_name.to_string(),
                     matcher_method: self.matcher_method.to_string(),
@@ -369,7 +367,7 @@ where
         let mut matched_idx = HashSet::new();
 
         for (idx, (ek, ev, count)) in mock_values.iter().enumerate() {
-            let matches = self.count_matching_req_values(req_values, ek, ev);
+            let matches = self.count_matching_req_values(req_values, *ek, *ev);
             if matches == *count {
                 matched_idx.insert(idx);
             }
@@ -378,17 +376,17 @@ where
         matched_idx
     }
 
-    fn count_matching_req_values(&self, req_values: &[(RK, Option<RV>)], ek: &Option<&EK>, ev: &Option<&EV>) -> usize {
+    fn count_matching_req_values(&self, req_values: &[(RK, Option<RV>)], ek: Option<&EK>, ev: Option<&EV>) -> usize {
         req_values
             .iter()
             .filter(|(rk, rv)| {
                 let key_matches = match ek {
-                    Some(ek) => self.key_comparator.matches(&Some(ek), &Some(rk)),
+                    Some(ek) => self.key_comparator.matches(Some(ek), Some(rk)),
                     None => true, // No expectation => true
                 };
 
                 let value_matches = match (ev, rv) {
-                    (Some(ev), Some(rv)) => self.value_comparator.matches(&Some(ev), &Some(rv)),
+                    (Some(ev), Some(rv)) => self.value_comparator.matches(Some(ev), Some(rv)),
                     (Some(_), None) => false, // Expectation but no request value => false
                     (None, _) => true,        // No expectation => true
                 };
@@ -441,7 +439,7 @@ where
         self.find_unmatched(&req_values, &mock_values)
             .iter()
             .map(|(k, v, c)| {
-                let num_matching = self.count_matching_req_values(&req_values, k, v);
+                let num_matching = self.count_matching_req_values(&req_values, *k, *v);
                 num_matching.abs_diff(*c)
             })
             .map(|d| d * self.weight)
@@ -458,7 +456,7 @@ where
         self.find_unmatched(&req_values, &mock_values)
             .iter() // Use iter to avoid ownership issues and unnecessary data moving.
             .map(|(k, v, expected_count)| {
-                let actual_count = self.count_matching_req_values(&req_values, k, v);
+                let actual_count = self.count_matching_req_values(&req_values, *k, *v);
                 Mismatch {
                     entity: self.entity_name.to_string(),
                     matcher_method: self.matcher_method.to_string(),
@@ -510,18 +508,17 @@ impl<S, T, C> FunctionValueMatcher<S, T, C>
 where
     C: ValueComparator<S, T>,
 {
-    fn get_unmatched(&self, req_value: &Option<&T>, mock_values: &Option<Vec<&S>>) -> Vec<usize> {
-        let mock_values = match mock_values {
-            None => return Vec::new(),
-            Some(mv) => mv.clone(),
+    fn get_unmatched(&self, req_value: Option<&T>, mock_values: Option<&[&S]>) -> Vec<usize> {
+        let Some(mock_values) = mock_values else {
+            return Vec::new();
         };
         let Some(req_value) = req_value else {
-            return mock_values.into_iter().enumerate().map(|(idx, _)| idx).collect();
+            return (0..mock_values.len()).collect();
         };
         mock_values
-            .into_iter()
+            .iter()
             .enumerate()
-            .filter(|(_idx, e)| !self.comparator.matches(&Some(e), &Some(req_value)))
+            .filter(|(_idx, e)| !self.comparator.matches(Some(e), Some(req_value)))
             .map(|(idx, _e)| idx)
             .collect()
     }
@@ -533,32 +530,32 @@ where
 {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_values = (self.expectation)(mock);
-        if is_none_or_empty(&mock_values) {
+        if is_none_or_empty(mock_values.as_deref()) {
             return true;
         }
 
         let req_value = (self.request_value)(req);
-        self.get_unmatched(&req_value, &mock_values).is_empty()
+        self.get_unmatched(req_value, mock_values.as_deref()).is_empty()
     }
 
     fn distance(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> usize {
         let mock_values = (self.expectation)(mock);
-        if is_none_or_empty(&mock_values) {
+        if is_none_or_empty(mock_values.as_deref()) {
             return 0;
         }
 
         let req_value = (self.request_value)(req);
-        self.get_unmatched(&req_value, &mock_values).len() * self.weight
+        self.get_unmatched(req_value, mock_values.as_deref()).len() * self.weight
     }
 
     fn mismatches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> Vec<Mismatch> {
         let mock_values = (self.expectation)(mock);
-        if is_none_or_empty(&mock_values) {
+        if is_none_or_empty(mock_values.as_deref()) {
             return Vec::new();
         }
 
         let req_value = (self.request_value)(req);
-        self.get_unmatched(&req_value, &mock_values)
+        self.get_unmatched(req_value, mock_values.as_deref())
             .into_iter()
             .map(|idx| Mismatch {
                 entity: self.entity_name.to_string(),
