@@ -179,8 +179,6 @@ pub struct HttpMockServerBuilder {
     static_mock_dir: Option<PathBuf>,
     #[cfg(feature = "https")]
     https_config_builder: HttpsConfigBuilder,
-    #[cfg(feature = "proxy")]
-    http_client: Option<Arc<HttpMockHttpClient>>,
 }
 
 impl HttpMockServerBuilder {
@@ -307,11 +305,6 @@ impl HttpMockServerBuilder {
         self,
         state: Arc<state::HttpMockStateManager>,
     ) -> Result<HttpMockServer, Box<dyn Error>> {
-        #[cfg(feature = "proxy")]
-        let http_client = self
-            .http_client
-            .unwrap_or_else(|| Arc::new(HttpMockHttpClient::new(None)));
-
         #[cfg(feature = "record")]
         if let Some(dir) = self.static_mock_dir {
             read_static_mock_definitions(dir, state.as_ref())?;
@@ -327,7 +320,7 @@ impl HttpMockServerBuilder {
                 https: self.https_config_builder.build()?,
             },
             #[cfg(feature = "proxy")]
-            http_client,
+            Arc::new(HttpMockHttpClient::new(None)),
         ))
     }
 }
