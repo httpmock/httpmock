@@ -252,9 +252,8 @@ impl HttpMockServer {
         // - matchers and the recorder can reliably read scheme/host/port from req.uri();
         // - we can avoid ad-hoc Host-header parsing throughout the codebase.
         //
-        // See handler::proxy() for the inverse step where we convert back to
-        // origin-form right before sending the request upstream, since most origin
-        // servers (HTTP/1.1 and HTTP/2) expect origin-form on the wire.
+        // Forwarded and proxied requests keep the absolute URI; the HTTP client writes it in
+        // origin-form, as origin servers expect.
         if let Err(reason) = to_absolute_form_uri(&mut req) {
             return error_response(StatusCode::BAD_REQUEST, reason);
         }

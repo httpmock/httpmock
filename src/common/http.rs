@@ -14,7 +14,6 @@ use tokio::runtime::Runtime;
 
 #[cfg(any(feature = "remote-https", feature = "https"))]
 use crate::common::util::crypto_provider;
-use crate::server::RequestMetadata;
 
 #[derive(Error, Debug)]
 pub enum Error {
@@ -64,26 +63,9 @@ impl HttpMockHttpClient {
 }
 
 impl HttpMockHttpClient {
+    /// Sends `req`, whose URI must be absolute (`scheme://authority/path`).
     pub(crate) async fn send(&self, req: Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let (mut req_parts, req_body) = req.into_parts();
-
-        // If the request is origin-form or incomplete, reconstruct an absolute URI
-        let uri = req_parts.uri.clone();
-
-        let needs_target = uri.scheme().is_none() || uri.authority().is_none();
-        if needs_target && let Some(host) = req_parts.headers.get(http::header::HOST).and_then(|v| v.to_str().ok()) {
-            // Prefer scheme from the URI if present; otherwise use RequestMetadata; fallback to http
-            let scheme = uri
-                .scheme_str()
-                .or_else(|| req_parts.extensions.get::<RequestMetadata>().map(|m| m.scheme))
-                .unwrap_or("http");
-
-            let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
-
-            if let Ok(new_uri) = format!("{}://{}{}", scheme, host, path_and_query).parse() {
-                req_parts.uri = new_uri;
-            }
-        }
 
         // Remove Host header and let hyper set it (HTTP/1.1) or :authority (HTTP/2)
         req_parts.headers.remove(http::header::HOST);

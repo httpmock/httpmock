@@ -24,7 +24,7 @@ use std::{
 
 use http::StatusCode;
 #[cfg(feature = "proxy")]
-use http::{HeaderValue, Uri};
+use http::{HeaderValue, Uri, uri::Scheme};
 use hyper::{Method, Request, Response, body::Bytes};
 use path_tree::{Path, PathTree};
 use serde::{Serialize, de::DeserializeOwned};
@@ -448,18 +448,8 @@ fn forward_request(rule: ActiveForwardingRule, req: Request<Bytes>) -> Result<Re
 
     let mut uri_parts = req_parts.uri.into_parts();
     uri_parts.authority = Some(to_base_uri.authority().unwrap().clone());
-    uri_parts.scheme = to_base_uri.scheme().cloned().or(uri_parts.scheme);
+    uri_parts.scheme = Some(to_base_uri.scheme().cloned().unwrap_or(Scheme::HTTP));
     req_parts.uri = Uri::from_parts(uri_parts).unwrap();
-
-    // Record the upstream scheme (http/https) so the HttpClient can reconstruct
-    // an absolute target URI after converting to origin-form.
-    let upstream_scheme: &'static str = match to_base_uri.scheme_str() {
-        Some("https") => "https",
-        _ => "http",
-    };
-    req_parts
-        .extensions
-        .insert(crate::server::RequestMetadata::new(upstream_scheme));
 
     if !rule.config.request_header.is_empty() {
         for (key, value) in &rule.config.request_header {
@@ -473,12 +463,9 @@ fn forward_request(rule: ActiveForwardingRule, req: Request<Bytes>) -> Result<Re
         }
     }
 
-    let req = Request::from_parts(req_parts, body);
-    // Requests are normalized to absolute-form inside this server for internal uniformity
-    // (matchers/recorders can read scheme/host/port from req.uri()). Before talking to an
-    // upstream origin server we MUST convert to origin-form (path + query only) and provide
-    // the authority via the Host header, as expected by HTTP/1.1 and HTTP/2 origin servers.
-    to_origin_form(req)
+    // The HTTP client writes the absolute URI in origin-form, with a Host header, as origin
+    // servers expect.
+    Ok(Request::from_parts(req_parts, body))
 }
 
 /// Rewrites a request for its own origin, as a proxy rule matched it.
@@ -498,11 +485,9 @@ fn proxy_request(rule: ActiveProxyRule, mut req: Request<Bytes>) -> Result<Reque
         }
     }
 
-    // Requests are normalized to absolute-form inside this server for internal uniformity
-    // (matchers/recorders can read scheme/host/port from req.uri()). Before talking to an
-    // upstream origin server we MUST convert to origin-form (path + query only) and provide
-    // the authority via the Host header, as expected by HTTP/1.1 and HTTP/2 origin servers.
-    to_origin_form(req)
+    // The HTTP client writes the absolute URI in origin-form, with a Host header, as origin
+    // servers expect.
+    Ok(req)
 }
 
 #[cfg(feature = "record")]
@@ -582,41 +567,6 @@ where
 {
     let body: T = serde_json::from_slice(req.body().as_ref()).map_err(RequestBodyDeserialization)?;
     Ok(body)
-}
-
-/// Convert an absolute-form request URI into origin-form prior to dispatching upstream.
-///
-/// Rationale:
-/// - The server normalizes inbound requests to absolute-form (`scheme://authority/path?query`) so
-///   matchers and recorders can read scheme/host/port directly from `req.uri()`.
-/// - Upstream origin servers typically expect origin-form on the wire (path-and-query only), with
-///   the `Host` header carrying the authority; absolute-form is mainly used by proxies.
-/// - Consequently, if `req.uri()` has both `scheme` and `authority`, we treat it as absolute-form,
-///   set `Host` to that authority, and strip scheme/authority from the URI to yield origin-form.
-/// - Requests lacking either part are already in origin- or asterisk-form and are left untouched.
-///   CONNECT (authority-form) is handled separately.
-#[cfg(feature = "proxy")]
-pub fn to_origin_form(mut req: Request<Bytes>) -> Result<Request<Bytes>, Error> {
-    let uri = req.uri().clone();
-
-    if uri.scheme().is_some() && uri.authority().is_some() {
-        // Ensure Host header matches the authority
-        if let Some(auth) = uri.authority() {
-            let host_val = HeaderValue::from_str(auth.as_str())
-                .map_err(|err| InvalidHeader(format!("invalid header value: {err}")))?;
-            req.headers_mut().insert(http::header::HOST, host_val);
-        }
-
-        // Set path-and-query only (origin-form)
-        let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
-        let new_uri = Uri::builder()
-            .path_and_query(path_and_query)
-            .build()
-            .map_err(|e| RequestConversion(e.to_string()))?;
-        *req.uri_mut() = new_uri;
-    }
-
-    Ok(req)
 }
 
 #[cfg(test)]
@@ -772,10 +722,21 @@ mod tests {
                 upstream_request(handler.handle(request("GET", "http://localhost:1234/api?x=1")).unwrap());
 
             assert!(!proxied);
-            assert_eq!(upstream.uri(), "/api?x=1");
-            assert_eq!(upstream.headers()["host"], "upstream.test:8443");
+            assert_eq!(upstream.uri(), "https://upstream.test:8443/api?x=1");
             assert_eq!(upstream.headers()["x-forwarded-by"], "httpmock");
-            assert_eq!(upstream.extensions().get::<RequestMetadata>().unwrap().scheme, "https");
+        }
+
+        #[test]
+        fn forwarding_target_without_scheme_gets_http() {
+            let handler = handler();
+            handler.state.create_forwarding_rule(ForwardingRuleConfig {
+                target_base_url: "upstream.test:8080".to_string(),
+                ..Default::default()
+            });
+
+            let (_, upstream) = upstream_request(handler.handle(request("GET", "https://localhost:1234/api")).unwrap());
+
+            assert_eq!(upstream.uri(), "http://upstream.test:8080/api");
         }
 
         #[test]
@@ -790,8 +751,7 @@ mod tests {
                 upstream_request(handler.handle(request("GET", "http://origin.test/path")).unwrap());
 
             assert!(proxied);
-            assert_eq!(upstream.uri(), "/path");
-            assert_eq!(upstream.headers()["host"], "origin.test");
+            assert_eq!(upstream.uri(), "http://origin.test/path");
             assert_eq!(upstream.headers()["x-added"], "1");
         }
 
