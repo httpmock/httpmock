@@ -61,8 +61,12 @@ pub struct JsonIncludesComparator {
 }
 
 impl JsonIncludesComparator {
-    pub const fn new(negated: bool) -> Self {
-        Self { negated }
+    pub const fn new() -> Self {
+        Self { negated: false }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true }
     }
 }
 
@@ -101,8 +105,12 @@ pub struct HostEqualsComparator {
 }
 
 impl HostEqualsComparator {
-    pub const fn new(negated: bool) -> Self {
-        Self { negated }
+    pub const fn new() -> Self {
+        Self { negated: false }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true }
     }
 }
 
@@ -131,11 +139,22 @@ pub struct StringEqualsComparator {
 }
 
 impl StringEqualsComparator {
-    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new() -> Self {
         Self {
-            case_sensitive,
-            negated,
+            case_sensitive: true,
+            negated: false,
         }
+    }
+
+    pub const fn ignore_case(self) -> Self {
+        Self {
+            case_sensitive: false,
+            ..self
+        }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true, ..self }
     }
 }
 
@@ -159,11 +178,22 @@ pub struct StringIncludesComparator {
 }
 
 impl StringIncludesComparator {
-    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new() -> Self {
         Self {
-            case_sensitive,
-            negated,
+            case_sensitive: true,
+            negated: false,
         }
+    }
+
+    pub const fn ignore_case(self) -> Self {
+        Self {
+            case_sensitive: false,
+            ..self
+        }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true, ..self }
     }
 }
 
@@ -237,11 +267,22 @@ pub struct StringPrefixComparator {
 }
 
 impl StringPrefixComparator {
-    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new() -> Self {
         Self {
-            case_sensitive,
-            negated,
+            case_sensitive: true,
+            negated: false,
         }
+    }
+
+    pub const fn ignore_case(self) -> Self {
+        Self {
+            case_sensitive: false,
+            ..self
+        }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true, ..self }
     }
 }
 
@@ -265,11 +306,22 @@ pub struct StringSuffixComparator {
 }
 
 impl StringSuffixComparator {
-    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new() -> Self {
         Self {
-            case_sensitive,
-            negated,
+            case_sensitive: true,
+            negated: false,
         }
+    }
+
+    pub const fn ignore_case(self) -> Self {
+        Self {
+            case_sensitive: false,
+            ..self
+        }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true, ..self }
     }
 }
 
@@ -293,10 +345,17 @@ pub struct StringMatchesComparator {
 }
 
 impl StringMatchesComparator {
-    pub const fn new(case_sensitive: bool, negated: bool) -> Self {
+    pub const fn new() -> Self {
         Self {
-            case_sensitive,
-            negated,
+            case_sensitive: true,
+            negated: false,
+        }
+    }
+
+    pub const fn ignore_case(self) -> Self {
+        Self {
+            case_sensitive: false,
+            ..self
         }
     }
 }
@@ -361,8 +420,12 @@ pub struct U16EqualsComparator {
 }
 
 impl U16EqualsComparator {
-    pub const fn new(negated: bool) -> Self {
-        Self { negated }
+    pub const fn new() -> Self {
+        Self { negated: false }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true }
     }
 }
 
@@ -385,8 +448,12 @@ pub struct BytesEqualsComparator {
 }
 
 impl BytesEqualsComparator {
-    pub const fn new(negated: bool) -> Self {
-        Self { negated }
+    pub const fn new() -> Self {
+        Self { negated: false }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true }
     }
 }
 
@@ -413,8 +480,12 @@ pub struct BytesIncludesComparator {
 }
 
 impl BytesIncludesComparator {
-    pub const fn new(negated: bool) -> Self {
-        Self { negated }
+    pub const fn new() -> Self {
+        Self { negated: false }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true }
     }
 }
 
@@ -481,8 +552,12 @@ pub struct BytesPrefixComparator {
 }
 
 impl BytesPrefixComparator {
-    pub const fn new(negated: bool) -> Self {
-        Self { negated }
+    pub const fn new() -> Self {
+        Self { negated: false }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true }
     }
 }
 
@@ -509,8 +584,12 @@ pub struct BytesSuffixComparator {
 }
 
 impl BytesSuffixComparator {
-    pub const fn new(negated: bool) -> Self {
-        Self { negated }
+    pub const fn new() -> Self {
+        Self { negated: false }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true }
     }
 }
 
@@ -555,8 +634,12 @@ pub struct FunctionMatchesRequestComparator {
 }
 
 impl FunctionMatchesRequestComparator {
-    pub const fn new(negated: bool) -> Self {
-        Self { negated }
+    pub const fn new() -> Self {
+        Self { negated: false }
+    }
+
+    pub const fn negated(self) -> Self {
+        Self { negated: true }
     }
 }
 
@@ -661,7 +744,7 @@ mod test {
     #[test]
     fn json_includes_match() {
         run_test(
-            &JsonIncludesComparator::new(false),
+            &JsonIncludesComparator::new(),
             &json!({ "other" : { "human" : { "surname" : "Griffin" }}}),
             &json!({ "name" : "Peter", "other" : { "human" : { "surname" : "Griffin" }}}),
             true,
@@ -673,7 +756,7 @@ mod test {
     #[test]
     fn json_includes_no_match() {
         run_test(
-            &JsonIncludesComparator::new(false),
+            &JsonIncludesComparator::new(),
             &json!({ "surname" : "Griffin" }),
             &json!({ "name" : "Peter", "other" : { "human" : { "surname" : "Griffin" }}}),
             false,
@@ -685,7 +768,7 @@ mod test {
     #[test]
     fn string_equals_match() {
         run_test(
-            &StringEqualsComparator::new(true, false),
+            &StringEqualsComparator::new(),
             &"test string".to_string(),
             &"test string".to_string(),
             true,
@@ -697,7 +780,7 @@ mod test {
     #[test]
     fn string_equals_no_match() {
         run_test(
-            &StringEqualsComparator::new(true, false),
+            &StringEqualsComparator::new(),
             &"test string".to_string(),
             &"not a test string".to_string(),
             false,
@@ -709,7 +792,7 @@ mod test {
     #[test]
     fn string_equals_case_insensitive_match() {
         run_test(
-            &StringEqualsComparator::new(false, false),
+            &StringEqualsComparator::new().ignore_case(),
             &"TEST string".to_string(),
             &"test STRING".to_string(),
             true,
@@ -721,7 +804,7 @@ mod test {
     #[test]
     fn string_includes_match() {
         run_test(
-            &StringIncludesComparator::new(true, false),
+            &StringIncludesComparator::new(),
             &"st st".to_string(),
             &"test string".to_string(),
             true,
@@ -733,7 +816,7 @@ mod test {
     #[test]
     fn string_includes_no_match() {
         run_test(
-            &StringIncludesComparator::new(true, false),
+            &StringIncludesComparator::new(),
             &"xxx".to_string(),
             &"yyy".to_string(),
             false,
@@ -745,7 +828,7 @@ mod test {
     #[test]
     fn string_includes_case_insensitive_match() {
         run_test(
-            &StringIncludesComparator::new(false, false),
+            &StringIncludesComparator::new().ignore_case(),
             &"ST st".to_string(),
             &"test STRING".to_string(),
             true,
@@ -757,7 +840,7 @@ mod test {
     #[test]
     fn regex_match() {
         run_test(
-            &StringMatchesComparator::new(true, false),
+            &StringMatchesComparator::new(),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
             &"2014-01-01".to_string(),
             true,
@@ -769,7 +852,7 @@ mod test {
     #[test]
     fn regex_no_match() {
         run_test(
-            &StringMatchesComparator::new(true, false),
+            &StringMatchesComparator::new(),
             &HttpMockRegex(Regex::new(r"^\d{4}-\d{2}-\d{2}$").unwrap()),
             &"xxx".to_string(),
             false,

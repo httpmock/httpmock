@@ -103,12 +103,28 @@ type KeyValueCountMatcher = MultiValueCountMatcher<
 // negate the value comparison, so their key comparator isn't negated. Only `missing` negates
 // the key.
 impl KeyValuePart {
+    const fn key_equals(&self) -> StringEqualsComparator {
+        if self.case_sensitive_keys {
+            StringEqualsComparator::new()
+        } else {
+            StringEqualsComparator::new().ignore_case()
+        }
+    }
+
+    const fn key_matches(&self) -> StringMatchesComparator {
+        if self.case_sensitive_keys {
+            StringMatchesComparator::new()
+        } else {
+            StringMatchesComparator::new().ignore_case()
+        }
+    }
+
     const fn equals(
         &self,
         method: &'static str,
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringEqualsComparator> {
-        let value = StringEqualsComparator::new(true, false);
+        let value = StringEqualsComparator::new();
         self.with_key(method, KeyValueRule::Present, expectation, value)
     }
 
@@ -117,7 +133,7 @@ impl KeyValuePart {
         method: &'static str,
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringEqualsComparator> {
-        let value = StringEqualsComparator::new(true, true);
+        let value = StringEqualsComparator::new().negated();
         self.with_key(method, KeyValueRule::ValueAbsent, expectation, value)
     }
 
@@ -141,7 +157,7 @@ impl KeyValuePart {
             rule: KeyValueRule::KeyAbsent,
             expectation,
             request_value: self.request_value,
-            key_comparator: StringEqualsComparator::new(self.case_sensitive_keys, true),
+            key_comparator: self.key_equals().negated(),
             value_comparator: AnyValueComparator::new(),
             weight: 1,
         }
@@ -152,7 +168,7 @@ impl KeyValuePart {
         method: &'static str,
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringIncludesComparator> {
-        let value = StringIncludesComparator::new(true, false);
+        let value = StringIncludesComparator::new();
         self.with_key(method, KeyValueRule::Present, expectation, value)
     }
 
@@ -161,7 +177,7 @@ impl KeyValuePart {
         method: &'static str,
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringIncludesComparator> {
-        let value = StringIncludesComparator::new(true, true);
+        let value = StringIncludesComparator::new().negated();
         self.with_key(method, KeyValueRule::ValueAbsent, expectation, value)
     }
 
@@ -170,7 +186,7 @@ impl KeyValuePart {
         method: &'static str,
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringPrefixComparator> {
-        let value = StringPrefixComparator::new(true, false);
+        let value = StringPrefixComparator::new();
         self.with_key(method, KeyValueRule::Present, expectation, value)
     }
 
@@ -179,7 +195,7 @@ impl KeyValuePart {
         method: &'static str,
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringPrefixComparator> {
-        let value = StringPrefixComparator::new(true, true);
+        let value = StringPrefixComparator::new().negated();
         self.with_key(method, KeyValueRule::ValueAbsent, expectation, value)
     }
 
@@ -188,7 +204,7 @@ impl KeyValuePart {
         method: &'static str,
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringSuffixComparator> {
-        let value = StringSuffixComparator::new(true, false);
+        let value = StringSuffixComparator::new();
         self.with_key(method, KeyValueRule::Present, expectation, value)
     }
 
@@ -197,7 +213,7 @@ impl KeyValuePart {
         method: &'static str,
         expectation: KeyValueExpectation,
     ) -> KeyValueMatcher<StringSuffixComparator> {
-        let value = StringSuffixComparator::new(true, true);
+        let value = StringSuffixComparator::new().negated();
         self.with_key(method, KeyValueRule::ValueAbsent, expectation, value)
     }
 
@@ -212,8 +228,8 @@ impl KeyValuePart {
             rule: KeyValueRule::Present,
             expectation,
             request_value: self.request_value,
-            key_comparator: StringMatchesComparator::new(self.case_sensitive_keys, false),
-            value_comparator: StringMatchesComparator::new(true, false),
+            key_comparator: self.key_matches(),
+            value_comparator: StringMatchesComparator::new(),
             weight: 1,
         }
     }
@@ -228,8 +244,8 @@ impl KeyValuePart {
             matcher_method: method,
             expectation,
             request_value: self.request_value,
-            key_comparator: StringMatchesComparator::new(self.case_sensitive_keys, false),
-            value_comparator: StringMatchesComparator::new(true, false),
+            key_comparator: self.key_matches(),
+            value_comparator: StringMatchesComparator::new(),
             weight: 1,
         }
     }
@@ -248,7 +264,7 @@ impl KeyValuePart {
             rule,
             expectation,
             request_value: self.request_value,
-            key_comparator: StringEqualsComparator::new(self.case_sensitive_keys, false),
+            key_comparator: self.key_equals(),
             value_comparator,
             weight: 1,
         }
@@ -328,38 +344,44 @@ const FORM: KeyValuePart = KeyValuePart {
 #[rustfmt::skip]
 static MATCHERS: &[&[&(dyn Matcher + Sync)]] = &[
     &[
-        &SCHEME.present("scheme", expectations::scheme, StringEqualsComparator::new(false, false)),
-        &SCHEME.absent("scheme_not", expectations::scheme_not, StringEqualsComparator::new(false, true)),
+        &SCHEME.present("scheme", expectations::scheme, StringEqualsComparator::new().ignore_case()),
+        &SCHEME.absent("scheme_not", expectations::scheme_not, StringEqualsComparator::new().ignore_case().negated()),
     ],
     &[
-        &METHOD.present("method", expectations::method, StringEqualsComparator::new(false, false)),
-        &METHOD.absent("method_not", expectations::method_not, StringEqualsComparator::new(false, true)),
+        &METHOD.present("method", expectations::method, StringEqualsComparator::new().ignore_case()),
+        &METHOD.absent("method_not", expectations::method_not, StringEqualsComparator::new().ignore_case().negated()),
     ],
     &[
-        &HOST.present("host", expectations::host, HostEqualsComparator::new(false)),
-        &HOST.absent("host_not", expectations::host_not, HostEqualsComparator::new(true)),
-        &HOST.present("host_includes", expectations::host_includes, StringIncludesComparator::new(false, false)),
-        &HOST.absent("host_excludes", expectations::host_excludes, StringIncludesComparator::new(false, true)),
-        &HOST.present("host_prefix", expectations::host_prefix, StringPrefixComparator::new(false, false)),
-        &HOST.absent("host_prefix_not", expectations::host_prefix_not, StringPrefixComparator::new(false, true)),
-        &HOST.present("host_suffix", expectations::host_suffix, StringSuffixComparator::new(false, false)),
-        &HOST.absent("host_suffix_not", expectations::host_suffix_not, StringSuffixComparator::new(false, true)),
-        &HOST.present("host_matches", expectations::host_matches, StringMatchesComparator::new(true, false)),
+        &HOST.present("host", expectations::host, HostEqualsComparator::new()),
+        &HOST.absent("host_not", expectations::host_not, HostEqualsComparator::new().negated()),
+        &HOST.present("host_includes", expectations::host_includes, StringIncludesComparator::new().ignore_case()),
+        &HOST.absent(
+            "host_excludes", expectations::host_excludes, StringIncludesComparator::new().ignore_case().negated(),
+        ),
+        &HOST.present("host_prefix", expectations::host_prefix, StringPrefixComparator::new().ignore_case()),
+        &HOST.absent(
+            "host_prefix_not", expectations::host_prefix_not, StringPrefixComparator::new().ignore_case().negated(),
+        ),
+        &HOST.present("host_suffix", expectations::host_suffix, StringSuffixComparator::new().ignore_case()),
+        &HOST.absent(
+            "host_suffix_not", expectations::host_suffix_not, StringSuffixComparator::new().ignore_case().negated(),
+        ),
+        &HOST.present("host_matches", expectations::host_matches, StringMatchesComparator::new()),
     ],
     &[
-        &PORT.present("port", expectations::port, U16EqualsComparator::new(false)),
-        &PORT.absent("port_not", expectations::port_not, U16EqualsComparator::new(true)),
+        &PORT.present("port", expectations::port, U16EqualsComparator::new()),
+        &PORT.absent("port_not", expectations::port_not, U16EqualsComparator::new().negated()),
     ],
     &[
-        &PATH.present("path", expectations::path, StringEqualsComparator::new(true, false)),
-        &PATH.absent("path_not", expectations::path_not, StringEqualsComparator::new(true, true)),
-        &PATH.present("path_includes", expectations::path_includes, StringIncludesComparator::new(true, false)),
-        &PATH.absent("path_excludes", expectations::path_excludes, StringIncludesComparator::new(true, true)),
-        &PATH.present("path_prefix", expectations::path_prefix, StringPrefixComparator::new(true, false)),
-        &PATH.absent("path_prefix_not", expectations::path_prefix_not, StringPrefixComparator::new(true, true)),
-        &PATH.present("path_suffix", expectations::path_suffix, StringSuffixComparator::new(true, false)),
-        &PATH.absent("path_suffix_not", expectations::path_suffix_not, StringSuffixComparator::new(true, true)),
-        &PATH.present("path_matches", expectations::path_matches, StringMatchesComparator::new(true, false)),
+        &PATH.present("path", expectations::path, StringEqualsComparator::new()),
+        &PATH.absent("path_not", expectations::path_not, StringEqualsComparator::new().negated()),
+        &PATH.present("path_includes", expectations::path_includes, StringIncludesComparator::new()),
+        &PATH.absent("path_excludes", expectations::path_excludes, StringIncludesComparator::new().negated()),
+        &PATH.present("path_prefix", expectations::path_prefix, StringPrefixComparator::new()),
+        &PATH.absent("path_prefix_not", expectations::path_prefix_not, StringPrefixComparator::new().negated()),
+        &PATH.present("path_suffix", expectations::path_suffix, StringSuffixComparator::new()),
+        &PATH.absent("path_suffix_not", expectations::path_suffix_not, StringSuffixComparator::new().negated()),
+        &PATH.present("path_matches", expectations::path_matches, StringMatchesComparator::new()),
     ],
     &[
         &QUERY_PARAMS.equals("query_param", expectations::query_param),
@@ -405,28 +427,28 @@ static MATCHERS: &[&[&(dyn Matcher + Sync)]] = &[
         &COOKIES.count("cookie_count", expectations::cookie_count),
     ],
     &[
-        &BODY.present("body", expectations::body, BytesEqualsComparator::new(false)),
-        &BODY.absent("body_not", expectations::body_not, BytesEqualsComparator::new(true)),
-        &BODY.present("body_includes", expectations::body_includes, BytesIncludesComparator::new(false)),
-        &BODY.absent("body_excludes", expectations::body_excludes, BytesIncludesComparator::new(true)),
-        &BODY.present("body_prefix", expectations::body_prefix, BytesPrefixComparator::new(false)),
-        &BODY.absent("body_prefix_not", expectations::body_prefix_not, BytesPrefixComparator::new(true)),
-        &BODY.present("body_suffix", expectations::body_suffix, BytesSuffixComparator::new(false)),
-        &BODY.absent("body_suffix_not", expectations::body_suffix_not, BytesSuffixComparator::new(true)),
+        &BODY.present("body", expectations::body, BytesEqualsComparator::new()),
+        &BODY.absent("body_not", expectations::body_not, BytesEqualsComparator::new().negated()),
+        &BODY.present("body_includes", expectations::body_includes, BytesIncludesComparator::new()),
+        &BODY.absent("body_excludes", expectations::body_excludes, BytesIncludesComparator::new().negated()),
+        &BODY.present("body_prefix", expectations::body_prefix, BytesPrefixComparator::new()),
+        &BODY.absent("body_prefix_not", expectations::body_prefix_not, BytesPrefixComparator::new().negated()),
+        &BODY.present("body_suffix", expectations::body_suffix, BytesSuffixComparator::new()),
+        &BODY.absent("body_suffix_not", expectations::body_suffix_not, BytesSuffixComparator::new().negated()),
         &BODY.present("body_matches", expectations::body_matches, BytesMatchesComparator::new()),
     ],
     &[
         &JSON_BODY.present("json_body", expectations::json_body, JsonEqualsComparator::new()),
         &PARTIAL_JSON_BODY
-            .present("json_body_includes", expectations::json_body_includes, JsonIncludesComparator::new(false)),
+            .present("json_body_includes", expectations::json_body_includes, JsonIncludesComparator::new()),
         &PARTIAL_JSON_BODY
-            .absent("json_body_excludes", expectations::json_body_excludes, JsonIncludesComparator::new(true)),
+            .absent("json_body_excludes", expectations::json_body_excludes, JsonIncludesComparator::new().negated()),
     ],
     &[
         &FunctionValueMatcher {
             entity_name: "custom matcher function",
             matcher_function: "is_true",
-            comparator: FunctionMatchesRequestComparator::new(false),
+            comparator: FunctionMatchesRequestComparator::new(),
             expectation: expectations::is_true,
             request_value: request_value::full_request,
             weight: 1,
@@ -434,7 +456,7 @@ static MATCHERS: &[&[&(dyn Matcher + Sync)]] = &[
         &FunctionValueMatcher {
             entity_name: "custom matcher function",
             matcher_function: "is_false",
-            comparator: FunctionMatchesRequestComparator::new(true),
+            comparator: FunctionMatchesRequestComparator::new().negated(),
             expectation: expectations::is_false,
             request_value: request_value::full_request,
             weight: 1,
