@@ -10,13 +10,13 @@ When your tests don't send the expected data, `httpmock` tries to provide as muc
 exactly is missing or different. However, to see details about unmet expectations, you need to use one of the
 following assertion methods:
 
-- [Mock::assert](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert) / [Mock::assert_async](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_async)
-- [Mock::assert_calls](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_calls) / [Mock::assert_calls_async](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_calls_async)
+- [`Mock::assert`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert) / [`Mock::assert_async`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_async)
+- [`Mock::assert_calls`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_calls) / [`Mock::assert_calls_async`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_calls_async)
 
 Let's have a look at an example:
 ```rust
 #[test]
-fn getting_started_testxx() {
+fn translate_mismatch_test() {
     use httpmock::prelude::*;
 
     // Start a lightweight mock server.
@@ -42,10 +42,13 @@ fn getting_started_testxx() {
 }
 ```
 
-Notice how `mock.assert()` is used to verify that the mock you defined earlier has been called **exactly once**.
-If you expect a different number of calls, use [Mock::assert_calls](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_calls).
+Notice how `hello_mock.assert()` is used to verify that the mock you defined earlier has been called exactly once.
+If you expect a different number of calls, use
+[`Mock::assert_calls`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_calls). To check the
+count yourself without panicking, read it with
+[`Mock::calls`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.calls).
 
-Since the path of the request that was actually sent to the mock server differs from the expected one,
+Since the query parameter of the request that was actually sent to the mock server differs from the expected one,
 `hello_mock.assert()` will panic and cause the test to fail with the following message:
 
 ```bash
@@ -69,9 +72,24 @@ Matcher:  query_param
 Docs:     https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param
 ```
 
+The report compares the mock with the request in the history that comes closest to it and lists one numbered block
+per matcher that did not match, each ending with the name of the
+[`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) method it belongs to and a link to its
+documentation (the real output links to the docs of the `httpmock` version you are running). Body mismatches
+additionally print a diff between the expected and the received body. When several values are compared, such as
+headers or query parameters, the block shows the most similar one and then all values the request carried.
+
+If the mock server did not receive any request at all, there is nothing to compare, and the assertion fails with the
+message `No request has been received by the mock server.` instead.
+
+The comparison is based on the request history the server keeps. The history holds the 100 most recent requests by
+default; the standalone binary lets you change the limit with `--request-history-limit`
+(see [Standalone Server](/server/standalone/#command-line-options)).
+
 ## Logs
 
-`httpmock` logs through the log crate, so you can see detailed log output about its behavior.
+`httpmock` emits its logs through [`tracing`](https://docs.rs/tracing/latest/tracing/), with the `log`
+compatibility feature enabled, so both a `tracing` subscriber and a `log` backend such as `env_logger` pick them up.
 This output is useful for investigating issues, like figuring out why a request doesn't match a mock definition.
 
 The debug log level is usually the most helpful, but you can use trace to get even more details.
@@ -81,6 +99,10 @@ The debug log level is usually the most helpful, but you can use trace to get ev
 </Aside>
 
 <Aside type="note" title="Note">
-    If you're using the `env_logger` backend, set the `RUST_LOG` environment variable to `httpmock=debug`
-    to see `httpmock` logs.
+    If you're using the `env_logger` backend or a `tracing_subscriber` with an `EnvFilter`, set the `RUST_LOG`
+    environment variable to `httpmock=debug` to see `httpmock` logs.
 </Aside>
+
+The standalone binary installs its own subscriber. It reads `RUST_LOG` and defaults to `httpmock=info`, which also
+prints an access log line for every request the server receives. See the
+[standalone server page](/server/standalone/#environment-variables) for the variables that control it.

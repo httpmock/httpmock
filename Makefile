@@ -61,13 +61,7 @@ docker:
 
 .PHONY: docs
 docs:
-	rm -rf tools/target/generated && mkdir -p tools/target/generated
-	cd tools && cargo run --bin extract_docs
-	cd tools && cargo run --bin extract_code
-	cd tools && cargo run --bin extract_groups
-	cd tools && cargo run --bin extract_example_tests
-	rm -rf docs/website/generated && cp -r tools/target/generated docs/website/generated
-	cd docs/website && npm install && npm run generate-docs
+	cd docs/website && npm install && npm run build
 
 .PHONY: fmt
 fmt:

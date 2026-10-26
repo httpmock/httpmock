@@ -40,7 +40,8 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
         // Send an HTTP request to the mock server. This simulates your code.
         let response = reqwest::blocking::get(server.url("/translate?word=hello")).unwrap();
 
-        // Ensure the specified mock was called.
+        // Ensure the specified mock was called exactly one time (or fail with a
+        // detailed error description).
         hello_mock.assert();
 
         // Ensure the mock server did respond as specified.
@@ -70,7 +71,7 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 
         // Ensure the specified mock was called exactly one time (or fail with a
         // detailed error description).
-        hello_mock.assert();
+        hello_mock.assert_async().await;
 
         // Ensure the mock server did respond as specified.
         assert_eq!(response.status(), 200);
@@ -78,12 +79,18 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
     </TabItem>
 </Tabs>
 
-
-
-The above example will spin up a lightweight HTTP mock server and configure it to respond to all `GET` requests
-to path `/translate` with query parameter `word=hello`. The corresponding HTTP response will contain the text body
-`hola`.
+The above example will spin up a lightweight HTTP mock server with
+[`MockServer::start`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.start) and configure it
+with [`MockServer::mock`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.mock) to respond to
+all `GET` requests to path `/translate` with query parameter `word=hello`. The corresponding HTTP response will
+contain the text body `hola`. [`Mock::assert`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert)
+then checks that the server received exactly one matching request.
 
 If the mock server receives a request that does not match the specified criteria
 (i.e., the request does not have path `/translate` with query parameter `word=hello`),
 then the mock server will respond with status code `404 (Not Found)`.
+
+The request criteria available on [`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) and the
+response settings on [`Then`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html) are documented with an
+example each on docs.rs. The [fundamentals page](/getting_started/fundamentals/) explains how mocks, pooling and the
+sync and async APIs fit together.

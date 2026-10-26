@@ -1,12 +1,14 @@
 ---
 title: Playback
-description: Explains how requests can be replayed.
+description: Explains how recorded requests can be replayed.
 ---
-import codeExamples from "../../../../generated/example_tests.json"
+import raw from '../../../../../../tests/examples/record_and_playback_tests.rs?raw';
+import { snippet } from '../../../utils/snippets';
 import { Code } from '@astrojs/starlight/components';
 
-After creating a recording, you can replay it by loading it into a mock server instance using the
-`httpmock` Rust API as follows:
+After [creating a recording](/record-and-playback/recording/), you can replay it by loading the file into a mock
+server with
+[`MockServer::playback`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.playback):
 
 ```rust
 // ...
@@ -23,17 +25,24 @@ let playback_server = MockServer::start();
 playback_server.playback(target_path);
 ```
 
-After calling [`MockServer::playback`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.playback),
-the recording will be loaded into the mock server. This allows all previously recorded requests to act as matching
-criteria, similar to how you configure normal mocks using
-[`MockServer::mock`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.mock) with the
-[`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) structure.
+`playback` reads the file and creates one mock per recorded interaction, as if you had configured them with
+[`MockServer::mock`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.mock): the recorded
+request becomes the [`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) part, the recorded
+response the [`Then`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html) part. Whenever the server then
+receives a request that matches one of the recorded requests, it answers with the corresponding recorded
+response. If the recording was made with `record_response_delays(true)`, the response is delayed by the
+recorded duration.
 
-Hereafter, whenever the mock server receives a request that matches any of the recorded requests, it will
-respond with the corresponding recorded response.
+The method returns the set of mocks it created, so you can delete them again or assert on them like any other
+mock. Playback is available with the `record` cargo feature.
+
+Recording files are plain YAML in the same format as the
+[static mock files](/server/standalone/) a standalone server loads, so you can also check them into your
+repository and edit them by hand.
 
 ## Full Example
-The following example demonstrates how you can use the forwarding feature to record and playback
-requests sent to the `httpmock` website and the responses it returns.
 
-<Code code={codeExamples['playback-forwarding-website']} lang="rust" />
+The following example records requests sent to the `httpmock` website through a forwarding rule and plays
+them back on a second mock server.
+
+<Code code={snippet(raw, 'playback-forwarding-website')} lang="rust" />
