@@ -255,8 +255,8 @@ impl HttpMockServer {
         // See handler::proxy() for the inverse step where we convert back to
         // origin-form right before sending the request upstream, since most origin
         // servers (HTTP/1.1 and HTTP/2) expect origin-form on the wire.
-        if let Err(err) = to_absolute_form_uri(&mut req) {
-            return error_response(StatusCode::INTERNAL_SERVER_ERROR, err);
+        if let Err(reason) = to_absolute_form_uri(&mut req) {
+            return error_response(StatusCode::BAD_REQUEST, reason);
         }
 
         let access_log_req_data = self
@@ -448,7 +448,10 @@ fn empty() -> BoxBody<Bytes, hyper::Error> {
     Empty::<Bytes>::new().map_err(|never| match never {}).boxed()
 }
 
-fn error_response(code: StatusCode, err: Error) -> Result<Response<BoxBody<Bytes, hyper::Error>>, Error> {
+fn error_response(
+    code: StatusCode,
+    err: impl std::fmt::Display,
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>, Error> {
     tracing::error!("failed to process request: {}", err.to_string());
     Ok(Response::builder().status(code).body(full(err.to_string()))?)
 }
@@ -466,7 +469,8 @@ use tokio::io::{AsyncRead, AsyncWrite};
 use crate::server::tls::{CertificateResolverFactory, starts_with_tls_handshake};
 use crate::server::{Error::ServerConnectionError, RequestMetadata};
 
-fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), Error> {
+// Fails with the reason when the request names no usable target, which is the client's fault.
+fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), String> {
     let default_scheme = req
         .extensions()
         .get::<RequestMetadata>()
@@ -484,14 +488,14 @@ fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), Error> {
         .headers()
         .get(http::header::HOST)
         .and_then(|v| v.to_str().ok())
-        .ok_or_else(|| Error::ConfigurationError("Missing Host header on origin-form request".into()))?;
+        .ok_or_else(|| "Missing Host header on origin-form request".to_string())?;
 
     let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
 
     let abs = format!("{}://{}{}", default_scheme, host, path_and_query);
     let new_uri: http::Uri = abs
         .parse()
-        .map_err(|e| Error::ConfigurationError(format!("Invalid absolute URI constructed from Host+path: {}", e)))?;
+        .map_err(|e| format!("Invalid absolute URI constructed from Host+path: {}", e))?;
 
     *req.uri_mut() = new_uri;
     Ok(())
