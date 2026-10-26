@@ -1,6 +1,6 @@
 use std::ops::Deref;
 
-use regex::Regex;
+use regex::RegexBuilder;
 
 use crate::common::{data::HttpMockRegex, util::HttpMockBytes};
 
@@ -1253,9 +1253,12 @@ pub fn string_matches_regex(
             if case_sensitive {
                 mv.0.is_match(rv)
             } else {
-                let case_insensitive_str = mv.0.as_str().to_lowercase();
-                let case_insensitive_regex = Regex::new(&case_insensitive_str).unwrap();
-                case_insensitive_regex.is_match(&rv.to_lowercase())
+                // Lowercasing the pattern would change escapes like `\D` into `\d`. The pattern
+                // compiled already, so this only fails past the size limit, and then doesn't match.
+                RegexBuilder::new(mv.0.as_str())
+                    .case_insensitive(true)
+                    .build()
+                    .is_ok_and(|regex| regex.is_match(rv))
             }
         }
     };
@@ -1269,6 +1272,7 @@ pub fn string_matches_regex(
 #[cfg(test)]
 mod string_matches_regex_tests {
     use super::*;
+    use regex::Regex;
 
     #[test]
     fn test_string_matches_regex() {
@@ -1290,6 +1294,17 @@ mod string_matches_regex_tests {
 
         let req_value = "Goodbye, world!".to_string();
         assert!(string_matches_regex(true, true, &Some(&pattern), &Some(&req_value)));
+    }
+
+    #[test]
+    fn case_insensitive_regex_keeps_its_character_classes() {
+        let pattern = HttpMockRegex(Regex::new(r"^x-\D+$").unwrap());
+
+        let req_value = "X-Abc".to_string();
+        assert!(string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)));
+
+        let req_value = "x-123".to_string();
+        assert!(!string_matches_regex(false, false, &Some(&pattern), &Some(&req_value)));
     }
 
     #[test]
@@ -1417,6 +1432,7 @@ pub fn regex_string_distance(
 #[cfg(test)]
 mod regex_string_distance_tests {
     use super::*;
+    use regex::Regex;
 
     #[test]
     fn test_non_negated_full_match() {
