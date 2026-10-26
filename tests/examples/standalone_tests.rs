@@ -87,7 +87,7 @@ async fn async_standalone_test() {
 
 #[cfg(feature = "remote")]
 #[test]
-#[should_panic]
+#[should_panic(expected = "Anonymous function request matchers are not supported")]
 fn unsupported_features() {
     use httpmock::MockServer;
 

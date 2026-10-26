@@ -338,11 +338,9 @@ mod tests {
     #[tokio::test]
     async fn waits_for_first_byte() {
         let (_client, server) = connected_pair().await;
-        assert!(
-            timeout(Duration::from_millis(50), starts_with_tls_handshake(&server))
-                .await
-                .is_err()
-        );
+        timeout(Duration::from_millis(50), starts_with_tls_handshake(&server))
+            .await
+            .expect_err("detection should wait for the first byte");
     }
 
     #[test]
@@ -429,8 +427,8 @@ mod tests {
 
     #[test]
     fn invalid_ca_is_rejected_when_building_the_factory() {
-        assert!(GeneratingCertificateResolverFactory::new(DEFAULT_CA_CERTIFICATE, "not a key").is_err());
-        assert!(GeneratingCertificateResolverFactory::new("not a certificate", DEFAULT_CA_PRIVATE_KEY).is_err());
+        GeneratingCertificateResolverFactory::new(DEFAULT_CA_CERTIFICATE, "not a key").unwrap_err();
+        GeneratingCertificateResolverFactory::new("not a certificate", DEFAULT_CA_PRIVATE_KEY).unwrap_err();
     }
 
     #[test]

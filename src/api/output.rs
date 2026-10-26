@@ -350,12 +350,12 @@ mod test {
         lines.join("\n")
     }
 
-    fn attribute(operator: &str, expected: &str, actual: Option<&str>) -> Option<KeyValueComparisonAttribute> {
-        Some(KeyValueComparisonAttribute {
+    fn attribute(operator: &str, expected: &str, actual: Option<&str>) -> KeyValueComparisonAttribute {
+        KeyValueComparisonAttribute {
             operator: operator.to_string(),
             expected: expected.to_string(),
             actual: actual.map(str::to_string),
-        })
+        }
     }
 
     fn pair(key: &str, value: &str) -> KeyValueComparisonKeyValuePair {
@@ -402,8 +402,12 @@ mod test {
     #[test]
     fn key_value_mismatch_aligns_expected_rows() {
         let mismatch = header_mismatch(KeyValueComparison {
-            key: attribute("equals", "content-type", Some("content-type")),
-            value: attribute("equals_case_insensitive", "application/json", Some("text/plain")),
+            key: Some(attribute("equals", "content-type", Some("content-type"))),
+            value: Some(attribute(
+                "equals_case_insensitive",
+                "application/json",
+                Some("text/plain"),
+            )),
             expected_count: None,
             actual_count: None,
             all: vec![pair("content-type", "text/plain"), pair("accept", "*/*")],
@@ -434,7 +438,7 @@ mod test {
     #[test]
     fn key_only_count_mismatch_aligns_single_row() {
         let mismatch = header_mismatch(KeyValueComparison {
-            key: attribute("equals", "x-id", None),
+            key: Some(attribute("equals", "x-id", None)),
             value: None,
             expected_count: Some(2),
             actual_count: Some(1),

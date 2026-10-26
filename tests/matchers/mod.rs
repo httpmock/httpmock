@@ -31,7 +31,7 @@ where
             // Check that all expected texts appear in order in the error message
             let mut start_index = 0;
             for expected_text in expected_texts {
-                if let Some(index) = err_msg[start_index..].find(expected_text) {
+                if let Some(index) = err_msg.get(start_index..).and_then(|rest| rest.find(expected_text)) {
                     start_index += index + expected_text.len();
                 } else {
                     panic!("Expected error message to contain in order:\n{expected_texts:?}\nBut got:\n{err_msg}");
@@ -75,7 +75,7 @@ where
             // Check that all expected texts appear in order in the error message
             let mut start_index = 0;
             for expected_text in &expected_texts {
-                if let Some(index) = err_msg[start_index..].find(expected_text) {
+                if let Some(index) = err_msg.get(start_index..).and_then(|rest| rest.find(expected_text)) {
                     start_index += index + expected_text.len();
                 } else {
                     panic!("Expected error message to contain in order:\n{expected_texts:?}\nBut got:\n{err_msg}");

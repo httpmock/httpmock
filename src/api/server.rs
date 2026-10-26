@@ -360,7 +360,7 @@ impl MockServer {
         // Servers that predate `up_to_n_times` ignore the field and would serve the mock without
         // a limit. Remove the mock again before failing.
         if up_to_n_times.is_some() && response.up_to_n_times.is_none() {
-            let _ = adapter.delete_mock(response.id).await;
+            adapter.delete_mock(response.id).await.ok();
             panic!("The mock server does not support up_to_n_times. Upgrade the mock server to use it.");
         }
 

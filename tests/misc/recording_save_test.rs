@@ -24,7 +24,7 @@ fn saving_the_same_scenario_twice_keeps_both_files() {
     Client::new().get(recording_server.url("/hello")).send().unwrap();
 
     let dir = std::path::Path::new(env!("CARGO_TARGET_TMPDIR")).join("recording_save_test");
-    let _ = std::fs::remove_dir_all(&dir);
+    std::fs::remove_dir_all(&dir).ok();
 
     // Both saves almost always land in the same second, so they would get
     // the same timestamped name.

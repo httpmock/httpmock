@@ -88,7 +88,10 @@ pub enum Error {
 /// `Serve` is several times the size of `Respond` because of the request kept for recording. An
 /// action is built and consumed within one request, never stored, so that stack space is cheaper
 /// than boxing the variant on every served request.
-#[allow(clippy::large_enum_variant)]
+#[expect(
+    clippy::large_enum_variant,
+    reason = "an action never outlives its request, see above"
+)]
 pub(crate) enum Action {
     /// Send the response to a management API request. Management responses are not recorded.
     Respond(Finished),
@@ -173,7 +176,7 @@ pub(crate) struct Handler {
 impl Handler {
     pub(crate) fn new(state: Arc<state::HttpMockStateManager>) -> Self {
         let mut path_tree: PathTree<RoutePath> = PathTree::new();
-        #[allow(unused_must_use)]
+        #[expect(unused_must_use, reason = "the route ids that insert returns aren't needed")]
         {
             path_tree.insert("/__httpmock__/ping", RoutePath::Ping);
             path_tree.insert("/__httpmock__/state", RoutePath::Reset);

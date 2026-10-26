@@ -28,7 +28,7 @@ pub async fn get_request(
         let client = match builder.build() {
             Ok(c) => c,
             Err(e) => {
-                let _ = tx.send(Err(Box::new(e)));
+                tx.send(Err(Box::new(e))).ok();
                 return;
             }
         };
@@ -47,15 +47,15 @@ pub async fn get_request(
                 let status = r.status().as_u16();
                 match r.text() {
                     Ok(body) => {
-                        let _ = tx.send(Ok((status, body)));
+                        tx.send(Ok((status, body))).ok();
                     }
                     Err(e) => {
-                        let _ = tx.send(Err(Box::new(e)));
+                        tx.send(Err(Box::new(e))).ok();
                     }
                 }
             }
             Err(e) => {
-                let _ = tx.send(Err(Box::new(e)));
+                tx.send(Err(Box::new(e))).ok();
             }
         }
     });

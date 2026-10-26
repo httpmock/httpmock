@@ -106,7 +106,7 @@ fn application_tls_provider_is_respected() {
 
     // The TLS 1.3-only client cannot fall back to TLS 1.2. If httpmock replaces the application's
     // provider with unrestricted aws-lc-rs defaults, this request succeeds and the assertion fails.
-    assert!(request(&server, &rustls::version::TLS13).is_err());
+    request(&server, &rustls::version::TLS13).unwrap_err();
 
     // Only the TLS 1.2 request should reach HTTP matching; the rejected handshake adds no mock call.
     mock.assert();

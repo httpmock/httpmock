@@ -76,7 +76,7 @@ fn is_false_matcher_called_once_per_request() {
 
 #[test]
 fn dynamic_responder_test() {
-    use std::sync::Mutex;
+    use std::sync::atomic::{AtomicU16, Ordering};
 
     use httpmock::prelude::*;
     use reqwest::blocking::Client;
@@ -84,18 +84,16 @@ fn dynamic_responder_test() {
     // Arrange
     let server = MockServer::start();
 
-    // This is our counter that will determine the response later.
-    // It needs to be protected by a mutex the custom respond method
-    // is called from the HTTP server thread.
-    let call_count = Mutex::new(0);
+    // This is our counter that will determine the response later. It's atomic because the
+    // custom respond method is called from the HTTP server thread.
+    let call_count = AtomicU16::new(0);
 
     let mock = server.mock(|when, then| {
         when.method("GET").is_true(|r| r.uri().path().ends_with("/hello"));
         then.respond_with(move |_req: &HttpMockRequest| {
-            let mut count = call_count.lock().unwrap();
-            *count += 1;
+            let count = call_count.fetch_add(1, Ordering::SeqCst) + 1;
 
-            HttpMockResponse::builder().status(200 + *count).build()
+            HttpMockResponse::builder().status(200 + count).build()
         });
     });
 
@@ -116,7 +114,7 @@ fn dynamic_responder_test() {
 
 #[test]
 fn dynamic_responder_http_crate_test() {
-    use std::sync::Mutex;
+    use std::sync::atomic::{AtomicU16, Ordering};
 
     use httpmock::prelude::*;
     use reqwest::blocking::Client;
@@ -124,10 +122,9 @@ fn dynamic_responder_http_crate_test() {
     // Arrange
     let server = MockServer::start();
 
-    // This is our counter that will determine the response later.
-    // It needs to be protected by a mutex the custom respond method
-    // is called from the HTTP server thread.
-    let call_count = Mutex::new(0);
+    // This is our counter that will determine the response later. It's atomic because the
+    // custom respond method is called from the HTTP server thread.
+    let call_count = AtomicU16::new(0);
 
     let mock = server.mock(|when, then| {
         when.method("GET");
@@ -135,13 +132,12 @@ fn dynamic_responder_http_crate_test() {
             // Convert the HttpMockRequest to a http creates Request object
             let req: http::Request<()> = req.into();
 
-            let mut count = call_count.lock().unwrap();
-            *count += 1;
+            let count = call_count.fetch_add(1, Ordering::SeqCst) + 1;
 
             // Return a http crate Response object which will automatically be converted into
             // a HttpMockResponse internally
             http::Response::builder()
-                .status(200 + *count)
+                .status(200 + count)
                 .body(req.uri().path().to_string())
                 .unwrap()
                 .into()
