@@ -1,4 +1,7 @@
-use std::sync::Mutex;
+use std::{
+    ops::Deref,
+    sync::{Arc, Mutex},
+};
 
 use tokio::sync::Semaphore;
 
@@ -6,7 +9,7 @@ use tokio::sync::Semaphore;
 ///
 /// [`Pool::take_or_create`] returns a pooled object, or creates a new one if the pool has
 /// spare capacity. When `capacity` objects are already handed out, it waits asynchronously
-/// until one is returned via [`Pool::put`].
+/// until one is returned by dropping its [`Pooled`] guard.
 ///
 /// This implementation must stay runtime agnostic, because it is used on the client side
 /// where user code may run on any async runtime (e.g., smol or actix-rt, see
@@ -28,7 +31,7 @@ impl<T> Pool<T> {
         }
     }
 
-    pub async fn take_or_create<F>(&self, create: F) -> T
+    pub async fn take_or_create<F>(self: &Arc<Self>, create: F) -> Pooled<T>
     where
         F: Fn() -> T,
     {
@@ -42,12 +45,38 @@ impl<T> Pool<T> {
 
         // The permit is restored by `put` when the object is returned to the pool.
         permit.forget();
-        item
+        Pooled {
+            item: Some(item),
+            pool: self.clone(),
+        }
     }
 
-    pub fn put(&self, item: T) {
+    fn put(&self, item: T) {
         self.items.lock().expect("object pool lock poisoned").push(item);
         self.permits.add_permits(1);
+    }
+}
+
+/// An object taken from a [`Pool`]. It goes back into the pool when dropped.
+pub struct Pooled<T> {
+    // Only `None` while dropping, when the object moves back into the pool.
+    item: Option<T>,
+    pool: Arc<Pool<T>>,
+}
+
+impl<T> Deref for Pooled<T> {
+    type Target = T;
+
+    fn deref(&self) -> &T {
+        self.item.as_ref().expect("pooled object is only taken out on drop")
+    }
+}
+
+impl<T> Drop for Pooled<T> {
+    fn drop(&mut self) {
+        if let Some(item) = self.item.take() {
+            self.pool.put(item);
+        }
     }
 }
 
@@ -63,13 +92,14 @@ mod test {
     #[tokio::test]
     async fn reuses_returned_objects() {
         let created = AtomicUsize::new(0);
-        let pool = Pool::new(5);
+        let pool = Arc::new(Pool::new(5));
 
         let first = pool.take_or_create(|| created.fetch_add(1, Ordering::SeqCst)).await;
-        pool.put(first);
+        let first_id = *first;
+        drop(first);
         let second = pool.take_or_create(|| created.fetch_add(1, Ordering::SeqCst)).await;
 
-        assert_eq!(first, second);
+        assert_eq!(first_id, *second);
         assert_eq!(created.load(Ordering::SeqCst), 1);
     }
 
@@ -89,8 +119,8 @@ mod test {
 
         // The waiter cannot obtain an object until the first one is returned.
         assert!(!waiter.is_finished());
-        pool.put(taken);
-        assert_eq!(waiter.await.unwrap(), 1);
+        drop(taken);
+        assert_eq!(*waiter.await.unwrap(), 1);
     }
 
     #[tokio::test]
@@ -104,17 +134,16 @@ mod test {
         assert!(panicking.await.is_err());
 
         // The failed creation attempt must not consume the pool's only permit.
-        assert_eq!(pool.take_or_create(|| 42).await, 42);
+        assert_eq!(*pool.take_or_create(|| 42).await, 42);
     }
 
     // The pool must not depend on the tokio runtime (see module documentation).
     #[test]
     fn works_without_tokio_runtime() {
         smol::block_on(async {
-            let pool = Pool::new(1);
-            let value = pool.take_or_create(|| 42).await;
-            pool.put(value);
-            assert_eq!(pool.take_or_create(|| 0).await, 42);
+            let pool = Arc::new(Pool::new(1));
+            drop(pool.take_or_create(|| 42).await);
+            assert_eq!(*pool.take_or_create(|| 0).await, 42);
         });
     }
 }
