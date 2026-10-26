@@ -6,7 +6,7 @@ use tracing_subscriber::EnvFilter;
 
 /// Holds command line parameters provided by the user.
 #[derive(Parser, Debug)]
-#[clap(version = "0.6", author = "Alexander Liesenfeld <alexander.liesenfeld@outlook.com>")]
+#[clap(version, author = "Alexander Liesenfeld <alexander.liesenfeld@outlook.com>")]
 struct ExecutionParameters {
     #[clap(short, long, env = "HTTPMOCK_PORT", default_value = "5050")]
     pub port: u16,
@@ -61,14 +61,14 @@ async fn main() {
 #[cfg(not(target_os = "windows"))]
 async fn shutdown_signal() {
     let mut hangup_stream = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::hangup())
-        .expect("Cannot install SIGINT signal handler");
+        .expect("Cannot install SIGHUP signal handler");
     let mut sigint_stream = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::interrupt())
         .expect("Cannot install SIGINT signal handler");
     let mut sigterm_stream = tokio::signal::unix::signal(tokio::signal::unix::SignalKind::terminate())
-        .expect("Cannot install SIGINT signal handler");
+        .expect("Cannot install SIGTERM signal handler");
 
     tokio::select! {
-        _val = hangup_stream.recv() => tracing::trace!("Received SIGINT"),
+        _val = hangup_stream.recv() => tracing::trace!("Received SIGHUP"),
         _val = sigint_stream.recv() => tracing::trace!("Received SIGINT"),
         _val = sigterm_stream.recv() => tracing::trace!("Received SIGTERM"),
     }

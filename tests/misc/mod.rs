@@ -7,3 +7,5 @@ mod loop_test;
 #[cfg(feature = "record")]
 mod recording_save_test;
 mod runtimes_test;
+#[cfg(feature = "standalone")]
+mod standalone_binary_test;
