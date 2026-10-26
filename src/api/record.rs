@@ -145,7 +145,8 @@ impl<'a> Recording<'a> {
 
         // Saves within the same second would get the same name, so add a
         // counter instead of overwriting an existing recording.
-        for n in 0.. {
+        let mut n = 0;
+        loop {
             let filename = match n {
                 0 => format!("{}_{}.yaml", scenario, timestamp),
                 n => format!("{}_{}_{}.yaml", scenario, timestamp, n),
@@ -155,13 +156,11 @@ impl<'a> Recording<'a> {
                     if e.downcast_ref::<std::io::Error>()
                         .is_some_and(|e| e.kind() == ErrorKind::AlreadyExists) =>
                 {
-                    continue;
+                    n += 1;
                 }
                 result => return result,
             }
         }
-
-        unreachable!()
     }
 
     /// Synchronously saves the recording to the default directory (`target/httpmock/recordings`) with the scenario name.
