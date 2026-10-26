@@ -262,7 +262,7 @@ impl HttpMockServer {
         let access_log_req_data = self
             .config
             .print_access_log
-            .then_some((req.method().clone(), req.uri().clone()));
+            .then(|| (req.method().clone(), req.uri().clone()));
 
         let resp = match self.handle(req).await {
             Ok(finished) => to_service_response(finished.into_response()),
