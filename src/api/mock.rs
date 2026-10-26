@@ -318,8 +318,6 @@ impl<'a> Mock<'a> {
         let active_mock = self
             .server
             .server_adapter
-            .as_ref()
-            .unwrap()
             .fetch_mock(self.id)
             .await
             .expect("cannot deserialize mock server response");
@@ -351,8 +349,6 @@ impl<'a> Mock<'a> {
         let closest_match = self
             .server
             .server_adapter
-            .as_ref()
-            .unwrap()
             .verify(&active_mock.definition.request)
             .await
             .expect("Cannot contact mock server");
@@ -506,8 +502,6 @@ impl<'a> Mock<'a> {
         let response = self
             .server
             .server_adapter
-            .as_ref()
-            .unwrap()
             .fetch_mock(self.id)
             .await
             .expect("cannot deserialize mock server response");
@@ -601,8 +595,6 @@ impl<'a> Mock<'a> {
     pub async fn delete_async(&self) {
         self.server
             .server_adapter
-            .as_ref()
-            .unwrap()
             .delete_mock(self.id)
             .await
             .expect("could not delete mock from server");
@@ -708,8 +700,6 @@ impl<'a> Mock<'a> {
     pub async fn up_to_n_times_async(&self, n: usize) {
         self.server
             .server_adapter
-            .as_ref()
-            .unwrap()
             .set_up_to_n_times(self.id, n)
             .await
             .expect("could not set the up_to_n_times limit on mock");
@@ -736,7 +726,7 @@ impl<'a> Mock<'a> {
     /// // Output will be something like "127.0.0.1:12345", where 12345 is the port the server is running on.
     /// ```
     pub fn server_address(&self) -> &SocketAddr {
-        self.server.server_adapter.as_ref().unwrap().address()
+        self.server.server_adapter.address()
     }
 }
 
@@ -757,8 +747,6 @@ impl<'a> MockSet<'a> {
         for id in &self.ids {
             self.server
                 .server_adapter
-                .as_ref()
-                .unwrap()
                 .delete_mock(*id)
                 .await
                 .expect("could not delete mock from server");

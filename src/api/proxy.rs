@@ -43,8 +43,6 @@ impl<'a> ForwardingRule<'a> {
     pub async fn delete_async(&self) {
         self.server
             .server_adapter
-            .as_ref()
-            .unwrap()
             .delete_forwarding_rule(self.id)
             .await
             .expect("could not delete mock from server");
@@ -91,8 +89,6 @@ impl<'a> ProxyRule<'a> {
     pub async fn delete_async(&self) {
         self.server
             .server_adapter
-            .as_ref()
-            .unwrap()
             .delete_proxy_rule(self.id)
             .await
             .expect("could not delete mock from server");

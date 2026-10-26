@@ -62,8 +62,6 @@ impl<'a> Recording<'a> {
     pub async fn delete_async(&self) {
         self.server
             .server_adapter
-            .as_ref()
-            .unwrap()
             .delete_recording(self.id)
             .await
             .expect("could not delete mock from server");
@@ -90,13 +88,7 @@ impl<'a> Recording<'a> {
     /// # Errors
     /// Errors if the recording cannot be created due to serialization issues or issues with connecting to a remote server.
     pub async fn export_async(&self) -> Result<Option<Bytes>, Box<dyn std::error::Error>> {
-        let rec = self
-            .server
-            .server_adapter
-            .as_ref()
-            .unwrap()
-            .export_recording(self.id)
-            .await?;
+        let rec = self.server.server_adapter.export_recording(self.id).await?;
         Ok(rec)
     }
 

@@ -31,7 +31,7 @@ use crate::{
     },
     common::{
         data::{MockDefinition, MockServerHttpResponse, RequestRequirements},
-        pool::Pool,
+        pool::{Pool, Pooled},
         runtime,
         util::{read_env, take_from_mutex, with_retry},
     },
@@ -53,9 +53,11 @@ use crate::{
 /// - Define corresponding HTTP responses including status codes, headers, and body data.
 /// - Monitor and verify that the expected requests are made by the client under test.
 /// - Simulate various network conditions and server responses, including errors and latencies.
+///
+/// A dropped `MockServer` goes back into a pool. It is not cleaned right away, but reset when
+/// it is started again for another test.
 pub struct MockServer {
-    pub(in crate::api) server_adapter: Option<ServerAdapter>,
-    pool: Arc<Pool<ServerAdapter>>,
+    pub(in crate::api) server_adapter: Pooled<ServerAdapter>,
     // Keeps `MockServer` (and `Mock` etc., which borrow it) `!UnwindSafe` and `!RefUnwindSafe`
     // in every feature set, as it was while the adapter was a `dyn` trait object. Without it,
     // these auto traits would depend on whether the `remote` adapter variant is compiled in.
@@ -63,10 +65,9 @@ pub struct MockServer {
 }
 
 impl MockServer {
-    async fn from(server_adapter: ServerAdapter, pool: Arc<Pool<ServerAdapter>>) -> Self {
+    async fn from(server_adapter: Pooled<ServerAdapter>) -> Self {
         let server = Self {
-            server_adapter: Some(server_adapter),
-            pool,
+            server_adapter,
             _not_unwind_safe: PhantomData,
         };
 
@@ -97,7 +98,7 @@ impl MockServer {
         let adapter = LOCAL_SERVER_POOL_REF
             .take_or_create(LOCAL_SERVER_ADAPTER_GENERATOR)
             .await;
-        Self::from(adapter, LOCAL_SERVER_POOL_REF.clone()).await
+        Self::from(adapter).await
     }
 
     /// Starts a new `MockServer` synchronously.
@@ -136,7 +137,7 @@ impl MockServer {
     /// assert_eq!(host, "127.0.0.1");
     /// ```
     pub fn host(&self) -> String {
-        self.server_adapter.as_ref().unwrap().host()
+        self.server_adapter.host()
     }
 
     /// Returns the TCP port that the mock server is listening on.
@@ -154,7 +155,7 @@ impl MockServer {
     /// assert!(port > 0);
     /// ```
     pub fn port(&self) -> u16 {
-        self.server_adapter.as_ref().unwrap().port()
+        self.server_adapter.port()
     }
 
     /// Builds the address for a specific path on the mock server.
@@ -176,7 +177,7 @@ impl MockServer {
     /// assert_eq!(expected_addr_str, addr.to_string());
     /// ```
     pub fn address(&self) -> &SocketAddr {
-        self.server_adapter.as_ref().unwrap().address()
+        self.server_adapter.address()
     }
 
     /// Builds the URL for a specific path on the mock server.
@@ -345,7 +346,7 @@ impl MockServer {
         );
 
         let up_to_n_times = take_from_mutex(&up_to_n_times);
-        let adapter = self.server_adapter.as_ref().unwrap();
+        let adapter = &self.server_adapter;
 
         let response = adapter
             .create_mock(&MockDefinition {
@@ -422,11 +423,9 @@ impl MockServer {
     /// });
     /// ```
     pub async fn reset_async(&self) {
-        if let Some(server_adapter) = &self.server_adapter {
-            with_retry(3, || server_adapter.reset())
-                .await
-                .expect("Cannot reset mock server (task: delete mocks).");
-        }
+        with_retry(3, || self.server_adapter.reset())
+            .await
+            .expect("Cannot reset mock server (task: delete mocks).");
     }
 }
 
@@ -456,7 +455,7 @@ impl MockServer {
         let adapter = REMOTE_SERVER_POOL_REF
             .take_or_create(|| ServerAdapter::Remote(RemoteMockServerAdapter::new(addr, REMOTE_SERVER_CLIENT.clone())))
             .await;
-        Self::from(adapter, REMOTE_SERVER_POOL_REF.clone()).await
+        Self::from(adapter).await
     }
 
     /// Synchronously connects to a remote mock server running in standalone mode.
@@ -652,8 +651,6 @@ impl MockServer {
 
         let response = self
             .server_adapter
-            .as_ref()
-            .unwrap()
             .create_forwarding_rule(ForwardingRuleConfig {
                 target_base_url: target_base_url.into(),
                 request_requirements: take_from_mutex(&req),
@@ -806,8 +803,6 @@ impl MockServer {
 
         let response = self
             .server_adapter
-            .as_ref()
-            .unwrap()
             .create_proxy_rule(ProxyRuleConfig {
                 request_requirements: take_from_mutex(&req),
                 request_header: take_from_mutex(&headers),
@@ -1004,8 +999,6 @@ impl MockServer {
 
         let response = self
             .server_adapter
-            .as_ref()
-            .unwrap()
             .create_recording(take_from_mutex(&config))
             .await
             .expect("Cannot deserialize mock server response");
@@ -1299,8 +1292,6 @@ impl MockServer {
     pub async fn playback_from_yaml_async<AsStrRef: AsRef<str>>(&self, content: AsStrRef) -> MockSet<'_> {
         let response = self
             .server_adapter
-            .as_ref()
-            .unwrap()
             .create_mocks_from_recording(content.as_ref())
             .await
             .expect("Cannot deserialize mock server response");
@@ -1309,26 +1300,6 @@ impl MockServer {
             ids: response,
             server: self,
         }
-    }
-}
-
-/// Implements the `Drop` trait for `MockServer`.
-/// When a `MockServer` instance goes out of scope, this method is called automatically to manage resources.
-impl Drop for MockServer {
-    /// This method will returns the mock server to the pool of mock servers. The mock server is not cleaned immediately.
-    /// Instead, it will be reset and cleaned when `MockServer::start()` is called again, preparing it for reuse by another test.
-    ///
-    /// # Important Considerations
-    ///
-    /// Users should be aware that when a `MockServer` instance is dropped, the server is not immediately cleaned.
-    /// The actual reset and cleaning of the server happen when `MockServer::start()` is called again, making it ready for reuse.
-    ///
-    /// # Feature
-    ///
-    /// This behavior is part of the `MockServer` struct and does not require any additional features to be enabled.
-    fn drop(&mut self) {
-        let adapter = self.server_adapter.take().unwrap();
-        self.pool.put(adapter);
     }
 }
 
