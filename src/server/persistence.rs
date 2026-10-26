@@ -64,6 +64,10 @@ fn read_static_mocks(path: PathBuf) -> Result<Vec<MockDefinition>, Error> {
                 source,
             })?
             .path();
+        // Subfolders can hold the files that `body_from_file` refers to.
+        if !file_path.is_file() {
+            continue;
+        }
         if let Some(ext) = file_path.extension()
             && !"yaml".eq(ext)
             && !"yml".eq(ext)
@@ -251,6 +255,23 @@ then:
             Err(error) => error,
         };
         assert!(error.to_string().contains("static mock directory"));
+    }
+
+    #[test]
+    fn subfolders_of_the_static_mock_directory_are_not_read_as_mocks() {
+        let directory = TestDirectory::new();
+        fs::create_dir(directory.path().join("bodies")).unwrap();
+        fs::write(directory.path().join("bodies").join("payload.json"), b"{}").unwrap();
+        fs::write(
+            directory.path().join("mock.yaml"),
+            mock_yaml("body_from_file: bodies/payload.json"),
+        )
+        .unwrap();
+
+        let state = state::HttpMockStateManager::default();
+        read_static_mock_definitions(directory.path().to_path_buf(), &state).unwrap();
+        let body = state.read_mock(0).unwrap().unwrap().definition.response.body.unwrap();
+        assert_eq!(body.as_ref(), b"{}");
     }
 
     #[test]
