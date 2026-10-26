@@ -108,7 +108,7 @@ impl HttpMockStateManager {
         &self,
         is_proxied: bool,
         time_taken: Duration,
-        req: HttpMockRequest,
+        req: &HttpMockRequest,
         res: IntoResponse,
     ) -> Result<(), Error> {
         let mut state = self.state.lock().unwrap();
@@ -117,7 +117,7 @@ impl HttpMockStateManager {
             .recording
             .recordings
             .values()
-            .filter(|rec| request_matches(&req, &rec.config.request_requirements))
+            .filter(|rec| request_matches(req, &rec.config.request_requirements))
             .map(|r| r.id)
             .collect();
 
@@ -129,7 +129,7 @@ impl HttpMockStateManager {
 
         for id in recording_ids {
             let rec = state.recording.recordings.get_mut(&id).unwrap();
-            let definition = build_mock_definition(is_proxied, time_taken, &req, &res, &rec.config)?;
+            let definition = build_mock_definition(is_proxied, time_taken, req, &res, &rec.config)?;
             rec.mocks.push(definition);
         }
 

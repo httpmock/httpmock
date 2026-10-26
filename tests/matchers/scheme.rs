@@ -51,7 +51,7 @@ fn scheme_failure() {
 
             m.assert()
         },
-        vec![
+        &[
             "Scheme Mismatch",
             "Expected",
             "scheme equals",
@@ -111,7 +111,7 @@ fn scheme_not_failure() {
 
             m.assert()
         },
-        vec![
+        &[
             "Scheme Mismatch",
             "Expected",
             "scheme not equal to",

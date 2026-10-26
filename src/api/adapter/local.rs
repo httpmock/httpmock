@@ -57,11 +57,7 @@ impl MockServerAdapter for LocalMockServerAdapter {
     }
 
     async fn fetch_mock(&self, mock_id: usize) -> Result<ActiveMock, ServerAdapterError> {
-        let mock = self
-            .state
-            .read_mock(mock_id)
-            .map_err(|e| UpstreamError(e.to_string()))?
-            .ok_or(MockNotFound(mock_id))?;
+        let mock = self.state.read_mock(mock_id).ok_or(MockNotFound(mock_id))?;
         Ok(mock)
     }
 
@@ -84,11 +80,7 @@ impl MockServerAdapter for LocalMockServerAdapter {
     }
 
     async fn verify(&self, mock_rr: &RequestRequirements) -> Result<Option<ClosestMatch>, ServerAdapterError> {
-        let closest_match = self
-            .state
-            .verify(mock_rr)
-            .map_err(|e| UpstreamError(format!("Cannot verify mock: {e:?}")))?;
-        Ok(closest_match)
+        Ok(self.state.verify(mock_rr))
     }
 
     #[cfg(feature = "proxy")]

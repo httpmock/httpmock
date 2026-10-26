@@ -272,7 +272,7 @@ impl Handler {
     ) -> Result<Finished, Error> {
         #[cfg(feature = "record")]
         self.state
-            .record(pending.is_proxied, elapsed, pending.request, &response)?;
+            .record(pending.is_proxied, elapsed, &pending.request, &response)?;
         #[cfg(not(feature = "record"))]
         let _ = (pending, elapsed);
         Ok(Finished(response))
@@ -294,13 +294,13 @@ impl Handler {
     }
 
     fn handle_read_mock(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let active_mock = self.state.read_mock(param("id", params)?)?;
+        let active_mock = self.state.read_mock(param("id", &params)?);
         let status_code = active_mock.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, active_mock)
     }
 
     fn handle_delete_mock(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_mock(param("id", params)?)?;
+        let deleted = self.state.delete_mock(param("id", &params)?)?;
         let status_code = if deleted {
             StatusCode::NO_CONTENT
         } else {
@@ -313,7 +313,7 @@ impl Handler {
         let config: UpToNTimesConfig = parse_json_body(req)?;
         let updated = self
             .state
-            .set_up_to_n_times(param("id", params)?, config.up_to_n_times)?;
+            .set_up_to_n_times(param("id", &params)?, config.up_to_n_times)?;
         let status_code = if updated {
             StatusCode::NO_CONTENT
         } else {
@@ -334,7 +334,7 @@ impl Handler {
 
     fn handle_verify(&self, req: &Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let requirements: RequestRequirements = parse_json_body(req)?;
-        let closest_match = self.state.verify(&requirements)?;
+        let closest_match = self.state.verify(&requirements);
         let status_code = closest_match.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, closest_match)
     }
@@ -346,9 +346,9 @@ impl Handler {
 
         #[cfg(feature = "proxy")]
         let reply = if let Some(rule) = self.state.find_forward_rule(&request) {
-            Reply::Forward(forward_request(rule, req)?)
+            Reply::Forward(forward_request(&rule, req)?)
         } else if let Some(rule) = self.state.find_proxy_rule(&request) {
-            Reply::Proxy(proxy_request(rule, req)?)
+            Reply::Proxy(proxy_request(&rule, req)?)
         } else {
             self.mock_reply(&request)?
         };
@@ -368,7 +368,7 @@ impl Handler {
 
     /// Matches the request against the mocks and builds the reply, a 404 when none matched.
     fn mock_reply(&self, req: &HttpMockRequest) -> Result<Reply, Error> {
-        let Some(definition) = self.state.serve_mock(req)? else {
+        let Some(definition) = self.state.serve_mock(req) else {
             return Ok(Reply::Mock {
                 delay: None,
                 response: response(
@@ -405,7 +405,7 @@ impl Handler {
     }
 
     fn handle_delete_forwarding_rule(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_forwarding_rule(param("id", params)?);
+        let deleted = self.state.delete_forwarding_rule(param("id", &params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
         } else {
@@ -426,7 +426,7 @@ impl Handler {
     }
 
     fn handle_delete_proxy_rule(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_proxy_rule(param("id", params)?);
+        let deleted = self.state.delete_proxy_rule(param("id", &params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
         } else {
@@ -443,7 +443,7 @@ impl Handler {
 
 /// Rewrites a request for the target of the forwarding rule that matched it.
 #[cfg(feature = "proxy")]
-fn forward_request(rule: ActiveForwardingRule, req: Request<Bytes>) -> Result<Request<Bytes>, Error> {
+fn forward_request(rule: &ActiveForwardingRule, req: Request<Bytes>) -> Result<Request<Bytes>, Error> {
     let to_base_uri: Uri = rule.config.target_base_url.parse().unwrap();
 
     let (mut req_parts, body) = req.into_parts();
@@ -475,7 +475,7 @@ fn forward_request(rule: ActiveForwardingRule, req: Request<Bytes>) -> Result<Re
 
 /// Rewrites a request for its own origin, as a proxy rule matched it.
 #[cfg(feature = "proxy")]
-fn proxy_request(rule: ActiveProxyRule, mut req: Request<Bytes>) -> Result<Request<Bytes>, Error> {
+fn proxy_request(rule: &ActiveProxyRule, mut req: Request<Bytes>) -> Result<Request<Bytes>, Error> {
     if !rule.config.request_header.is_empty() {
         let headers = req.headers_mut();
 
@@ -504,7 +504,7 @@ impl Handler {
     }
 
     fn handle_delete_recording(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_recording(param("id", params)?);
+        let deleted = self.state.delete_recording(param("id", &params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
         } else {
@@ -519,7 +519,7 @@ impl Handler {
     }
 
     fn handle_read_recording(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let rec = self.state.export_recording(param("id", params)?)?;
+        let rec = self.state.export_recording(param("id", &params)?)?;
         let status_code = rec.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, rec)
     }
@@ -533,7 +533,7 @@ impl Handler {
     }
 }
 
-fn param<T>(name: &str, tree_path: Path<'_, '_>) -> Result<T, Error>
+fn param<T>(name: &str, tree_path: &Path<'_, '_>) -> Result<T, Error>
 where
     T: FromStr,
     T::Err: Debug + Display,
@@ -671,16 +671,12 @@ mod tests {
 
         handler.handle(request("GET", "http://localhost/hello")).unwrap();
 
-        assert_eq!(handler.state.read_mock(id).unwrap().unwrap().call_counter, 1);
+        assert_eq!(handler.state.read_mock(id).unwrap().call_counter, 1);
         let unmatched = RequestRequirements {
             path: Some("/other".to_string()),
             ..Default::default()
         };
-        let closest = handler
-            .state
-            .verify(&unmatched)
-            .unwrap()
-            .expect("the history holds the request");
+        let closest = handler.state.verify(&unmatched).expect("the history holds the request");
         assert_eq!(closest.request.uri().path(), "/hello");
     }
 

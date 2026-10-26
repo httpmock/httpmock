@@ -38,29 +38,29 @@ pub enum Error {
 }
 
 pub fn read_static_mock_definitions(path_opt: PathBuf, state: &state::HttpMockStateManager) -> Result<(), Error> {
-    for def in read_static_mocks(path_opt)? {
+    for def in read_static_mocks(&path_opt)? {
         state.add_static_mock(def)?;
     }
 
     Ok(())
 }
 
-fn read_static_mocks(path: PathBuf) -> Result<Vec<MockDefinition>, Error> {
+fn read_static_mocks(path: &Path) -> Result<Vec<MockDefinition>, Error> {
     let mut definitions = Vec::new();
 
-    let mock_directory = canonicalize(&path).map_err(|source| Error::DirectoryRead {
-        path: path.clone(),
+    let mock_directory = canonicalize(path).map_err(|source| Error::DirectoryRead {
+        path: path.to_path_buf(),
         source,
     })?;
 
     let paths = read_dir(&mock_directory).map_err(|source| Error::DirectoryRead {
-        path: path.clone(),
+        path: path.to_path_buf(),
         source,
     })?;
     for file_path in paths {
         let file_path = file_path
             .map_err(|source| Error::DirectoryRead {
-                path: path.clone(),
+                path: path.to_path_buf(),
                 source,
             })?
             .path();
@@ -269,7 +269,7 @@ then:
 
         let state = state::HttpMockStateManager::default();
         read_static_mock_definitions(directory.path().to_path_buf(), &state).unwrap();
-        let body = state.read_mock(0).unwrap().unwrap().definition.response.body.unwrap();
+        let body = state.read_mock(0).unwrap().definition.response.body.unwrap();
         assert_eq!(body.as_ref(), b"{}");
     }
 
@@ -285,7 +285,7 @@ then:
 
         let state = state::HttpMockStateManager::default();
         read_static_mock_definitions(mocks.clone(), &state).unwrap();
-        let body = state.read_mock(0).unwrap().unwrap().definition.response.body.unwrap();
+        let body = state.read_mock(0).unwrap().definition.response.body.unwrap();
         assert_eq!(body.as_ref(), payload);
 
         fs::write(directory.path().join("outside.bin"), b"secret").unwrap();

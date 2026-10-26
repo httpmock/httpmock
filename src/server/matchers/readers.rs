@@ -605,13 +605,7 @@ pub mod request_value {
     #[cfg(feature = "cookies")]
     #[inline]
     pub fn cookies(req: &HttpMockRequest) -> Option<Vec<(String, Option<String>)>> {
-        Some(
-            req.cookies()
-                .expect("cannot parse cookies")
-                .iter()
-                .map(|(k, v)| (k.into(), Some(v.into())))
-                .collect(),
-        )
+        Some(req.cookies().iter().map(|(k, v)| (k.into(), Some(v.into()))).collect())
     }
 
     #[inline]

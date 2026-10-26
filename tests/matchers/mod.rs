@@ -12,7 +12,7 @@ mod urlencoded_body;
 
 use std::panic::{self, AssertUnwindSafe, UnwindSafe};
 
-pub fn expect_fails_with<F>(f: F, expected_texts: Vec<&str>)
+pub fn expect_fails_with<F>(f: F, expected_texts: &[&str])
 where
     F: FnOnce() + UnwindSafe,
 {
@@ -30,7 +30,7 @@ where
 
             // Check that all expected texts appear in order in the error message
             let mut start_index = 0;
-            for expected_text in &expected_texts {
+            for expected_text in expected_texts {
                 if let Some(index) = err_msg[start_index..].find(expected_text) {
                     start_index += index + expected_text.len();
                 } else {

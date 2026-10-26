@@ -263,7 +263,7 @@ impl HttpMockServer {
             .then(|| (req.method().clone(), req.uri().clone()));
 
         let resp = match self.handle(req).await {
-            Ok(finished) => to_service_response(finished.into_response()),
+            Ok(finished) => Ok(to_service_response(finished.into_response())),
             Err(err) => error_response(StatusCode::INTERNAL_SERVER_ERROR, err),
         };
 
@@ -452,9 +452,9 @@ fn error_response(
     Ok(Response::builder().status(code).body(full(err.to_string()))?)
 }
 
-fn to_service_response(response: Response<Bytes>) -> Result<Response<BoxBody<Bytes, hyper::Error>>, Error> {
+fn to_service_response(response: Response<Bytes>) -> Response<BoxBody<Bytes, hyper::Error>> {
     let (parts, body) = response.into_parts();
-    Ok(Response::from_parts(parts, full(body)))
+    Response::from_parts(parts, full(body))
 }
 
 #[cfg(feature = "http2")]

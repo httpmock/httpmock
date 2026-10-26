@@ -238,16 +238,13 @@ impl HttpMockRequest {
     }
 
     #[cfg(feature = "cookies")]
-    pub(crate) fn cookies(&self) -> Result<Vec<(String, String)>, Error> {
-        let mut result = Vec::new();
-
-        if let Some(cookie) = self.headers().typed_get::<Cookie>() {
-            for (key, value) in cookie.iter() {
-                result.push((key.to_string(), value.to_string()));
-            }
-        }
-
-        Ok(result)
+    pub(crate) fn cookies(&self) -> Vec<(String, String)> {
+        self.headers().typed_get::<Cookie>().map_or_else(Vec::new, |cookie| {
+            cookie
+                .iter()
+                .map(|(key, value)| (key.to_string(), value.to_string()))
+                .collect()
+        })
     }
 }
 
@@ -789,7 +786,7 @@ impl Debug for MockServerHttpResponse {
                     .map(|x| String::from_utf8_lossy(x.as_ref()).to_string()),
             )
             .field("delay", &self.delay)
-            .finish()
+            .finish_non_exhaustive()
     }
 }
 

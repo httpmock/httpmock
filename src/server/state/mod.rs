@@ -130,10 +130,10 @@ impl HttpMockStateManager {
         Ok(active_mock)
     }
 
-    pub(crate) fn read_mock(&self, id: usize) -> Result<Option<ActiveMock>, Error> {
+    pub(crate) fn read_mock(&self, id: usize) -> Option<ActiveMock> {
         let state = self.state.lock().unwrap();
 
-        Ok(state.mocks.get(&id).cloned())
+        state.mocks.get(&id).cloned()
     }
 
     pub(crate) fn delete_mock(&self, id: usize) -> Result<bool, Error> {
@@ -200,7 +200,7 @@ impl HttpMockStateManager {
         tracing::trace!("Deleted request history");
     }
 
-    pub(crate) fn verify(&self, requirements: &RequestRequirements) -> Result<Option<ClosestMatch>, Error> {
+    pub(crate) fn verify(&self, requirements: &RequestRequirements) -> Option<ClosestMatch> {
         let state = self.state.lock().unwrap();
 
         let non_matching_requests: Vec<&Arc<HttpMockRequest>> = state
@@ -212,22 +212,19 @@ impl HttpMockStateManager {
         let request_distances = get_distances(&non_matching_requests, requirements);
         let best_matches = get_min_distance_requests(&request_distances);
 
-        let closes_match_request_idx = match best_matches.first() {
-            None => return Ok(None),
-            Some(idx) => *idx,
-        };
+        let closes_match_request_idx = *best_matches.first()?;
 
         let req = non_matching_requests.get(closes_match_request_idx).unwrap();
         let mismatches = get_request_mismatches(req, requirements);
 
-        Ok(Some(ClosestMatch {
+        Some(ClosestMatch {
             request: HttpMockRequest::clone(req),
             request_index: closes_match_request_idx,
             mismatches,
-        }))
+        })
     }
 
-    pub(crate) fn serve_mock(&self, req: &HttpMockRequest) -> Result<Option<MockServerHttpResponse>, Error> {
+    pub(crate) fn serve_mock(&self, req: &HttpMockRequest) -> Option<MockServerHttpResponse> {
         let mut state = self.state.lock().unwrap();
 
         let req = Arc::new(req.clone());
@@ -250,12 +247,12 @@ impl HttpMockStateManager {
             let mock = state.mocks.get_mut(&found_id).unwrap();
             mock.call_counter += 1;
 
-            return Ok(Some(mock.definition.response.clone()));
+            return Some(mock.definition.response.clone());
         }
 
         tracing::debug!("Could not match any mock to the following request: {:#?}", req);
 
-        Ok(None)
+        None
     }
 }
 
@@ -345,9 +342,7 @@ mod tests {
 
         // Serve more requests than the configured limit.
         for _ in 0..10 {
-            manager
-                .serve_mock(&dummy_request())
-                .expect("serving a request should not fail");
+            manager.serve_mock(&dummy_request());
         }
 
         let history_len = manager.state.lock().unwrap().history.len();
@@ -375,12 +370,10 @@ mod tests {
         let manager = HttpMockStateManager::default();
         let id = manager.add_mock(limited_mock(Some(2))).unwrap().id;
 
-        let served: Vec<bool> = (0..3)
-            .map(|_| manager.serve_mock(&dummy_request()).unwrap().is_some())
-            .collect();
+        let served: Vec<bool> = (0..3).map(|_| manager.serve_mock(&dummy_request()).is_some()).collect();
 
         assert_eq!(served, vec![true, true, false]);
-        assert_eq!(manager.read_mock(id).unwrap().unwrap().call_counter, 2);
+        assert_eq!(manager.read_mock(id).unwrap().call_counter, 2);
     }
 
     #[test]
@@ -388,29 +381,27 @@ mod tests {
         let manager = HttpMockStateManager::default();
         let id = manager.add_mock(limited_mock(None)).unwrap().id;
         for _ in 0..3 {
-            assert!(manager.serve_mock(&dummy_request()).unwrap().is_some());
+            assert!(manager.serve_mock(&dummy_request()).is_some());
         }
 
         assert!(manager.set_up_to_n_times(id, 2).unwrap());
 
-        assert!(manager.serve_mock(&dummy_request()).unwrap().is_none());
-        assert_eq!(manager.read_mock(id).unwrap().unwrap().call_counter, 3);
+        assert!(manager.serve_mock(&dummy_request()).is_none());
+        assert_eq!(manager.read_mock(id).unwrap().call_counter, 3);
     }
 
     #[test]
     fn raising_up_to_n_times_lets_an_exhausted_mock_match_again() {
         let manager = HttpMockStateManager::default();
         let id = manager.add_mock(limited_mock(Some(1))).unwrap().id;
-        assert!(manager.serve_mock(&dummy_request()).unwrap().is_some());
-        assert!(manager.serve_mock(&dummy_request()).unwrap().is_none());
+        assert!(manager.serve_mock(&dummy_request()).is_some());
+        assert!(manager.serve_mock(&dummy_request()).is_none());
 
         assert!(manager.set_up_to_n_times(id, 2).unwrap());
 
-        let served: Vec<bool> = (0..2)
-            .map(|_| manager.serve_mock(&dummy_request()).unwrap().is_some())
-            .collect();
+        let served: Vec<bool> = (0..2).map(|_| manager.serve_mock(&dummy_request()).is_some()).collect();
         assert_eq!(served, vec![true, false]);
-        assert_eq!(manager.read_mock(id).unwrap().unwrap().call_counter, 2);
+        assert_eq!(manager.read_mock(id).unwrap().call_counter, 2);
     }
 
     #[test]
@@ -432,13 +423,13 @@ mod tests {
     fn reset_lets_exhausted_static_mocks_match_again() {
         let manager = HttpMockStateManager::default();
         let id = manager.add_static_mock(limited_mock(Some(1))).unwrap().id;
-        assert!(manager.serve_mock(&dummy_request()).unwrap().is_some());
-        assert!(manager.serve_mock(&dummy_request()).unwrap().is_none());
+        assert!(manager.serve_mock(&dummy_request()).is_some());
+        assert!(manager.serve_mock(&dummy_request()).is_none());
 
         manager.reset();
 
-        assert_eq!(manager.read_mock(id).unwrap().unwrap().call_counter, 0);
-        assert!(manager.serve_mock(&dummy_request()).unwrap().is_some());
+        assert_eq!(manager.read_mock(id).unwrap().call_counter, 0);
+        assert!(manager.serve_mock(&dummy_request()).is_some());
     }
 
     #[test]
@@ -452,16 +443,16 @@ mod tests {
 
         let id = manager.add_mock(limited_mock(None)).unwrap().id;
         assert!(matches!(manager.set_up_to_n_times(id, 0), Err(ValidationError(_))));
-        assert!(manager.read_mock(id).unwrap().unwrap().up_to_n_times.is_none());
+        assert!(manager.read_mock(id).unwrap().up_to_n_times.is_none());
     }
 
     #[test]
     fn exhausted_mock_round_trips_through_serialization() {
         let manager = HttpMockStateManager::default();
         let id = manager.add_mock(limited_mock(Some(1))).unwrap().id;
-        assert!(manager.serve_mock(&dummy_request()).unwrap().is_some());
+        assert!(manager.serve_mock(&dummy_request()).is_some());
 
-        let json = serde_json::to_string(&manager.read_mock(id).unwrap().unwrap()).unwrap();
+        let json = serde_json::to_string(&manager.read_mock(id).unwrap()).unwrap();
         let mock: ActiveMock = serde_json::from_str(&json).unwrap();
 
         assert_eq!(mock.up_to_n_times.map(NonZero::get), Some(1));

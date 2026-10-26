@@ -39,7 +39,7 @@ fn host_failure() {
 
             m.assert()
         },
-        vec!["Port Mismatch", "Expected port equals", "0", "Received"],
+        &["Port Mismatch", "Expected port equals", "0", "Received"],
     )
 }
 
@@ -78,7 +78,7 @@ fn host_not_failure() {
 
             m.assert()
         },
-        vec![
+        &[
             "Host Mismatch",
             "Expected host not equal to",
             "127.0.0.1",
@@ -102,7 +102,7 @@ fn host_not_failure() {
 
             m.assert()
         },
-        vec![
+        &[
             "Host Mismatch",
             "Expected host not equal to",
             "localhost",

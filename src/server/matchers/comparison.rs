@@ -1,5 +1,3 @@
-use std::ops::Deref;
-
 use regex::RegexBuilder;
 
 use crate::common::{data::HttpMockRegex, util::HttpMockBytes};
@@ -487,21 +485,18 @@ mod string_includes_tests {
     }
 }
 
-pub fn distance_for_substring<T>(
+pub fn distance_for_substring(
     case_sensitive: bool,
     negated: bool,
-    mock_value: Option<T>,
-    req_value: Option<T>,
-) -> usize
-where
-    T: Deref<Target = str> + AsRef<str>,
-{
+    mock_value: Option<&str>,
+    req_value: Option<&str>,
+) -> usize {
     if mock_value.is_none() {
         return 0;
     }
 
-    let mock_slice = mock_value.as_deref().unwrap_or("");
-    let req_slice = req_value.as_deref().unwrap_or("");
+    let mock_slice = mock_value.unwrap_or("");
+    let req_slice = req_value.unwrap_or("");
 
     let lcs_length = longest_common_substring(case_sensitive, mock_slice, req_slice);
 
