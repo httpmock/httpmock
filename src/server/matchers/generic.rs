@@ -48,7 +48,7 @@ where
     fn find_unmatched<'a>(&self, req_value: &Option<T>, mock_values: &Option<Vec<&'a S>>) -> Vec<&'a S> {
         let mock_values = match mock_values {
             None => return Vec::new(),
-            Some(mv) => mv.to_vec(),
+            Some(mv) => mv.clone(),
         };
 
         mock_values
@@ -104,8 +104,8 @@ where
                     matcher_method: self.matcher_method.to_string(),
                     comparison: Some(SingleValueComparison {
                         operator: self.comparator.name().to_string(),
-                        expected: mock_value.to_owned(),
-                        actual: req_value.to_owned(),
+                        expected: mock_value.clone(),
+                        actual: req_value.clone(),
                     }),
                     key_value_comparison: None,
                     function_comparison: None,
@@ -513,13 +513,10 @@ where
     fn get_unmatched(&self, req_value: &Option<&T>, mock_values: &Option<Vec<&S>>) -> Vec<usize> {
         let mock_values = match mock_values {
             None => return Vec::new(),
-            Some(mv) => mv.to_vec(),
+            Some(mv) => mv.clone(),
         };
-        let req_value = match req_value {
-            None => {
-                return mock_values.into_iter().enumerate().map(|(idx, _)| idx).collect();
-            }
-            Some(rv) => rv,
+        let Some(req_value) = req_value else {
+            return mock_values.into_iter().enumerate().map(|(idx, _)| idx).collect();
         };
         mock_values
             .into_iter()

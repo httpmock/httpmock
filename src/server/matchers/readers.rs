@@ -452,12 +452,12 @@ pub mod expectations {
     }
 
     #[inline]
-    pub fn json_body_includes(mock: &RequestRequirements) -> Option<Vec<&serde_json::Value>> {
+    pub fn json_body_includes(mock: &RequestRequirements) -> Option<Vec<&Value>> {
         mock.json_body_includes.as_ref().map(|b| b.iter().collect())
     }
 
     #[inline]
-    pub fn json_body_excludes(mock: &RequestRequirements) -> Option<Vec<&serde_json::Value>> {
+    pub fn json_body_excludes(mock: &RequestRequirements) -> Option<Vec<&Value>> {
         mock.json_body_excludes.as_ref().map(|b| b.iter().collect())
     }
 

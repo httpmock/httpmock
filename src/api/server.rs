@@ -497,7 +497,7 @@ impl MockServer {
         let port = read_env("HTTPMOCK_PORT", "5050")
             .parse::<u16>()
             .expect("Cannot parse environment variable HTTPMOCK_PORT to an integer");
-        Self::connect_async(&format!("{}:{}", host, port)).await
+        Self::connect_async(&format!("{host}:{port}")).await
     }
 
     /// Synchronously connects to a remote mock server running in standalone mode

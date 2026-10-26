@@ -140,8 +140,8 @@ impl<'a> Recording<'a> {
         let mut n = 0;
         loop {
             let filename = match n {
-                0 => format!("{}_{}.yaml", scenario, timestamp),
-                n => format!("{}_{}_{}.yaml", scenario, timestamp, n),
+                0 => format!("{scenario}_{timestamp}.yaml"),
+                n => format!("{scenario}_{timestamp}_{n}.yaml"),
             };
             match write_file(dir.join(filename), &bytes).await {
                 Err(e)

@@ -25,10 +25,7 @@ where
             } else if let Some(err_msg) = err.downcast_ref::<&str>() {
                 err_msg
             } else {
-                panic!(
-                    "Expected error message containing:\n{:?}\nBut got a different type of panic.",
-                    expected_texts
-                );
+                panic!("Expected error message containing:\n{expected_texts:?}\nBut got a different type of panic.");
             };
 
             // Check that all expected texts appear in order in the error message
@@ -37,23 +34,17 @@ where
                 if let Some(index) = err_msg[start_index..].find(expected_text) {
                     start_index += index + expected_text.len();
                 } else {
-                    panic!(
-                        "Expected error message to contain in order:\n{:?}\nBut got:\n{}",
-                        expected_texts, err_msg
-                    );
+                    panic!("Expected error message to contain in order:\n{expected_texts:?}\nBut got:\n{err_msg}");
                 }
             }
         }
-        _ => panic!(
-            "Expected panic with error message containing in order:\n{:?}",
-            expected_texts
-        ),
+        _ => panic!("Expected panic with error message containing in order:\n{expected_texts:?}"),
     }
 }
 
 pub fn expect_fails_with2<F, V, S>(expected_texts: V, f: F)
 where
-    F: FnOnce() + panic::UnwindSafe,
+    F: FnOnce() + UnwindSafe,
     V: Into<Vec<S>>,
     S: ToString,
 {
@@ -78,10 +69,7 @@ where
             } else if let Some(err_msg) = err.downcast_ref::<&str>() {
                 err_msg
             } else {
-                panic!(
-                    "Expected error message containing:\n{:?}\nBut got a different type of panic.",
-                    expected_texts
-                );
+                panic!("Expected error message containing:\n{expected_texts:?}\nBut got a different type of panic.");
             };
 
             // Check that all expected texts appear in order in the error message
@@ -90,17 +78,11 @@ where
                 if let Some(index) = err_msg[start_index..].find(expected_text) {
                     start_index += index + expected_text.len();
                 } else {
-                    panic!(
-                        "Expected error message to contain in order:\n{:?}\nBut got:\n{}",
-                        expected_texts, err_msg
-                    );
+                    panic!("Expected error message to contain in order:\n{expected_texts:?}\nBut got:\n{err_msg}");
                 }
             }
         }
-        Ok(_) => panic!(
-            "Expected panic with error message containing in order:\n{:?}",
-            expected_texts
-        ),
+        Ok(_) => panic!("Expected panic with error message containing in order:\n{expected_texts:?}"),
     }
 }
 

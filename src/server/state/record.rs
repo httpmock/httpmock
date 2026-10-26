@@ -154,7 +154,7 @@ fn build_mock_definition(
                 && header_name_lowercase == key.to_string().to_lowercase()
             {
                 let value = value.to_str().map_err(|err| DataConversionError(err.to_string()))?;
-                headers.push((header_name.to_string(), value.to_string()))
+                headers.push((header_name.clone(), value.to_string()))
             }
         }
     }
@@ -186,7 +186,7 @@ fn build_mock_definition(
         scheme: target.as_ref().and_then(|uri| uri.scheme_str()).map(str::to_string),
         path: Some(request.uri().path().to_string()),
         method: Some(request.method().to_string()),
-        header: if !headers.is_empty() { Some(headers) } else { None },
+        header: (!headers.is_empty()).then_some(headers),
         body: if request.body().is_empty() {
             None
         } else {

@@ -250,9 +250,8 @@ then:
             .pop()
             .unwrap();
 
-        let error = match TryInto::<MockDefinition>::try_into(definition) {
-            Ok(_) => panic!("expected the conversion to fail"),
-            Err(error) => error,
+        let Err(error) = TryInto::<MockDefinition>::try_into(definition) else {
+            panic!("expected the conversion to fail")
         };
         assert!(error.to_string().contains("static mock directory"));
     }

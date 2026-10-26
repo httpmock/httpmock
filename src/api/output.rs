@@ -21,8 +21,7 @@ pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option
     let closest_match = closest_match.expect("No request has been received by the mock server.");
     let mut output = String::new();
     output.push_str(&format!(
-        "{} of {} expected requests matched the mock specification.\n",
-        actual_hits, expected_hits
+        "{actual_hits} of {expected_hits} expected requests matched the mock specification.\n"
     ));
     output.push_str(&format!(
         "Here is a comparison with the most similar unmatched request (request number {}): \n\n",
@@ -44,7 +43,7 @@ pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option
     }
 
     if let Some((left, right)) = fail_text {
-        assert_eq!(left, right, "{}", output)
+        assert_eq!(left, right, "{output}")
     }
 
     panic!("{}", output)
@@ -100,7 +99,7 @@ fn handle_single_value_comparison(
 
     writeln!(out, "\nReceived:\n{}", comparison.actual).unwrap();
 
-    (comparison.expected.to_string(), comparison.actual.to_string())
+    (comparison.expected.clone(), comparison.actual.clone())
 }
 
 fn handle_key_value_comparison(
@@ -166,8 +165,8 @@ fn handle_key_value_comparison(
     if let (Some(key_attr), Some(value_attr)) = (&comparison.key, &comparison.value) {
         let result = match (&key_attr.actual, &value_attr.actual) {
             (Some(key), Some(value)) => {
-                writeln!(out, "\nReceived{}:\n{INDENT}{}={}", most_similar, key, value).unwrap();
-                (format!("{}\n{}", key, value), format!("{}\n{}", key, value))
+                writeln!(out, "\nReceived{most_similar}:\n{INDENT}{key}={value}").unwrap();
+                (format!("{key}\n{value}"), format!("{key}\n{value}"))
             }
             (None, Some(value)) => {
                 writeln!(
@@ -176,11 +175,11 @@ fn handle_key_value_comparison(
                     most_similar, mismatch.entity, value
                 )
                 .unwrap();
-                (value.to_string(), value.to_string())
+                (value.clone(), value.clone())
             }
             (Some(key), None) => {
                 writeln!(out, "\nbut{}{} key was\n{INDENT}{}", most_similar, mismatch.entity, key).unwrap();
-                (key.to_string(), key.to_string())
+                (key.clone(), key.clone())
             }
             (None, None) => {
                 print_value_not_in_request(out, &mismatch.matching_strategy);
@@ -204,7 +203,7 @@ fn print_all_request_values(out: &mut String, entity: &str, all: &[KeyValueCompa
         return;
     }
 
-    writeln!(out, "\nAll received {} values:", entity).unwrap();
+    writeln!(out, "\nAll received {entity} values:").unwrap();
 
     for (index, pair) in all.iter().enumerate() {
         let value = pair
@@ -275,13 +274,13 @@ fn create_diff_result_output(dd: &DiffResult) -> String {
         match d {
             Diff::Same(edit) => {
                 for line in remove_trailing_linebreak(edit).split("\n") {
-                    output.push_str(&format!("   | {}", line));
+                    output.push_str(&format!("   | {line}"));
                 }
             }
             Diff::Add(edit) => {
                 for line in remove_trailing_linebreak(edit).split("\n") {
                     #[cfg(feature = "color")]
-                    output.push_str(&format!("+++| {}", line).green().to_string());
+                    output.push_str(&format!("+++| {line}").green().to_string());
                     #[cfg(not(feature = "color"))]
                     output.push_str(&format!("+++| {}", line));
                 }
@@ -289,7 +288,7 @@ fn create_diff_result_output(dd: &DiffResult) -> String {
             Diff::Rem(edit) => {
                 for line in remove_trailing_linebreak(edit).split("\n") {
                     #[cfg(feature = "color")]
-                    output.push_str(&format!("---| {}", line).red().to_string());
+                    output.push_str(&format!("---| {line}").red().to_string());
                     #[cfg(not(feature = "color"))]
                     output.push_str(&format!("---| {}", line));
                 }
@@ -306,7 +305,7 @@ fn times_str<'a>(v: usize) -> &'a str {
 
 fn quote_if_whitespace(s: &str) -> String {
     if s.is_empty() || s.starts_with(char::is_whitespace) || s.ends_with(char::is_whitespace) {
-        format!("\"{}\" (quoted for better readability)", s)
+        format!("\"{s}\" (quoted for better readability)")
     } else {
         s.to_string()
     }

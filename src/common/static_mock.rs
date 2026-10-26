@@ -494,17 +494,9 @@ fn bytes_to_string_vec(data: Option<Vec<HttpMockBytes>>) -> (Option<Vec<String>>
         }
     }
 
-    let text_opt_vec = if !text_representations.is_empty() {
-        Some(text_representations)
-    } else {
-        None
-    };
+    let text_opt_vec = (!text_representations.is_empty()).then_some(text_representations);
 
-    let base64_opt_vec = if !base64_representations.is_empty() {
-        Some(base64_representations)
-    } else {
-        None
-    };
+    let base64_opt_vec = (!base64_representations.is_empty()).then_some(base64_representations);
 
     (text_opt_vec, base64_opt_vec)
 }

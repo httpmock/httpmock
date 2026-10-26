@@ -186,7 +186,7 @@ fn extra_sans(raw: &str) -> impl Iterator<Item = String> {
 // Resolving is synchronous, so a new host's certificate is generated on the runtime worker doing
 // the handshake. `None` ends the handshake with an alert.
 impl ResolvesServerCert for GeneratingCertificateResolver {
-    fn resolve(&self, client_hello: ClientHello) -> Option<Arc<CertifiedKey>> {
+    fn resolve(&self, client_hello: ClientHello<'_>) -> Option<Arc<CertifiedKey>> {
         if let Some(hostname) = client_hello.server_name() {
             tracing::debug!("have hostname: {}", hostname);
 

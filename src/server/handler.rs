@@ -217,7 +217,12 @@ impl Handler {
 
     /// Answers a management API request, or returns `None` when the route does not support the
     /// request's method, in which case the request is served like any other.
-    fn manage(&self, route: &RoutePath, params: Path, req: &Request<Bytes>) -> Option<Result<Response<Bytes>, Error>> {
+    fn manage(
+        &self,
+        route: &RoutePath,
+        params: Path<'_, '_>,
+        req: &Request<Bytes>,
+    ) -> Option<Result<Response<Bytes>, Error>> {
         let response = match (route, req.method()) {
             (RoutePath::Ping, &Method::GET) => self.handle_ping(),
             (RoutePath::Reset, &Method::DELETE) => self.handle_reset(),
@@ -288,13 +293,13 @@ impl Handler {
         response(StatusCode::CREATED, Some(active_mock))
     }
 
-    fn handle_read_mock(&self, params: Path) -> Result<Response<Bytes>, Error> {
+    fn handle_read_mock(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
         let active_mock = self.state.read_mock(param("id", params)?)?;
         let status_code = active_mock.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, active_mock)
     }
 
-    fn handle_delete_mock(&self, params: Path) -> Result<Response<Bytes>, Error> {
+    fn handle_delete_mock(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
         let deleted = self.state.delete_mock(param("id", params)?)?;
         let status_code = if deleted {
             StatusCode::NO_CONTENT
@@ -304,7 +309,7 @@ impl Handler {
         response::<()>(status_code, None)
     }
 
-    fn handle_set_up_to_n_times(&self, params: Path, req: &Request<Bytes>) -> Result<Response<Bytes>, Error> {
+    fn handle_set_up_to_n_times(&self, params: Path<'_, '_>, req: &Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let config: UpToNTimesConfig = parse_json_body(req)?;
         let updated = self
             .state
@@ -399,7 +404,7 @@ impl Handler {
         response(StatusCode::CREATED, Some(active_forwarding_rule))
     }
 
-    fn handle_delete_forwarding_rule(&self, params: Path) -> Result<Response<Bytes>, Error> {
+    fn handle_delete_forwarding_rule(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
         let deleted = self.state.delete_forwarding_rule(param("id", params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
@@ -420,7 +425,7 @@ impl Handler {
         response(StatusCode::CREATED, Some(active_proxy_rule))
     }
 
-    fn handle_delete_proxy_rule(&self, params: Path) -> Result<Response<Bytes>, Error> {
+    fn handle_delete_proxy_rule(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
         let deleted = self.state.delete_proxy_rule(param("id", params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
@@ -498,7 +503,7 @@ impl Handler {
         response(StatusCode::CREATED, Some(active_recording))
     }
 
-    fn handle_delete_recording(&self, params: Path) -> Result<Response<Bytes>, Error> {
+    fn handle_delete_recording(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
         let deleted = self.state.delete_recording(param("id", params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
@@ -513,7 +518,7 @@ impl Handler {
         response::<()>(StatusCode::NO_CONTENT, None)
     }
 
-    fn handle_read_recording(&self, params: Path) -> Result<Response<Bytes>, Error> {
+    fn handle_read_recording(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
         let rec = self.state.export_recording(param("id", params)?)?;
         let status_code = rec.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, rec)
@@ -528,7 +533,7 @@ impl Handler {
     }
 }
 
-fn param<T>(name: &str, tree_path: Path) -> Result<T, Error>
+fn param<T>(name: &str, tree_path: Path<'_, '_>) -> Result<T, Error>
 where
     T: FromStr,
     T::Err: Debug + Display,
@@ -536,7 +541,7 @@ where
     for (n, v) in tree_path.params() {
         if n.eq(name) {
             let parse_result: Result<T, T::Err> = v.parse::<T>();
-            let parsed_value = parse_result.map_err(|e| InvalidParamFormat(format!("{:?}", e)))?;
+            let parsed_value = parse_result.map_err(|e| InvalidParamFormat(format!("{e:?}")))?;
             return Ok(parsed_value);
         }
     }

@@ -219,7 +219,7 @@ impl HttpMockRequest {
         self.body.to_vec()
     }
 
-    pub fn body_bytes(&self) -> bytes::Bytes {
+    pub fn body_bytes(&self) -> Bytes {
         self.body.to_bytes()
     }
 
@@ -332,7 +332,7 @@ where
     }
 }
 
-impl From<&HttpMockRequest> for http::Request<bytes::Bytes> {
+impl From<&HttpMockRequest> for http::Request<Bytes> {
     fn from(req: &HttpMockRequest) -> Self {
         let mut builder = http::Request::builder()
             .method(req.method())
@@ -421,7 +421,7 @@ impl HttpMockResponse {
 }
 
 /// Converts an `HttpMockResponse` into a real `http::Response<Bytes>`.
-impl TryFrom<HttpMockResponse> for http::Response<bytes::Bytes> {
+impl TryFrom<HttpMockResponse> for http::Response<Bytes> {
     type Error = Error;
 
     fn try_from(res: HttpMockResponse) -> Result<Self, Self::Error> {
@@ -429,7 +429,7 @@ impl TryFrom<HttpMockResponse> for http::Response<bytes::Bytes> {
     }
 }
 
-impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
+impl TryFrom<&HttpMockResponse> for http::Response<Bytes> {
     type Error = Error;
 
     fn try_from(res: &HttpMockResponse) -> Result<Self, Self::Error> {
@@ -438,28 +438,27 @@ impl TryFrom<&HttpMockResponse> for http::Response<bytes::Bytes> {
             .ok_or_else(|| Error::ResponseConversion("missing status".into()))?;
 
         let status = http::StatusCode::from_u16(raw_status)
-            .map_err(|_| Error::ResponseConversion(format!("invalid status: {}", raw_status)))?;
+            .map_err(|_| Error::ResponseConversion(format!("invalid status: {raw_status}")))?;
 
         let mut builder = http::Response::builder().status(status);
 
         if let Some(headers) = &res.headers {
             for (name, value) in headers {
                 let header_name = http::header::HeaderName::try_from(name.clone())
-                    .map_err(|_| Error::ResponseConversion(format!("invalid header name: {}", name)))?;
+                    .map_err(|_| Error::ResponseConversion(format!("invalid header name: {name}")))?;
 
-                let header_value = http::header::HeaderValue::try_from(value.clone()).map_err(|_| {
-                    Error::ResponseConversion(format!("invalid header value for '{}': {}", name, value))
-                })?;
+                let header_value = http::header::HeaderValue::try_from(value.clone())
+                    .map_err(|_| Error::ResponseConversion(format!("invalid header value for '{name}': {value}")))?;
 
                 builder = builder.header(header_name, header_value);
             }
         }
 
-        let body = res.body.as_ref().map_or(bytes::Bytes::new(), |b| b.0.clone());
+        let body = res.body.as_ref().map_or(Bytes::new(), |b| b.0.clone());
 
         builder
             .body(body)
-            .map_err(|e| Error::ResponseConversion(format!("http build error: {}", e)))
+            .map_err(|e| Error::ResponseConversion(format!("http build error: {e}")))
     }
 }
 
@@ -476,7 +475,7 @@ where
             let name = name.as_str().to_string();
             let val = value
                 .to_str()
-                .map_err(|_| Error::ResponseConversion(format!("non-utf8 header value for '{}'", name)))?;
+                .map_err(|_| Error::ResponseConversion(format!("non-utf8 header value for '{name}'")))?;
             headers.push((name, val.to_string()));
         }
 
@@ -723,12 +722,8 @@ impl TryFrom<&http::Response<Bytes>> for MockServerHttpResponse {
 
         Ok(Self {
             status: Some(value.status().as_u16()),
-            headers: if !headers.is_empty() { Some(headers) } else { None },
-            body: if !value.body().is_empty() {
-                Some(HttpMockBytes::from(value.body().clone()))
-            } else {
-                None
-            },
+            headers: (!headers.is_empty()).then_some(headers),
+            body: (!value.body().is_empty()).then(|| HttpMockBytes::from(value.body().clone())),
             delay: None,
             respond_with: None,
         })
@@ -781,7 +776,7 @@ mod opt_vector_serde_base64 {
 }
 
 /// Prints the response body as UTF8 string
-impl fmt::Debug for MockServerHttpResponse {
+impl Debug for MockServerHttpResponse {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         f.debug_struct("MockServerHttpResponse")
             .field("status", &self.status)
@@ -1171,7 +1166,7 @@ impl FromStr for Method {
             "OPTIONS" => Ok(Method::OPTIONS),
             "TRACE" => Ok(Method::TRACE),
             "PATCH" => Ok(Method::PATCH),
-            _ => Err(format!("Invalid HTTP method {}", input)),
+            _ => Err(format!("Invalid HTTP method {input}")),
         }
     }
 }
@@ -1180,12 +1175,12 @@ impl From<&str> for Method {
     fn from(value: &str) -> Self {
         value
             .parse()
-            .unwrap_or_else(|error| panic!("Cannot parse HTTP method from string {:?}: {:?}", value, error))
+            .unwrap_or_else(|error| panic!("Cannot parse HTTP method from string {value:?}: {error:?}"))
     }
 }
 
-impl std::fmt::Display for Method {
-    fn fmt(&self, f: &mut std::fmt::Formatter) -> std::fmt::Result {
-        std::fmt::Debug::fmt(self, f)
+impl fmt::Display for Method {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        Debug::fmt(self, f)
     }
 }

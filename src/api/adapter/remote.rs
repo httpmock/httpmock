@@ -183,7 +183,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     async fn fetch_mock(&self, mock_id: usize) -> Result<ActiveMock, ServerAdapterError> {
         self.request_json(
             Method::GET,
-            &format!("mocks/{}", mock_id),
+            &format!("mocks/{mock_id}"),
             None,
             StatusCode::OK,
             "fetch mock from the mock server",
@@ -194,7 +194,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     async fn delete_mock(&self, mock_id: usize) -> Result<(), ServerAdapterError> {
         self.request_empty(
             Method::DELETE,
-            &format!("mocks/{}", mock_id),
+            &format!("mocks/{mock_id}"),
             None,
             StatusCode::NO_CONTENT,
             "delete mock from the mock server",
@@ -205,7 +205,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     async fn set_up_to_n_times(&self, mock_id: usize, count: usize) -> Result<(), ServerAdapterError> {
         let config = UpToNTimesConfig { up_to_n_times: count };
         let json = serde_json::to_string(&config).map_err(JsonSerializationError)?;
-        let request = self.build_request(Method::PUT, &format!("mocks/{}/up_to_n_times", mock_id), Some(json))?;
+        let request = self.build_request(Method::PUT, &format!("mocks/{mock_id}/up_to_n_times"), Some(json))?;
         let (status, body) = self.do_request(request).await?;
 
         // Servers that predate `up_to_n_times` have no route for this request and serve it like
@@ -279,7 +279,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     async fn delete_forwarding_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.request_empty(
             Method::DELETE,
-            &format!("forwarding_rules/{}", id),
+            &format!("forwarding_rules/{id}"),
             None,
             StatusCode::NO_CONTENT,
             "delete forwarding rule from the mock server",
@@ -307,7 +307,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     async fn delete_proxy_rule(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.request_empty(
             Method::DELETE,
-            &format!("proxy_rules/{}", id),
+            &format!("proxy_rules/{id}"),
             None,
             StatusCode::NO_CONTENT,
             "delete proxy rule from the mock server",
@@ -335,7 +335,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
     async fn delete_recording(&self, id: usize) -> Result<(), ServerAdapterError> {
         self.request_empty(
             Method::DELETE,
-            &format!("recordings/{}", id),
+            &format!("recordings/{id}"),
             None,
             StatusCode::NO_CONTENT,
             "delete recording from the mock server",
@@ -345,7 +345,7 @@ impl MockServerAdapter for RemoteMockServerAdapter {
 
     #[cfg(feature = "record")]
     async fn export_recording(&self, id: usize) -> Result<Option<Bytes>, ServerAdapterError> {
-        let request = self.build_request(Method::GET, &format!("recordings/{}", id), None)?;
+        let request = self.build_request(Method::GET, &format!("recordings/{id}"), None)?;
 
         let (status, body) = self.do_request_raw(request).await?;
 

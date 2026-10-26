@@ -1,8 +1,6 @@
 use std::{
     borrow::Cow,
     env,
-    fs::File,
-    io::Read,
     path::{Path, PathBuf},
     sync::{Mutex, MutexGuard},
     time::Duration,
@@ -11,7 +9,10 @@ use std::{
 #[cfg(any(feature = "https", feature = "remote-https"))]
 use std::sync::Arc;
 #[cfg(feature = "record")]
-use std::{fs::create_dir_all, io::Write};
+use std::{
+    fs::{File, create_dir_all},
+    io::Write,
+};
 
 use base64::{Engine, engine::general_purpose::STANDARD as BASE64};
 use bytes::Bytes;
@@ -55,9 +56,8 @@ pub(crate) async fn with_retry<T, U>(retries: usize, f: impl AsyncFn() -> Result
     for i in 1..=retries {
         if result.is_ok() {
             return result;
-        } else {
-            Delay::new(Duration::from_secs(i as u64)).await;
         }
+        Delay::new(Duration::from_secs(i as u64)).await;
         result = (f)().await;
     }
     result
@@ -68,7 +68,7 @@ pub(crate) async fn with_retry<T, U>(retries: usize, f: impl AsyncFn() -> Result
 // ===============================================================================================
 #[doc(hidden)]
 pub(crate) fn read_env(name: &str, default: &str) -> String {
-    match std::env::var(name) {
+    match env::var(name) {
         Ok(value) => value,
         Err(_) => default.to_string(),
     }
@@ -332,20 +332,12 @@ pub fn is_none_or_empty<T>(option: &Option<Vec<T>>) -> bool {
 }
 
 pub fn read_file<P: AsRef<Path>>(absolute_resource_path: P) -> Result<Vec<u8>, String> {
-    let mut buffer = Vec::new();
-
-    let len = File::open(&absolute_resource_path)
-        .and_then(|mut f| f.read_to_end(&mut buffer))
-        .map_err(|e| e.to_string())?;
+    let buffer = std::fs::read(&absolute_resource_path).map_err(|e| e.to_string())?;
 
     tracing::trace!(
         "Read {} bytes from file {:?}",
-        &len,
-        &absolute_resource_path
-            .as_ref()
-            .as_os_str()
-            .to_str()
-            .expect("Invalid file path")
+        buffer.len(),
+        absolute_resource_path.as_ref()
     );
 
     Ok(buffer)

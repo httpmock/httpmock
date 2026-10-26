@@ -2367,9 +2367,8 @@ impl When {
         <ValueRegex as TryInto<Regex>>::Error: std::fmt::Debug,
         <IntoUsize as TryInto<usize>>::Error: std::fmt::Debug,
     {
-        let count = match count.try_into() {
-            Ok(c) => c,
-            Err(_) => panic!("parameter count must be a positive integer that fits into a usize"),
+        let Ok(count) = count.try_into() else {
+            panic!("parameter count must be a positive integer that fits into a usize")
         };
 
         let key_pattern = key_pattern.try_into().expect("cannot convert key to regex");
@@ -4592,10 +4591,7 @@ impl Then {
         let absolute_path = match path.is_absolute() {
             true => path.to_path_buf(),
             false => get_test_resource_file_path(&resource_file_path).unwrap_or_else(|error| {
-                panic!(
-                    "Cannot create absolute path from string '{}': {:?}",
-                    resource_file_path, error
-                )
+                panic!("Cannot create absolute path from string '{resource_file_path}': {error:?}")
             }),
         };
         let content = crate::common::util::read_file(&absolute_path).unwrap_or_else(|error| {
@@ -4848,9 +4844,9 @@ impl Then {
 
         // Ensure the delay duration does not exceed the maximum u64 milliseconds limit
         let millis = duration.as_millis();
-        let max = u64::MAX as u128;
+        let max = u128::from(u64::MAX);
         if millis >= max {
-            panic!("A delay higher than {} milliseconds is not supported.", max)
+            panic!("A delay higher than {max} milliseconds is not supported.")
         }
 
         update_mutex(&self.response_template, |r| {
@@ -5114,7 +5110,7 @@ impl Then {
         F: Fn(&HttpMockRequest) -> HttpMockResponse + Send + Sync + 'static,
     {
         update_mutex(&self.response_template, |r| {
-            r.respond_with = Some(std::sync::Arc::new(f));
+            r.respond_with = Some(Arc::new(f));
         });
         self
     }

@@ -390,10 +390,9 @@ impl BytesMatchesComparator {
 impl ValueComparator<HttpMockRegex, HttpMockBytes> for BytesMatchesComparator {
     fn matches(&self, mock_value: &Option<&HttpMockRegex>, req_value: &Option<&HttpMockBytes>) -> bool {
         match (mock_value, req_value) {
-            (None, Some(_)) => true,
+            (None, _) => true,
             (Some(_), None) => false,
             (Some(mv), Some(rv)) => mv.0.is_match(&rv.to_maybe_lossy_str()),
-            (None, None) => true,
         }
     }
 

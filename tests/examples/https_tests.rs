@@ -86,7 +86,7 @@ async fn serves_http_and_https_on_the_same_port() {
             .unwrap();
 
         // Assert
-        assert_eq!(res.status(), 200, "{} request should be served", scheme);
+        assert_eq!(res.status(), 200, "{scheme} request should be served");
     }
 
     mock.assert_calls_async(2).await;

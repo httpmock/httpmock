@@ -28,7 +28,6 @@ use crate::common::util::crypto_provider;
 use crate::{
     common::runtime,
     server::{
-        self,
         handler::{self, Action, Finished, Reply},
         transport::Error::{BufferError, LocalSocketAddrError, PublishSocketAddrError, SocketBindError},
     },
@@ -37,11 +36,11 @@ use crate::{
 #[derive(Error, Debug)]
 pub enum Error {
     #[error("cannot bind to socket addr {0}: {1}")]
-    SocketBindError(SocketAddr, std::io::Error),
+    SocketBindError(SocketAddr, io::Error),
     #[error("cannot parse socket address: {0}")]
     SocketAddrParseError(#[from] std::net::AddrParseError),
     #[error("cannot obtain local error: {0}")]
-    LocalSocketAddrError(std::io::Error),
+    LocalSocketAddrError(io::Error),
     #[error("cannot send reserved TCP address to test thread {0}")]
     PublishSocketAddrError(SocketAddr),
     #[error("cannot create response: {0}")]
@@ -51,7 +50,7 @@ pub enum Error {
     #[error("HTTP error: {0}")]
     HTTPError(#[from] http::Error),
     #[error("cannot process request: {0}")]
-    RouterError(#[from] server::handler::Error),
+    RouterError(#[from] handler::Error),
     #[error("HTTPS error: {0}")]
     TlsError(String),
     #[error("Server configuration error: {0}")]
@@ -220,7 +219,7 @@ impl HttpMockServer {
                             }
                         }
                         Err(err) => {
-                            let e = Error::ServerConnectionError(Box::new(err));
+                            let e = ServerConnectionError(Box::new(err));
                             tracing::warn!("CONNECT upgraded handling failed: {:?}", e);
                         }
                     }
@@ -296,11 +295,9 @@ impl HttpMockServer {
                 response
             }
             #[cfg(feature = "proxy")]
-            Reply::Forward(upstream) | Reply::Proxy(upstream) => self
-                .http_client
-                .send(upstream)
-                .await
-                .map_err(server::handler::Error::from)?,
+            Reply::Forward(upstream) | Reply::Proxy(upstream) => {
+                self.http_client.send(upstream).await.map_err(handler::Error::from)?
+            }
         };
 
         Ok(self.handler.finish(served, start.elapsed(), response)?)
@@ -356,7 +353,7 @@ where
     let cert_resolver = server.config.https.cert_resolver_factory.build(authority);
     let mut server_config = ServerConfig::builder_with_provider(crypto_provider())
         .with_safe_default_protocol_versions()
-        .map_err(|e| Error::TlsError(format!("cannot build TLS server config: {:?}", e)))?
+        .map_err(|e| Error::TlsError(format!("cannot build TLS server config: {e:?}")))?
         .with_no_client_auth()
         .with_cert_resolver(cert_resolver);
 
@@ -371,7 +368,7 @@ where
     let tls_stream = tls_acceptor
         .accept(stream)
         .await
-        .map_err(|e| Error::TlsError(format!("TLS accept failed: {:?}", e)))?;
+        .map_err(|e| Error::TlsError(format!("TLS accept failed: {e:?}")))?;
 
     serve_connection(server, tls_stream, "https").await
 }
@@ -491,10 +488,10 @@ fn to_absolute_form_uri(req: &mut Request<Bytes>) -> Result<(), String> {
 
     let path_and_query = uri.path_and_query().map(|pq| pq.as_str()).unwrap_or("/");
 
-    let abs = format!("{}://{}{}", default_scheme, host, path_and_query);
+    let abs = format!("{default_scheme}://{host}{path_and_query}");
     let new_uri: http::Uri = abs
         .parse()
-        .map_err(|e| format!("Invalid absolute URI constructed from Host+path: {}", e))?;
+        .map_err(|e| format!("Invalid absolute URI constructed from Host+path: {e}"))?;
 
     *req.uri_mut() = new_uri;
     Ok(())

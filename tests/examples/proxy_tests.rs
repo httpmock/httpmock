@@ -52,7 +52,7 @@ fn proxy_test() {
 #[cfg(feature = "https")]
 #[test]
 fn absolute_origin_form_test() {
-    let server = httpmock::MockServer::start();
+    let server = MockServer::start();
     server.proxy(|rule| {
         rule.filter(|when| {
             when.any_request();
