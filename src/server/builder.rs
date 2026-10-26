@@ -301,13 +301,17 @@ impl HttpMockServerBuilder {
     ///
     /// # Returns
     /// A `HttpMockServer` instance or an error if the build process fails.
+    #[cfg_attr(
+        not(any(feature = "record", feature = "https")),
+        expect(clippy::unnecessary_wraps, reason = "only static mocks and TLS setup can fail")
+    )]
     pub(crate) fn build_with_state(
         self,
         state: Arc<state::HttpMockStateManager>,
     ) -> Result<HttpMockServer, Box<dyn Error>> {
         #[cfg(feature = "record")]
         if let Some(dir) = self.static_mock_dir {
-            read_static_mock_definitions(dir, state.as_ref())?;
+            read_static_mock_definitions(&dir, state.as_ref())?;
         }
 
         Ok(HttpMockServer::new(

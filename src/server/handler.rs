@@ -88,9 +88,12 @@ pub enum Error {
 /// `Serve` is several times the size of `Respond` because of the request kept for recording. An
 /// action is built and consumed within one request, never stored, so that stack space is cheaper
 /// than boxing the variant on every served request.
-#[expect(
-    clippy::large_enum_variant,
-    reason = "an action never outlives its request, see above"
+#[cfg_attr(
+    feature = "record",
+    expect(
+        clippy::large_enum_variant,
+        reason = "an action never outlives its request, see above"
+    )
 )]
 pub(crate) enum Action {
     /// Send the response to a management API request. Management responses are not recorded.
@@ -210,7 +213,7 @@ impl Handler {
         tracing::trace!("Routing incoming request: {:?}", req);
 
         if let Some((route, params)) = self.path_tree.find(req.uri().path())
-            && let Some(response) = self.manage(route, params, &req)
+            && let Some(response) = self.manage(route, &params, &req)
         {
             return response.map(|response| Action::Respond(Finished(response)));
         }
@@ -223,7 +226,7 @@ impl Handler {
     fn manage(
         &self,
         route: &RoutePath,
-        params: Path<'_, '_>,
+        params: &Path<'_, '_>,
         req: &Request<Bytes>,
     ) -> Option<Result<Response<Bytes>, Error>> {
         let response = match (route, req.method()) {
@@ -267,6 +270,10 @@ impl Handler {
     /// Completes an [`Action::Serve`]: records the response for every recording whose rule
     /// matches the request and releases it for sending. `elapsed` is the time the driver took to
     /// produce the response.
+    #[cfg_attr(
+        not(feature = "record"),
+        expect(clippy::unnecessary_wraps, reason = "only recording can fail")
+    )]
     pub(crate) fn finish(
         &self,
         pending: Pending,
@@ -274,8 +281,10 @@ impl Handler {
         response: Response<Bytes>,
     ) -> Result<Finished, Error> {
         #[cfg(feature = "record")]
-        self.state
-            .record(pending.is_proxied, elapsed, &pending.request, &response)?;
+        {
+            let Pending { request, is_proxied } = pending;
+            self.state.record(is_proxied, elapsed, &request, &response)?;
+        }
         #[cfg(not(feature = "record"))]
         let _ = (pending, elapsed);
         Ok(Finished(response))
@@ -296,14 +305,14 @@ impl Handler {
         response(StatusCode::CREATED, Some(active_mock))
     }
 
-    fn handle_read_mock(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let active_mock = self.state.read_mock(param("id", &params)?);
+    fn handle_read_mock(&self, params: &Path<'_, '_>) -> Result<Response<Bytes>, Error> {
+        let active_mock = self.state.read_mock(param("id", params)?);
         let status_code = active_mock.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, active_mock)
     }
 
-    fn handle_delete_mock(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_mock(param("id", &params)?)?;
+    fn handle_delete_mock(&self, params: &Path<'_, '_>) -> Result<Response<Bytes>, Error> {
+        let deleted = self.state.delete_mock(param("id", params)?)?;
         let status_code = if deleted {
             StatusCode::NO_CONTENT
         } else {
@@ -312,11 +321,11 @@ impl Handler {
         response::<()>(status_code, None)
     }
 
-    fn handle_set_up_to_n_times(&self, params: Path<'_, '_>, req: &Request<Bytes>) -> Result<Response<Bytes>, Error> {
+    fn handle_set_up_to_n_times(&self, params: &Path<'_, '_>, req: &Request<Bytes>) -> Result<Response<Bytes>, Error> {
         let config: UpToNTimesConfig = parse_json_body(req)?;
         let updated = self
             .state
-            .set_up_to_n_times(param("id", &params)?, config.up_to_n_times)?;
+            .set_up_to_n_times(param("id", params)?, config.up_to_n_times)?;
         let status_code = if updated {
             StatusCode::NO_CONTENT
         } else {
@@ -342,6 +351,13 @@ impl Handler {
         response(status_code, closest_match)
     }
 
+    #[cfg_attr(
+        not(feature = "proxy"),
+        expect(
+            clippy::needless_pass_by_value,
+            reason = "forwarding and proxying consume the request"
+        )
+    )]
     fn catch_all(&self, req: Request<Bytes>) -> Result<Action, Error> {
         let request: HttpMockRequest = (&req)
             .try_into()
@@ -407,8 +423,8 @@ impl Handler {
         response(StatusCode::CREATED, Some(active_forwarding_rule))
     }
 
-    fn handle_delete_forwarding_rule(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_forwarding_rule(param("id", &params)?);
+    fn handle_delete_forwarding_rule(&self, params: &Path<'_, '_>) -> Result<Response<Bytes>, Error> {
+        let deleted = self.state.delete_forwarding_rule(param("id", params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
         } else {
@@ -428,8 +444,8 @@ impl Handler {
         response(StatusCode::CREATED, Some(active_proxy_rule))
     }
 
-    fn handle_delete_proxy_rule(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_proxy_rule(param("id", &params)?);
+    fn handle_delete_proxy_rule(&self, params: &Path<'_, '_>) -> Result<Response<Bytes>, Error> {
+        let deleted = self.state.delete_proxy_rule(param("id", params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
         } else {
@@ -506,8 +522,8 @@ impl Handler {
         response(StatusCode::CREATED, Some(active_recording))
     }
 
-    fn handle_delete_recording(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let deleted = self.state.delete_recording(param("id", &params)?);
+    fn handle_delete_recording(&self, params: &Path<'_, '_>) -> Result<Response<Bytes>, Error> {
+        let deleted = self.state.delete_recording(param("id", params)?);
         let status_code = if deleted.is_some() {
             StatusCode::NO_CONTENT
         } else {
@@ -521,8 +537,8 @@ impl Handler {
         response::<()>(StatusCode::NO_CONTENT, None)
     }
 
-    fn handle_read_recording(&self, params: Path<'_, '_>) -> Result<Response<Bytes>, Error> {
-        let rec = self.state.export_recording(param("id", &params)?)?;
+    fn handle_read_recording(&self, params: &Path<'_, '_>) -> Result<Response<Bytes>, Error> {
+        let rec = self.state.export_recording(param("id", params)?)?;
         let status_code = rec.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, rec)
     }

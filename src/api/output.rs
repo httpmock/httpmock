@@ -282,7 +282,7 @@ fn create_diff_result_output(dd: &DiffResult) -> String {
                     #[cfg(feature = "color")]
                     output.push_str(&format!("+++| {line}").green().to_string());
                     #[cfg(not(feature = "color"))]
-                    output.push_str(&format!("+++| {}", line));
+                    output.push_str(&format!("+++| {line}"));
                 }
             }
             Diff::Rem(edit) => {
@@ -290,7 +290,7 @@ fn create_diff_result_output(dd: &DiffResult) -> String {
                     #[cfg(feature = "color")]
                     output.push_str(&format!("---| {line}").red().to_string());
                     #[cfg(not(feature = "color"))]
-                    output.push_str(&format!("---| {}", line));
+                    output.push_str(&format!("---| {line}"));
                 }
             }
         }

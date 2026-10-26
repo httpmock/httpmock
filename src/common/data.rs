@@ -738,6 +738,7 @@ mod opt_vector_serde_base64 {
     // See the following references:
     // https://github.com/serde-rs/serde/blob/master/serde/src/ser/impls.rs#L99
     // https://github.com/serde-rs/serde/issues/661
+    #[expect(clippy::ref_option, reason = "serde's `with` passes the field by reference")]
     pub fn serialize<T, S>(bytes: &Option<T>, serializer: S) -> Result<S::Ok, S::Error>
     where
         T: AsRef<[u8]>,

@@ -554,6 +554,10 @@ pub mod expectations {
     }
 }
 
+#[expect(
+    clippy::unnecessary_wraps,
+    reason = "the matcher table stores every reader as the same fn pointer type, and some return None"
+)]
 pub mod request_value {
     use crate::{common::util::HttpMockBytes, prelude::HttpMockRequest};
 

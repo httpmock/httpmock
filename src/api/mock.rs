@@ -739,6 +739,10 @@ pub struct MockSet<'a> {
 
 #[cfg(feature = "record")]
 impl<'a> MockSet<'a> {
+    #[expect(
+        clippy::needless_pass_by_ref_mut,
+        reason = "keeps the signature of the other delete methods"
+    )]
     pub fn delete(&mut self) {
         self.delete_async().block_on();
     }

@@ -16,16 +16,111 @@ exclude = [".github/", "assets/", "docs/", "scripts/", "codecov.yml", "funding.j
 # Gate the `warnings` group at error level so new rustc warnings fail CI. The
 # allowed lints are a temporary allow list that should be removed over time.
 warnings = { level = "deny", priority = -1 }
+deprecated_safe = { level = "deny", priority = -1 }
+future_incompatible = { level = "deny", priority = -1 }
+keyword_idents = { level = "deny", priority = -1 }
+let_underscore = { level = "deny", priority = -1 }
+nonstandard_style = { level = "deny", priority = -1 }
+refining_impl_trait = { level = "deny", priority = -1 }
+rust_2018_idioms = { level = "deny", priority = -1 }
+ambiguous_negative_literals = "deny"
 redundant_imports = "warn"
-unused_extern_crates = "warn"
+unfulfilled_lint_expectations = "deny"
 unsafe_code = "forbid"
+unused_extern_crates = "warn"
+unused_must_use = "deny"
+unused_qualifications = "warn"
 
 [lints.clippy]
 # `priority = -1` keeps the group below the individual entries that follow it, so a specific
 # lint level always wins over the group. Without it the group shares the default priority and
 # silently overrides any entry that sorts before "all".
 all = { level = "deny", priority = -1 }
+# The rest follows the lint set of https://github.com/otto-de/rust-ecosystem. Left out are
+# unwrap_used, expect_used, panic, indexing_slicing and unreachable, since the API panics on
+# purpose to fail tests, str_to_string, semicolon_if_nothing_returned and clone_on_ref_ptr,
+# which only change style, and print_stdout and print_stderr, which stable clippy reports in the
+# table test helpers that print their case names.
+allow_attributes = "deny"
+allow_attributes_without_reason = "deny"
+as_underscore = "deny"
+cast_lossless = "deny"
+checked_conversions = "deny"
+cloned_instead_of_copied = "deny"
+collection_is_never_read = "deny"
+dbg_macro = "deny"
+debug_assert_with_mut_call = "deny"
+duration_suboptimal_units = "deny"
+empty_drop = "deny"
+enum_glob_use = "deny"
+exit = "deny"
+explicit_into_iter_loop = "deny"
+explicit_iter_loop = "deny"
+fallible_impl_from = "deny"
+filter_map_next = "deny"
+flat_map_option = "deny"
+fn_params_excessive_bools = "deny"
+if_then_some_else_none = "deny"
+ignore_without_reason = "deny"
+implicit_clone = "deny"
+iter_filter_is_ok = "deny"
+iter_filter_is_some = "deny"
+large_stack_arrays = "deny"
+large_types_passed_by_value = "deny"
+linkedlist = "deny"
+manual_instant_elapsed = "deny"
+manual_let_else = "deny"
+match_same_arms = "deny"
+match_wild_err_arm = "deny"
+match_wildcard_for_single_variants = "deny"
+mem_forget = "deny"
+missing_fields_in_debug = "deny"
+mut_mut = "deny"
+mutex_integer = "deny"
+needless_collect = "deny"
+needless_continue = "deny"
+needless_for_each = "deny"
+needless_pass_by_value = "deny"
+non_std_lazy_statics = "deny"
+option_as_ref_cloned = "deny"
+option_option = "deny"
+or_fun_call = "deny"
+rc_buffer = "deny"
+rc_mutex = "deny"
+read_zero_byte_vec = "deny"
 redundant_clone = "deny"
+redundant_else = "deny"
+ref_option = "deny"
+rest_pat_in_fully_bound_structs = "deny"
+same_functions_in_if_condition = "deny"
+should_panic_without_expect = "deny"
+single_match_else = "deny"
+string_lit_as_bytes = "deny"
+suspicious_operation_groupings = "deny"
+todo = "deny"
+trait_duplication_in_bounds = "deny"
+trivially_copy_pass_by_ref = "deny"
+unchecked_time_subtraction = "deny"
+unimplemented = "deny"
+uninlined_format_args = "deny"
+unnecessary_box_returns = "deny"
+unnecessary_self_imports = "deny"
+unnecessary_trailing_comma = "deny"
+unnecessary_wraps = "deny"
+unnested_or_patterns = "deny"
+unused_async = "deny"
+verbose_file_reads = "deny"
+zero_sized_map_values = "deny"
+# Real bugs, but they need judgement at some sites.
+assertions_on_result_states = "warn"
+case_sensitive_file_extension_comparisons = "warn"
+float_cmp = "warn"
+large_futures = "warn"
+literal_string_with_formatting_args = "warn"
+needless_pass_by_ref_mut = "warn"
+significant_drop_in_scrutinee = "warn"
+string_slice = "warn"
+unnecessary_join = "warn"
 
 [dependencies]
 serde = { version = "1", features = ["derive"] }

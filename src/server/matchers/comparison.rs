@@ -948,6 +948,7 @@ mod string_distance_tests {
 /// multi-byte character is never split. Slicing on the raw byte offset would
 /// panic whenever `max_bytes` landed inside a character. For ASCII input every
 /// offset is a boundary, so the window is exactly `max_bytes` long as before.
+#[expect(clippy::string_slice, reason = "`end` is moved back to a char boundary first")]
 fn leading_window(text: &str, max_bytes: usize) -> &str {
     if max_bytes >= text.len() {
         return text;
