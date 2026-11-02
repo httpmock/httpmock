@@ -1,4 +1,4 @@
-use std::{collections::HashSet, fmt::Display};
+use std::collections::HashSet;
 
 use serde::{Deserialize, Serialize};
 use similar::{ChangeTag, TextDiff};
@@ -11,7 +11,10 @@ use crate::{
         },
         util::is_none_or_empty,
     },
-    server::matchers::{Matcher, comparators::ValueComparator},
+    server::matchers::{
+        Matcher,
+        comparators::{PrintableComparator, ValueComparator},
+    },
 };
 
 // ************************************************************************************************
@@ -23,29 +26,23 @@ pub(crate) type MultiValueExpectation<EK, EV> =
     for<'a> fn(&'a RequestRequirements) -> Option<Vec<(&'a EK, Option<&'a EV>)>>;
 pub(crate) type MultiValueRequest<RK, RV> = fn(&HttpMockRequest) -> Option<Vec<(RK, Option<RV>)>>;
 
-pub(crate) struct SingleValueMatcher<S, T, C>
-where
-    S: Display,
-    T: Display,
-    C: ValueComparator<S, T>,
-{
+pub(crate) struct SingleValueMatcher<C: ValueComparator> {
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
     pub matching_strategy: MatchingStrategy,
-    pub expectation: SingleValueExpectation<S>,
-    pub request_value: fn(&HttpMockRequest) -> Option<T>,
+    pub expectation: SingleValueExpectation<C::Mock>,
+    pub request_value: fn(&HttpMockRequest) -> Option<C::Request>,
     pub comparator: C,
     pub diff_with: Option<Tokenizer>,
     pub weight: usize,
 }
 
-impl<S, T, C> SingleValueMatcher<S, T, C>
-where
-    S: Display,
-    T: Display,
-    C: ValueComparator<S, T>,
-{
-    fn find_unmatched<'a>(&self, req_value: Option<&T>, mock_values: Option<&[&'a S]>) -> Vec<&'a S> {
+impl<C: ValueComparator> SingleValueMatcher<C> {
+    fn find_unmatched<'a>(
+        &self,
+        req_value: Option<&C::Request>,
+        mock_values: Option<&[&'a C::Mock]>,
+    ) -> Vec<&'a C::Mock> {
         mock_values.map_or_else(Vec::new, |mock_values| {
             mock_values
                 .iter()
@@ -56,12 +53,7 @@ where
     }
 }
 
-impl<S, T, C> Matcher for SingleValueMatcher<S, T, C>
-where
-    S: Display,
-    T: Display,
-    C: ValueComparator<S, T>,
-{
+impl<C: PrintableComparator> Matcher for SingleValueMatcher<C> {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_value = (self.expectation)(mock);
         if is_none_or_empty(mock_value.as_deref()) {
@@ -148,44 +140,28 @@ pub enum MatchingStrategy {
 // ************************************************************************************************
 // MultiValueMatcher
 // ************************************************************************************************
-pub(crate) struct MultiValueMatcher<EK, EV, RK, RV, KC, VC>
-where
-    EK: Display,
-    EV: Display,
-    RK: Display,
-    RV: Display,
-    KC: ValueComparator<EK, RK>,
-    VC: ValueComparator<EV, RV>,
-{
+pub(crate) struct MultiValueMatcher<KC: ValueComparator, VC: ValueComparator> {
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
     pub rule: KeyValueRule,
-    pub expectation: MultiValueExpectation<EK, EV>,
-    pub request_value: MultiValueRequest<RK, RV>,
+    pub expectation: MultiValueExpectation<KC::Mock, VC::Mock>,
+    pub request_value: MultiValueRequest<KC::Request, VC::Request>,
     pub key_comparator: KC,
     pub value_comparator: VC,
     pub weight: usize,
 }
 
-impl<EK, EV, RK, RV, KC, VC> MultiValueMatcher<EK, EV, RK, RV, KC, VC>
-where
-    EK: Display,
-    EV: Display,
-    RK: Display,
-    RV: Display,
-    KC: ValueComparator<EK, RK>,
-    VC: ValueComparator<EV, RV>,
-{
+impl<KC: PrintableComparator, VC: PrintableComparator> MultiValueMatcher<KC, VC> {
     fn find_unmatched<'a>(
         &self,
-        req_values: &[(RK, Option<RV>)],
-        mock_values: &'a Vec<(&'a EK, Option<&'a EV>)>,
-    ) -> Vec<&'a (&'a EK, Option<&'a EV>)> {
+        req_values: &[(KC::Request, Option<VC::Request>)],
+        mock_values: &'a Vec<(&'a KC::Mock, Option<&'a VC::Mock>)>,
+    ) -> Vec<&'a (&'a KC::Mock, Option<&'a VC::Mock>)> {
         mock_values
             .iter()
             .filter(|(ek, ev)| {
-                let key_matches = |rk: &RK| self.key_comparator.matches(Some(ek), Some(rk));
-                let value_matches = |rv: &Option<RV>| match (ev, rv) {
+                let key_matches = |rk: &KC::Request| self.key_comparator.matches(Some(ek), Some(rk));
+                let value_matches = |rv: &Option<VC::Request>| match (ev, rv) {
                     (Some(_), None) => false, // Mock required a value but none was present
                     (Some(ev), Some(rv)) => self.value_comparator.matches(Some(ev), Some(rv)),
                     _ => true,
@@ -208,10 +184,10 @@ where
 
     fn find_best_match<'a>(
         &self,
-        sk: &EK,
-        sv: Option<&EV>,
-        req_values: &'a [(RK, Option<RV>)],
-    ) -> Option<(&'a RK, &'a Option<RV>)> {
+        sk: &KC::Mock,
+        sv: Option<&VC::Mock>,
+        req_values: &'a [(KC::Request, Option<VC::Request>)],
+    ) -> Option<(&'a KC::Request, &'a Option<VC::Request>)> {
         if req_values.is_empty() {
             return None;
         }
@@ -232,15 +208,7 @@ where
     }
 }
 
-impl<EK, EV, RK, RV, KC, VC> Matcher for MultiValueMatcher<EK, EV, RK, RV, KC, VC>
-where
-    EK: Display,
-    EV: Display,
-    RK: Display,
-    RV: Display,
-    KC: ValueComparator<EK, RK>,
-    VC: ValueComparator<EV, RV>,
-{
+impl<KC: PrintableComparator, VC: PrintableComparator> Matcher for MultiValueMatcher<KC, VC> {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_values = (self.expectation)(mock).unwrap_or_default();
         if mock_values.is_empty() {
@@ -321,48 +289,35 @@ where
 // MultiValueCountMatcher
 // ************************************************************************************************
 pub(crate) type MultiValueCountExpectation<EK, EV> =
-    for<'a> fn(&'a RequestRequirements) -> Option<Vec<(Option<&'a EK>, Option<&'a EV>, usize)>>;
+    for<'a> fn(&'a RequestRequirements) -> Option<Vec<ExpectedCount<'a, EK, EV>>>;
 
-pub(crate) struct MultiValueCountMatcher<EK, EV, RK, RV, KC, VC>
-where
-    EK: Display,
-    EV: Display,
-    RK: Display,
-    RV: Display,
-    KC: ValueComparator<EK, RK>,
-    VC: ValueComparator<EV, RV>,
-{
+/// The key and value to count, either of which may be left open, and how many pairs should match.
+type ExpectedCount<'a, EK, EV> = (Option<&'a EK>, Option<&'a EV>, usize);
+
+pub(crate) struct MultiValueCountMatcher<KC: ValueComparator, VC: ValueComparator> {
     pub entity_name: &'static str,
     pub matcher_method: &'static str,
-    pub expectation: MultiValueCountExpectation<EK, EV>,
-    pub request_value: MultiValueRequest<RK, RV>,
+    pub expectation: MultiValueCountExpectation<KC::Mock, VC::Mock>,
+    pub request_value: MultiValueRequest<KC::Request, VC::Request>,
     pub key_comparator: KC,
     pub value_comparator: VC,
     pub weight: usize,
 }
 
-impl<EK, EV, RK, RV, KC, VC> MultiValueCountMatcher<EK, EV, RK, RV, KC, VC>
-where
-    EK: Display,
-    EV: Display,
-    RK: Display,
-    RV: Display,
-    KC: ValueComparator<EK, RK>,
-    VC: ValueComparator<EV, RV>,
-{
+impl<KC: ValueComparator, VC: ValueComparator> MultiValueCountMatcher<KC, VC> {
     fn find_unmatched<'a>(
         &self,
-        req_values: &[(RK, Option<RV>)],
-        mock_values: &'a [(Option<&'a EK>, Option<&'a EV>, usize)],
-    ) -> Vec<&'a (Option<&'a EK>, Option<&'a EV>, usize)> {
+        req_values: &[(KC::Request, Option<VC::Request>)],
+        mock_values: &'a [ExpectedCount<'a, KC::Mock, VC::Mock>],
+    ) -> Vec<&'a ExpectedCount<'a, KC::Mock, VC::Mock>> {
         let matched_idx = self.find_matched_indices(req_values, mock_values);
         self.filter_unmatched_indices(mock_values, &matched_idx)
     }
 
     fn find_matched_indices<'a>(
         &self,
-        req_values: &[(RK, Option<RV>)],
-        mock_values: &'a [(Option<&'a EK>, Option<&'a EV>, usize)],
+        req_values: &[(KC::Request, Option<VC::Request>)],
+        mock_values: &'a [ExpectedCount<'a, KC::Mock, VC::Mock>],
     ) -> HashSet<usize> {
         let mut matched_idx = HashSet::new();
 
@@ -376,7 +331,12 @@ where
         matched_idx
     }
 
-    fn count_matching_req_values(&self, req_values: &[(RK, Option<RV>)], ek: Option<&EK>, ev: Option<&EV>) -> usize {
+    fn count_matching_req_values(
+        &self,
+        req_values: &[(KC::Request, Option<VC::Request>)],
+        ek: Option<&KC::Mock>,
+        ev: Option<&VC::Mock>,
+    ) -> usize {
         req_values
             .iter()
             .filter(|(rk, rv)| {
@@ -398,9 +358,9 @@ where
 
     fn filter_unmatched_indices<'a>(
         &self,
-        mock_values: &'a [(Option<&'a EK>, Option<&'a EV>, usize)],
+        mock_values: &'a [ExpectedCount<'a, KC::Mock, VC::Mock>],
         matched_idx: &HashSet<usize>,
-    ) -> Vec<&'a (Option<&'a EK>, Option<&'a EV>, usize)> {
+    ) -> Vec<&'a ExpectedCount<'a, KC::Mock, VC::Mock>> {
         mock_values
             .iter()
             .enumerate()
@@ -410,15 +370,7 @@ where
     }
 }
 
-impl<EK, EV, RK, RV, KC, VC> Matcher for MultiValueCountMatcher<EK, EV, RK, RV, KC, VC>
-where
-    EK: Display,
-    EV: Display,
-    RK: Display,
-    RV: Display,
-    KC: ValueComparator<EK, RK>,
-    VC: ValueComparator<EV, RV>,
-{
+impl<KC: PrintableComparator, VC: PrintableComparator> Matcher for MultiValueCountMatcher<KC, VC> {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_values = (self.expectation)(mock).unwrap_or_default();
         if mock_values.is_empty() {
@@ -495,20 +447,17 @@ where
 // ************************************************************************************************
 // FunctionValueMatcher
 // ************************************************************************************************
-pub(crate) struct FunctionValueMatcher<S, T, C> {
+pub(crate) struct FunctionValueMatcher<C: ValueComparator> {
     pub entity_name: &'static str,
     pub matcher_function: &'static str,
-    pub expectation: SingleValueExpectation<S>,
-    pub request_value: for<'a> fn(&'a HttpMockRequest) -> Option<&'a T>,
+    pub expectation: SingleValueExpectation<C::Mock>,
+    pub request_value: for<'a> fn(&'a HttpMockRequest) -> Option<&'a C::Request>,
     pub comparator: C,
     pub weight: usize,
 }
 
-impl<S, T, C> FunctionValueMatcher<S, T, C>
-where
-    C: ValueComparator<S, T>,
-{
-    fn get_unmatched(&self, req_value: Option<&T>, mock_values: Option<&[&S]>) -> Vec<usize> {
+impl<C: ValueComparator> FunctionValueMatcher<C> {
+    fn get_unmatched(&self, req_value: Option<&C::Request>, mock_values: Option<&[&C::Mock]>) -> Vec<usize> {
         let Some(mock_values) = mock_values else {
             return Vec::new();
         };
@@ -524,10 +473,7 @@ where
     }
 }
 
-impl<S, T, C> Matcher for FunctionValueMatcher<S, T, C>
-where
-    C: ValueComparator<S, T>,
-{
+impl<C: ValueComparator> Matcher for FunctionValueMatcher<C> {
     fn matches(&self, req: &HttpMockRequest, mock: &RequestRequirements) -> bool {
         let mock_values = (self.expectation)(mock);
         if is_none_or_empty(mock_values.as_deref()) {

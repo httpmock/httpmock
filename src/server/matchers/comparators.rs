@@ -1,4 +1,4 @@
-use std::{borrow::Cow, sync::Arc};
+use std::{borrow::Cow, fmt::Display, sync::Arc};
 
 use assert_json_diff::{CompareMode, Config, assert_json_matches_no_panic};
 use serde_json::Value;
@@ -18,11 +18,19 @@ use crate::{
     },
 };
 
-pub trait ValueComparator<S: ?Sized, T: ?Sized> {
-    fn matches(&self, mock_value: Option<&S>, req_value: Option<&T>) -> bool;
+pub trait ValueComparator {
+    type Mock;
+    type Request;
+
+    fn matches(&self, mock_value: Option<&Self::Mock>, req_value: Option<&Self::Request>) -> bool;
     fn name(&self) -> &str;
-    fn distance(&self, mock_value: Option<&S>, req_value: Option<&T>) -> usize;
+    fn distance(&self, mock_value: Option<&Self::Mock>, req_value: Option<&Self::Request>) -> usize;
 }
+
+/// A comparator whose values can be shown in a mismatch report.
+pub trait PrintableComparator: ValueComparator<Mock: Display, Request: Display> {}
+
+impl<C: ValueComparator<Mock: Display, Request: Display>> PrintableComparator for C {}
 
 #[derive(Default)]
 pub struct JsonEqualsComparator {}
@@ -33,7 +41,10 @@ impl JsonEqualsComparator {
     }
 }
 
-impl ValueComparator<Value, Value> for JsonEqualsComparator {
+impl ValueComparator for JsonEqualsComparator {
+    type Mock = Value;
+    type Request = Value;
+
     fn matches(&self, mock_value: Option<&Value>, req_value: Option<&Value>) -> bool {
         match (mock_value, req_value) {
             (None, _) => true,
@@ -70,7 +81,10 @@ impl JsonIncludesComparator {
     }
 }
 
-impl ValueComparator<Value, Value> for JsonIncludesComparator {
+impl ValueComparator for JsonIncludesComparator {
+    type Mock = Value;
+    type Request = Value;
+
     fn matches(&self, mock_value: Option<&Value>, req_value: Option<&Value>) -> bool {
         match (mock_value, req_value) {
             (None, _) => true,
@@ -114,7 +128,10 @@ impl HostEqualsComparator {
     }
 }
 
-impl ValueComparator<String, String> for HostEqualsComparator {
+impl ValueComparator for HostEqualsComparator {
+    type Mock = String;
+    type Request = String;
+
     fn matches(&self, mock_value: Option<&String>, req_value: Option<&String>) -> bool {
         hostname_equals(self.negated, mock_value, req_value)
     }
@@ -158,7 +175,10 @@ impl StringEqualsComparator {
     }
 }
 
-impl ValueComparator<String, String> for StringEqualsComparator {
+impl ValueComparator for StringEqualsComparator {
+    type Mock = String;
+    type Request = String;
+
     fn matches(&self, mock_value: Option<&String>, req_value: Option<&String>) -> bool {
         string_equals(self.case_sensitive, self.negated, mock_value, req_value)
     }
@@ -197,7 +217,10 @@ impl StringIncludesComparator {
     }
 }
 
-impl ValueComparator<String, String> for StringIncludesComparator {
+impl ValueComparator for StringIncludesComparator {
+    type Mock = String;
+    type Request = String;
+
     fn matches(&self, mock_value: Option<&String>, req_value: Option<&String>) -> bool {
         string_includes(self.case_sensitive, self.negated, mock_value, req_value)
     }
@@ -286,7 +309,10 @@ impl StringPrefixComparator {
     }
 }
 
-impl ValueComparator<String, String> for StringPrefixComparator {
+impl ValueComparator for StringPrefixComparator {
+    type Mock = String;
+    type Request = String;
+
     fn matches(&self, mock_value: Option<&String>, req_value: Option<&String>) -> bool {
         string_has_prefix(self.case_sensitive, self.negated, mock_value, req_value)
     }
@@ -325,7 +351,10 @@ impl StringSuffixComparator {
     }
 }
 
-impl ValueComparator<String, String> for StringSuffixComparator {
+impl ValueComparator for StringSuffixComparator {
+    type Mock = String;
+    type Request = String;
+
     fn matches(&self, mock_value: Option<&String>, req_value: Option<&String>) -> bool {
         string_has_suffix(self.case_sensitive, self.negated, mock_value, req_value)
     }
@@ -360,7 +389,10 @@ impl StringMatchesComparator {
     }
 }
 
-impl ValueComparator<HttpMockRegex, String> for StringMatchesComparator {
+impl ValueComparator for StringMatchesComparator {
+    type Mock = HttpMockRegex;
+    type Request = String;
+
     fn matches(&self, mock_value: Option<&HttpMockRegex>, req_value: Option<&String>) -> bool {
         comparison::string_matches_regex(self.case_sensitive, self.negated, mock_value, req_value)
     }
@@ -387,7 +419,10 @@ impl BytesMatchesComparator {
     }
 }
 
-impl ValueComparator<HttpMockRegex, HttpMockBytes> for BytesMatchesComparator {
+impl ValueComparator for BytesMatchesComparator {
+    type Mock = HttpMockRegex;
+    type Request = HttpMockBytes;
+
     fn matches(&self, mock_value: Option<&HttpMockRegex>, req_value: Option<&HttpMockBytes>) -> bool {
         match (mock_value, req_value) {
             (None, _) => true,
@@ -428,7 +463,10 @@ impl U16EqualsComparator {
     }
 }
 
-impl ValueComparator<u16, u16> for U16EqualsComparator {
+impl ValueComparator for U16EqualsComparator {
+    type Mock = u16;
+    type Request = u16;
+
     fn matches(&self, mock_value: Option<&u16>, req_value: Option<&u16>) -> bool {
         comparison::integer_equals(self.negated, mock_value, req_value)
     }
@@ -456,7 +494,10 @@ impl BytesEqualsComparator {
     }
 }
 
-impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesEqualsComparator {
+impl ValueComparator for BytesEqualsComparator {
+    type Mock = HttpMockBytes;
+    type Request = HttpMockBytes;
+
     fn matches(&self, mock_value: Option<&HttpMockBytes>, req_value: Option<&HttpMockBytes>) -> bool {
         comparison::bytes_equals(self.negated, mock_value, req_value)
     }
@@ -488,7 +529,10 @@ impl BytesIncludesComparator {
     }
 }
 
-impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesIncludesComparator {
+impl ValueComparator for BytesIncludesComparator {
+    type Mock = HttpMockBytes;
+    type Request = HttpMockBytes;
+
     fn matches(&self, mock_value: Option<&HttpMockBytes>, req_value: Option<&HttpMockBytes>) -> bool {
         comparison::bytes_includes(self.negated, mock_value, req_value)
     }
@@ -560,7 +604,10 @@ impl BytesPrefixComparator {
     }
 }
 
-impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesPrefixComparator {
+impl ValueComparator for BytesPrefixComparator {
+    type Mock = HttpMockBytes;
+    type Request = HttpMockBytes;
+
     fn matches(&self, mock_value: Option<&HttpMockBytes>, req_value: Option<&HttpMockBytes>) -> bool {
         comparison::bytes_has_prefix(self.negated, mock_value, req_value)
     }
@@ -592,7 +639,10 @@ impl BytesSuffixComparator {
     }
 }
 
-impl ValueComparator<HttpMockBytes, HttpMockBytes> for BytesSuffixComparator {
+impl ValueComparator for BytesSuffixComparator {
+    type Mock = HttpMockBytes;
+    type Request = HttpMockBytes;
+
     fn matches(&self, mock_value: Option<&HttpMockBytes>, req_value: Option<&HttpMockBytes>) -> bool {
         comparison::bytes_has_suffix(self.negated, mock_value, req_value)
     }
@@ -615,15 +665,19 @@ impl AnyValueComparator {
     }
 }
 
-impl<T, U> ValueComparator<T, U> for AnyValueComparator {
-    fn matches(&self, _: Option<&T>, _: Option<&U>) -> bool {
+impl ValueComparator for AnyValueComparator {
+    type Mock = String;
+    type Request = String;
+
+    fn matches(&self, _: Option<&String>, _: Option<&String>) -> bool {
         true
     }
+
     fn name(&self) -> &str {
         "any"
     }
 
-    fn distance(&self, _: Option<&T>, _: Option<&U>) -> usize {
+    fn distance(&self, _: Option<&String>, _: Option<&String>) -> usize {
         0
     }
 }
@@ -642,9 +696,10 @@ impl FunctionMatchesRequestComparator {
     }
 }
 
-impl ValueComparator<Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>, HttpMockRequest>
-    for FunctionMatchesRequestComparator
-{
+impl ValueComparator for FunctionMatchesRequestComparator {
+    type Mock = Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>;
+    type Request = HttpMockRequest;
+
     fn matches(
         &self,
         mock_value: Option<&Arc<dyn Fn(&HttpMockRequest) -> bool + 'static + Sync + Send>>,
@@ -697,10 +752,10 @@ mod test {
         },
     };
 
-    fn run_test<S, T>(
-        comparator: &dyn ValueComparator<S, T>,
-        v1: &S,
-        v2: &T,
+    fn run_test<C: ValueComparator>(
+        comparator: &C,
+        v1: &C::Mock,
+        v2: &C::Request,
         expected_match: bool,
         expected_distance: usize,
         expected_name: &str,
