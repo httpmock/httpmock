@@ -1,5 +1,3 @@
-use std::fmt::Display;
-
 use serde_json::Value;
 
 use crate::{
@@ -36,35 +34,35 @@ struct Part<T> {
     diff_with: Option<Tokenizer>,
 }
 
-impl<T: Display> Part<T> {
+impl<T> Part<T> {
     /// A matcher for a `When` method like `path_prefix`, which requires a matching value.
-    const fn present<S: Display, C: ValueComparator<S, T>>(
+    const fn present<C: ValueComparator<Request = T>>(
         &self,
         method: &'static str,
-        expectation: SingleValueExpectation<S>,
+        expectation: SingleValueExpectation<C::Mock>,
         comparator: C,
-    ) -> SingleValueMatcher<S, T, C> {
+    ) -> SingleValueMatcher<C> {
         self.matcher(method, MatchingStrategy::Presence, expectation, comparator)
     }
 
     /// A matcher for a negated `When` method like `path_prefix_not`, which requires the
     /// value's absence.
-    const fn absent<S: Display, C: ValueComparator<S, T>>(
+    const fn absent<C: ValueComparator<Request = T>>(
         &self,
         method: &'static str,
-        expectation: SingleValueExpectation<S>,
+        expectation: SingleValueExpectation<C::Mock>,
         comparator: C,
-    ) -> SingleValueMatcher<S, T, C> {
+    ) -> SingleValueMatcher<C> {
         self.matcher(method, MatchingStrategy::Absence, expectation, comparator)
     }
 
-    const fn matcher<S: Display, C: ValueComparator<S, T>>(
+    const fn matcher<C: ValueComparator<Request = T>>(
         &self,
         method: &'static str,
         matching_strategy: MatchingStrategy,
-        expectation: SingleValueExpectation<S>,
+        expectation: SingleValueExpectation<C::Mock>,
         comparator: C,
-    ) -> SingleValueMatcher<S, T, C> {
+    ) -> SingleValueMatcher<C> {
         SingleValueMatcher {
             entity_name: self.entity,
             matcher_method: method,
@@ -87,17 +85,9 @@ struct KeyValuePart {
 }
 
 type KeyValueExpectation = MultiValueExpectation<String, String>;
-type KeyValueMatcher<C> = MultiValueMatcher<String, String, String, String, StringEqualsComparator, C>;
-type KeyValueRegexMatcher =
-    MultiValueMatcher<HttpMockRegex, HttpMockRegex, String, String, StringMatchesComparator, StringMatchesComparator>;
-type KeyValueCountMatcher = MultiValueCountMatcher<
-    HttpMockRegex,
-    HttpMockRegex,
-    String,
-    String,
-    StringMatchesComparator,
-    StringMatchesComparator,
->;
+type KeyValueMatcher<C> = MultiValueMatcher<StringEqualsComparator, C>;
+type KeyValueRegexMatcher = MultiValueMatcher<StringMatchesComparator, StringMatchesComparator>;
+type KeyValueCountMatcher = MultiValueCountMatcher<StringMatchesComparator, StringMatchesComparator>;
 
 // `not`, `excludes`, `prefix_not` and `suffix_not` still require the key to be present and only
 // negate the value comparison, so their key comparator isn't negated. Only `missing` negates
@@ -251,7 +241,7 @@ impl KeyValuePart {
     }
 
     /// A matcher that compares the key exactly.
-    const fn with_key<C: ValueComparator<String, String>>(
+    const fn with_key<C: ValueComparator<Mock = String, Request = String>>(
         &self,
         method: &'static str,
         rule: KeyValueRule,
