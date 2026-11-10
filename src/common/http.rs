@@ -3,7 +3,7 @@ use std::sync::Arc;
 use bytes::Bytes;
 use http::{Request, Response};
 use http_body_util::{BodyExt, Full};
-#[cfg(any(feature = "remote-https", feature = "https"))]
+#[cfg(feature = "proxy")]
 use hyper_rustls::HttpsConnector;
 use hyper_util::{
     client::legacy::{Client, connect::HttpConnector},
@@ -12,7 +12,7 @@ use hyper_util::{
 use thiserror::Error;
 use tokio::runtime::Runtime;
 
-#[cfg(any(feature = "remote-https", feature = "https"))]
+#[cfg(feature = "proxy")]
 use crate::common::util::crypto_provider;
 
 #[derive(Error, Debug)]
@@ -27,14 +27,14 @@ pub enum Error {
 
 pub(crate) struct HttpMockHttpClient {
     runtime: Option<Arc<Runtime>>,
-    #[cfg(any(feature = "remote-https", feature = "https"))]
+    #[cfg(feature = "proxy")]
     client: Arc<Client<HttpsConnector<HttpConnector>, Full<Bytes>>>,
-    #[cfg(not(any(feature = "remote-https", feature = "https")))]
+    #[cfg(not(feature = "proxy"))]
     client: Arc<Client<HttpConnector, Full<Bytes>>>,
 }
 
 impl HttpMockHttpClient {
-    #[cfg(any(feature = "remote-https", feature = "https"))]
+    #[cfg(feature = "proxy")]
     pub(crate) fn new(runtime: Option<Arc<Runtime>>) -> Self {
         let builder = hyper_rustls::HttpsConnectorBuilder::new()
             .with_provider_and_native_roots(crypto_provider())
@@ -53,7 +53,7 @@ impl HttpMockHttpClient {
         }
     }
 
-    #[cfg(not(any(feature = "remote-https", feature = "https")))]
+    #[cfg(not(feature = "proxy"))]
     pub(crate) fn new(runtime: Option<Arc<Runtime>>) -> Self {
         Self {
             runtime,

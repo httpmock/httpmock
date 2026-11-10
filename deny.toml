@@ -94,7 +94,7 @@ allow = [
     #"Apache-2.0 WITH LLVM-exception",
     "Unicode-3.0",
     # Permissive licenses pulled in by the TLS stack (ring, rustls-webpki,
-    # untrusted, subtle) when the https/remote-https features are enabled.
+    # untrusted, subtle) when the https/proxy features are enabled.
     "ISC",
     "BSD-3-Clause",
 ]

@@ -4,6 +4,11 @@
 
 ### Changes
 
+- The `remote-https` feature is deprecated and will be removed in 0.10. It now just enables
+  `proxy`, which brings the HTTPS client for upstream requests itself. The client for remote mock
+  servers never used HTTPS, so nothing changes there. The `https` feature no longer pulls in
+  hyper-rustls, which only the client needs.
+
 - The `record` feature now reads and writes YAML with
   [serde-saphyr](https://github.com/bourumir-wyngs/serde-saphyr) instead of the deprecated
   `serde_yaml`, which raises the minimum supported Rust version to 1.89. Mock files and
