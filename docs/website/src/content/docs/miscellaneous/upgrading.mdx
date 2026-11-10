@@ -1,0 +1,81 @@
+---
+title: Upgrading
+description: What to change in your code when moving to a newer httpmock release.
+---
+
+This page lists the breaking changes of each release that users tend to jump across, newest first, as a checklist
+to work through. Each item says what breaks, how you notice it and what to write instead. The full list of
+changes per release is in the
+[changelog on GitHub](https://github.com/httpmock/httpmock/blob/master/CHANGELOG.md).
+
+## 0.9 from 0.8
+
+Most code needs no changes. The crate moved to the Rust 2024 edition; the minimum supported Rust version stays
+at 1.88.
+
+1. The body helpers `is_blank`, `contains_str`, `contains_slice` and `contains_vec` on the request body were
+   removed. Custom matchers that use them stop compiling. Go through
+   [`HttpMockRequest::body_string`](https://docs.rs/httpmock/latest/httpmock/struct.HttpMockRequest.html#method.body_string)
+   instead: `req.body_string().contains("x")` replaces `contains_str("x")` and
+   `req.body_string().trim().is_empty()` replaces `is_blank()`. For raw bytes there is
+   [`body_ref`](https://docs.rs/httpmock/latest/httpmock/struct.HttpMockRequest.html#method.body_ref). If the
+   matcher only checked for a substring, the built-in
+   [`When::body_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_includes)
+   does the same without a closure.
+2. `HttpMockRequest::query_params_map()` was removed, which is a compile error. Collect
+   [`query_params`](https://docs.rs/httpmock/latest/httpmock/struct.HttpMockRequest.html#method.query_params)
+   into a `HashMap<String, String>` instead.
+3. The `MockExt` trait is gone and the `id` field of
+   [`Mock`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html) is private. Imports of `MockExt` and
+   reads of `mock.id` fail to compile; drop the import and call
+   [`Mock::id`](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.id).
+4. The server only accepts HTTP/2 connections when the `http2` cargo feature is enabled. This is a runtime
+   change: clients that speak cleartext HTTP/2 with prior knowledge, such as gRPC clients, used to work without
+   the feature because a dependency enabled it unconditionally. If such a test suddenly fails to connect, add
+   `http2` to your `httpmock` features. HTTPS is unaffected.
+5. The `experimental` and `tls-detect` cargo features were removed. Cargo refuses to build with a feature that
+   does not exist, so remove them from your dependency's feature list. Neither enabled anything on its own.
+6. `server::matchers` and `server::state::MockServerState` are crate-private now. Code importing from either
+   module stops compiling and there is no replacement; configure matching through
+   [`When`](https://docs.rs/httpmock/latest/httpmock/struct.When.html) and the server through
+   [`MockServer`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html).
+7. The `config` field of
+   [`RecordingRuleBuilder`](https://docs.rs/httpmock/latest/httpmock/struct.RecordingRuleBuilder.html) is
+   private. Its type was never nameable outside the crate, so this only affects code that touched the field
+   directly; use the builder methods instead.
+8. The Docker image runs on a slim Debian base without the Rust toolchain, `curl` or `wget`. Container
+   healthchecks that call either of those break at deploy time and need another probe. The executable lives at
+   `/usr/local/bin/httpmock`; the old path `/usr/local/cargo/bin/httpmock` remains as a symlink.
+
+## 0.8 from 0.7
+
+0.8 raised the minimum supported Rust version to 1.82 (1.88 since 0.8.3) and was a rewrite of the internals.
+The breaking changes below are collected from the 0.8.0 release and its 0.8.0-alpha.1 pre-release.
+
+1. [`When::body`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body) compares the request
+   body byte by byte and is therefore case-sensitive. Up to 0.7 the comparison ignored case. Nothing fails to
+   compile, but a mock whose expected body only matched because of the case-insensitive comparison no longer
+   matches and the request runs into the server's "no mock matched" response. Fix the expected body in the
+   mock, or switch to a looser matcher such as
+   [`When::body_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.body_includes).
+2. The default port of the standalone server changed from `5000` to `5050`, because `5000` collides with
+   system services on macOS. Clients and
+   [`MockServer::connect`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect)
+   calls that still use `5000` fail to connect at runtime; set `HTTPMOCK_PORT` or pass the port explicitly.
+3. Custom matchers are closures rather than function pointers, which is a compile error for code that passed
+   a `fn`. `When::matches` still exists but is deprecated in favour of
+   [`When::is_true`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.is_true), so it only
+   warns; rename the call while you are at it.
+4. `When::json_body_partial` was renamed to
+   [`When::json_body_includes`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.json_body_includes).
+5. `When::x_www_form_urlencoded_tuple` was renamed to
+   [`When::form_urlencoded_tuple`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple),
+   and `When::x_www_form_urlencoded_key_exists` is now
+   [`When::form_urlencoded_tuple_exists`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.form_urlencoded_tuple_exists).
+6. The error output of assertions such as `Mock::assert` was reworked for readability. Tests that match on the
+   old message text need their expectations updated.
+7. [`MockServer::reset`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.reset) was added
+   and resets a mock server; it is listed under breaking changes in the changelog but only adds a method.
+
+0.8 also introduced record and playback, proxy mode, HTTPS support and a number of new matchers, which are all
+covered in the rest of this documentation.

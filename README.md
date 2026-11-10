@@ -114,7 +114,7 @@ All received query parameter values:
     1. word=hello
 
 Matcher:  query_param
-Docs:     https://docs.rs/httpmock/0.9.0/httpmock/struct.When.html#method.query_param
+Docs:     https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.query_param
 ```
 
 # Usage

@@ -1,0 +1,24 @@
+---
+title: Custom Matchers
+description: Matching requests with your own function when the built-in matchers are not enough.
+---
+
+import { Aside, Code } from '@astrojs/starlight/components';
+import raw from '../../../../../../tests/examples/custom_request_matcher_tests.rs?raw';
+import { snippet } from '../../../utils/snippets';
+
+When none of the [built-in matchers](/matching_requests/) express what you need, you can hand the mock a closure that gets the whole [`HttpMockRequest`](https://docs.rs/httpmock/latest/httpmock/struct.HttpMockRequest.html) and decides itself. [`is_true`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.is_true) adds a criterion that holds when the closure returns `true`, [`is_false`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.is_false) one that holds when it returns `false`. Both combine with the other matchers like any criterion: the mock only answers when every one of them holds. The closure runs on the mock server's request handling path and is called once per request, so keep it fast and make anything it captures `Send + Sync`.
+
+The older [`matches`](https://docs.rs/httpmock/latest/httpmock/struct.When.html#method.matches) method does the same as `is_true` and is deprecated since 0.8.
+
+<Aside type="caution" title="Attention">
+    Custom matchers are not available when connecting to a standalone mock server, for example through
+    [`MockServer::connect`](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.connect),
+    because the closure cannot be sent to another process.
+</Aside>
+
+## Example
+
+This test from the repository matches every request whose path ends with `Test`:
+
+<Code code={snippet(raw, 'custom_matcher')} lang="rust" />

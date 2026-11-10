@@ -4,6 +4,20 @@ import starlight from '@astrojs/starlight';
 // https://astro.build/config
 export default defineConfig({
     site: 'https://httpmock.rs',
+    // The method pages that the docs.rs API reference replaced.
+    redirects: {
+        '/matching_requests/path/': '/matching_requests/',
+        '/matching_requests/method/': '/matching_requests/',
+        '/matching_requests/query/': '/matching_requests/',
+        '/matching_requests/headers/': '/matching_requests/',
+        '/matching_requests/body/': '/matching_requests/',
+        '/matching_requests/cookies/': '/matching_requests/',
+        '/matching_requests/host/': '/matching_requests/',
+        '/matching_requests/port/': '/matching_requests/',
+        '/matching_requests/scheme/': '/matching_requests/',
+        '/mocking_responses/all/': '/mocking_responses/',
+        '/mocking_responses/delay/': '/mocking_responses/',
+    },
     integrations: [
         starlight({
             title: 'httpmock Tutorial',
@@ -32,32 +46,10 @@ export default defineConfig({
                 {
                     label: 'Mocking',
                     items: [
-                        // Each item here is one entry in the navigation menu.
-                        {
-                            label: 'Matching Requests',
-                            items: [
-                                // Each item here is one entry in the navigation menu.
-                                {label: 'Path', link: '/matching_requests/path/'},
-                                {label: 'Method', link: '/matching_requests/method/'},
-                                {label: 'Query Parameters', link: '/matching_requests/query/'},
-                                {label: 'Headers', link: '/matching_requests/headers/'},
-                                {label: 'Body', link: '/matching_requests/body/'},
-                                {label: 'Cookie', link: '/matching_requests/cookies/'},
-                                {label: 'Host', link: '/matching_requests/host/'},
-                                {label: 'Port', link: '/matching_requests/port/'},
-                                {label: 'Scheme', link: '/matching_requests/scheme/'},
-                                {label: 'Custom Matchers', link: '/matching_requests/custom/'},
-                            ],
-
-                        },
-                        {
-                            label: 'Mocking Responses', items: [
-                                // Each item here is one entry in the navigation menu.
-                                {label: 'Response Values', link: '/mocking_responses/all/'},
-                                {label: 'Network Delay', link: '/mocking_responses/delay/'},
-                                {label: 'Custom Responses', link: '/mocking_responses/custom/'},
-                            ],
-                        },
+                        {label: 'Matching Requests', link: '/matching_requests/'},
+                        {label: 'Custom Matchers', link: '/matching_requests/custom/'},
+                        {label: 'Mocking Responses', link: '/mocking_responses/'},
+                        {label: 'Custom Responses', link: '/mocking_responses/custom/'},
                     ],
                 },
                 {
@@ -78,7 +70,8 @@ export default defineConfig({
                 {
                     label: 'Miscellaneous',
                     items: [
-						{label: 'FAQ', link: '/miscellaneous/faq/'},
+                        {label: 'FAQ', link: '/miscellaneous/faq/'},
+                        {label: 'Upgrading', link: '/miscellaneous/upgrading/'},
                         {label: 'License', link: 'https://github.com/httpmock/httpmock/blob/master/LICENSE'},
                     ],
                 },

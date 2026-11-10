@@ -1,3 +1,4 @@
+// @example-start: custom_matcher
 #[test]
 fn my_custom_request_matcher_test() {
     use httpmock::prelude::*;
@@ -17,6 +18,7 @@ fn my_custom_request_matcher_test() {
     mock.assert();
     assert_eq!(response.status(), 201);
 }
+// @example-end
 
 #[test]
 fn is_true_matcher_called_once_per_request() {
@@ -74,6 +76,7 @@ fn is_false_matcher_called_once_per_request() {
     mock.assert();
 }
 
+// @example-start: respond_with
 #[test]
 fn dynamic_responder_test() {
     use std::sync::atomic::{AtomicU16, Ordering};
@@ -111,6 +114,7 @@ fn dynamic_responder_test() {
     assert_eq!(response2.status(), 202);
     assert_eq!(response3.status(), 203);
 }
+// @example-end
 
 #[test]
 fn dynamic_responder_http_crate_test() {

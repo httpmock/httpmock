@@ -4,30 +4,32 @@ description: Lists frequently asked questions.
 ---
 
 ### Can I start multiple mock servers in one Rust test function?
-Yes, you can start multiple mock servers. However, `httpmock` uses a server pool with a default limit of 25
-servers. You can adjust this limit by setting the `HTTPMOCK_MAX_SERVERS` environment variable.
+Yes. `httpmock` keeps the servers in a pool with a default limit of 25 and blocks `MockServer::start` once
+the pool is exhausted until another test releases a server. You can raise the limit with the
+`HTTPMOCK_MAX_SERVERS` environment variable. The environment variables the library reads are listed in the
+[API reference](https://docs.rs/httpmock/latest/httpmock/).
 
 ### In which order are mocks evaluated?
-When the `httpmock` server receives a request that matches multiple mocks, they are evaluated in the order
-of their definition. This means the first defined mock takes precedence and will be used.
+When a request matches several mocks, the one that was created first wins. Mocks limited with
+[`Then::up_to_n_times`](https://docs.rs/httpmock/latest/httpmock/struct.Then.html#method.up_to_n_times) are
+skipped once they have been served that many times, so the next matching mock takes over.
+
+### How do I upgrade to a new release?
+The [upgrading page](/miscellaneous/upgrading/) lists the breaking changes of each release as a checklist, with
+the replacement APIs. The complete list of changes is in the
+[changelog on GitHub](https://github.com/httpmock/httpmock/blob/master/CHANGELOG.md).
 
 ### How does Proxy Mode work?
 
-A mock server acts as a "man-in-the-middle" (MITM) proxy. Here's how it works:
+In proxy mode the mock server sits between your system under test and the real service as a
+man-in-the-middle proxy. For plain HTTP that just means the request passes through the mock server, which can
+read, record and forward it. For HTTPS the client would normally open a CONNECT tunnel and encrypt the
+traffic end to end, so the mock server has to terminate TLS itself: it presents the client a certificate for
+the destination host, decrypts the request, opens its own TLS connection to the real service, and re-encrypts
+the response on the way back.
 
-* **Intercepting HTTPS Traffic**: When you configure your System Under Test to use mock server as a proxy,
-the mock server intercepts the HTTPS traffic. Normally, in a CONNECT tunnel, the traffic would be encrypted end-to-end. 
-However, a mock server performs a MITM attack (with your consent, of course) to decrypt this traffic.
-* **SSL/TLS Termination**: A mock server creates its own SSL/TLS connection with the client and another with
-the target server. When the client sends an HTTPS request, it is intercepted by the mock server.
-The mock server terminates the original SSL/TLS connection and establishes a new connection with the
-actual destination server.
-* **Certificate Authority (CA)**: To intercept and decrypt HTTPS traffic, mock server uses a self-signed
-or a custom Certificate Authority (CA). This CA certificate is used to generate SSL certificates on the
-fly for the destination servers. You need to configure the client (or system under test) to trust this CA,
-which allows the mock server to decrypt the traffic. The client sees the proxy server as the legitimate
-endpoint because it trusts the certificate issued by mock server.
-* **Request/Response Handling**:
-Once the traffic is decrypted, the mock server can read, modify, or log the HTTPS requests and responses.
-After processing the request, the mock server forwards it to the actual destination server, receives
-the response, and then re-encrypts it before sending it back to the client.
+The certificates for the destination hosts are generated on the fly and signed by the mock server's CA
+certificate, either the built-in one or one you provide. Your client has to trust that CA for the setup to
+work, which is what makes the interception consensual. The [HTTPS page](/server/https/) shows how to
+configure the certificate, and the [recording page](/record-and-playback/recording/) how to use proxy mode to
+record traffic.

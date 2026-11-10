@@ -81,7 +81,6 @@ impl When {
         // may change in the future.
         self
     }
-    // @docs-group: Miscellaneous
 
     /// Specifies the scheme (e.g., "http" or "https") that requests must match for the mock server to respond.
     ///
@@ -137,7 +136,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Scheme
 
     /// Specifies a scheme (e.g., "https") that requests must not match for the mock server to respond.
     ///
@@ -188,7 +186,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Scheme
 
     /// Sets the expected HTTP method for which the mock server should respond.
     ///
@@ -237,7 +234,6 @@ impl When {
         update_mutex(&self.expectations, |e| e.method = Some(method.to_string()));
         self
     }
-    // @docs-group: Method
 
     /// Excludes the specified HTTP method from the requests the mock server will respond to.
     ///
@@ -284,7 +280,6 @@ impl When {
 
         self
     }
-    // @docs-group: Method
 
     /// Sets the expected host name. This constraint is especially useful when working with
     /// proxy or forwarding rules, but it can also be used to serve mocks (e.g., when using a mock
@@ -329,7 +324,6 @@ impl When {
         update_mutex(&self.expectations, |e| e.host = Some(host.into()));
         self
     }
-    // @docs-group: Host
 
     /// Sets the host name that should **NOT** be responded for.
     ///
@@ -373,7 +367,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.host_not, host.into()));
         self
     }
-    // @docs-group: Host
 
     /// Adds a substring to match within the request's host name.
     ///
@@ -427,7 +420,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.host_contains, host.into()));
         self
     }
-    // @docs-group: Host
 
     /// Adds a substring that must not be present within the request's host name for the mock server to respond.
     ///
@@ -478,7 +470,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.host_excludes, host.into()));
         self
     }
-    // @docs-group: Host
 
     /// Adds a prefix that the request's host name must start with for the mock server to respond.
     ///
@@ -527,7 +518,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.host_prefix, host.into()));
         self
     }
-    // @docs-group: Host
 
     /// Adds a suffix that the request's host name must end with for the mock server to respond.
     ///
@@ -576,7 +566,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.host_suffix, host.into()));
         self
     }
-    // @docs-group: Host
 
     /// Adds a prefix that the request's host name must *not* start with for the mock server to respond.
     ///
@@ -625,7 +614,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.host_prefix_not, prefix.into()));
         self
     }
-    // @docs-group: Host
 
     /// Adds a suffix that the request's host name must *not* end with for the mock server to respond.
     ///
@@ -673,7 +661,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.host_suffix_not, host.into()));
         self
     }
-    // @docs-group: Host
 
     /// Sets a regular expression pattern that the request's host name must match for the mock server to respond.
     ///
@@ -721,7 +708,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.host_matches, regex.into()));
         self
     }
-    // @docs-group: Host
 
     /// Specifies the expected port number for incoming requests to match.
     ///
@@ -776,7 +762,6 @@ impl When {
         update_mutex(&self.expectations, |e| e.port = Some(port));
         self
     }
-    // @docs-group: Port
 
     /// Specifies the port number that incoming requests must *not* match.
     ///
@@ -831,7 +816,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.port_not, port));
         self
     }
-    // @docs-group: Port
 
     /// Specifies the expected URL path that incoming requests must match for the mock server to respond.
     /// This is useful for targeting specific endpoints, such as API routes, to ensure only relevant requests trigger the mock response.
@@ -875,7 +859,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Path
 
     /// Specifies the URL path that incoming requests must *not* match for the mock server to respond.
     /// This is helpful when you need to exclude specific endpoints while allowing others through.
@@ -919,7 +902,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.path_not, path));
         self
     }
-    // @docs-group: Path
 
     /// Specifies a substring that the URL path must contain for the mock server to respond.
     /// This constraint is useful for matching URLs based on partial segments, especially when exact path matching isn't required.
@@ -961,7 +943,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.path_includes, substring));
         self
     }
-    // @docs-group: Path
 
     /// Specifies a substring that the URL path must *not* contain for the mock server to respond.
     /// This constraint is useful for excluding requests to paths containing particular segments or patterns.
@@ -1003,7 +984,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.path_excludes, substring));
         self
     }
-    // @docs-group: Path
 
     /// Specifies a prefix that the URL path must start with for the mock server to respond.
     /// This is useful when only the initial segments of a path need to be validated, such as checking specific API routes.
@@ -1045,7 +1025,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.path_prefix, prefix));
         self
     }
-    // @docs-group: Path
 
     /// Specifies a suffix that the URL path must end with for the mock server to respond.
     /// This is useful when the final segments of a path need to be validated, such as file extensions or specific patterns.
@@ -1087,7 +1066,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.path_suffix, suffix));
         self
     }
-    // @docs-group: Path
 
     /// Specifies a prefix that the URL path must not start with for the mock server to respond.
     /// This constraint is useful for excluding paths that begin with particular segments or patterns.
@@ -1129,7 +1107,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.path_prefix_not, prefix));
         self
     }
-    // @docs-group: Path
 
     /// Specifies a suffix that the URL path must not end with for the mock server to respond.
     /// This constraint is useful for excluding paths with specific file extensions or patterns.
@@ -1171,7 +1148,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.path_suffix_not, suffix));
         self
     }
-    // @docs-group: Path
 
     /// Specifies a regular expression that the URL path must match for the mock server to respond.
     /// This method allows flexible matching using regex patterns, making it useful for various matching scenarios.
@@ -1216,7 +1192,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.path_matches, regex));
         self
     }
-    // @docs-group: Path
 
     /// Specifies a required query parameter for the request.
     /// This function ensures that the specified query parameter (key-value pair) must be included
@@ -1263,7 +1238,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Query Parameters
 
     /// This function ensures that the specified query parameter (key) does exist in the request URL,
     /// and its value is not equal to the specified value.
@@ -1310,7 +1284,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that a query parameter must be present in an HTTP request.
     /// This function ensures that the specified query parameter key exists in the request URL
@@ -1350,7 +1323,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.query_param_exists, name.into()));
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that a query parameter must *not* be present in an HTTP request.
     /// This function ensures that the specified query parameter key is absent in the request URL
@@ -1390,7 +1362,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.query_param_missing, name.into()));
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that a query parameter's value (**not** the key) must contain a specific substring for the request to match.
     /// This function ensures that the specified query parameter (key) does exist in the request URL, and
@@ -1439,7 +1410,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that a query parameter's value (**not** the key) must not contain a specific substring for the request to match.
     ///
@@ -1489,7 +1459,6 @@ impl When {
 
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that a query parameter's value (**not** the key) must start with a specific prefix for the request to match.
     /// This function ensures that the specified query parameter (key) has a value starting with the given prefix
@@ -1537,7 +1506,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that a query parameter's value (**not** the key) must end with a specific suffix for the request to match.
     /// This function ensures that the specified query parameter (key) has a value ending with the given suffix
@@ -1585,7 +1553,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that a query parameter's value (**not** the key) must not start with a specific prefix for the request to match.
     /// This function ensures that the specified query parameter (key) has a value not starting with the given prefix
@@ -1633,7 +1600,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that a query parameter's value (**not** the key) must not end with a specific suffix for the request to match.
     /// This function ensures that the specified query parameter (key) has a value not ending with the given suffix
@@ -1681,7 +1647,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that a query parameter must match a specific regular expression pattern for the key and another pattern for the value.
     /// This function ensures that the specified query parameter key-value pair matches the given patterns
@@ -1729,7 +1694,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Query Parameters
 
     /// Specifies that the count of query parameters with keys and values matching specific regular
     /// expression patterns must equal a specified number for the request to match.
@@ -1781,7 +1745,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Query Parameters
 
     /// Sets the expected HTTP header and its value for the request to match.
     /// This function ensures that the specified header with the given value is present in the request.
@@ -1829,7 +1792,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must not contain a specific header with the specified value.
     /// This function ensures that the specified header with the given value is absent in the request.
@@ -1879,7 +1841,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must contain a specific header.
     /// The presence of the header is checked, but its value is not validated.
@@ -1920,7 +1881,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.header_exists, name.into()));
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must not contain a specific header.
     /// This function ensures that the specified header is absent in the request.
@@ -1962,7 +1922,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.header_missing, name.into()));
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must contain a specific header whose value contains a specified substring.
     /// This function ensures that the specified header is present and its value contains the given substring.
@@ -2012,7 +1971,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must contain a specific header whose value does not contain a specified substring.
     /// This function ensures that the specified header is present and its value does not contain the given substring.
@@ -2062,7 +2020,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must contain a specific header whose value starts with a specified prefix.
     /// This function ensures that the specified header is present and its value starts with the given prefix.
@@ -2112,7 +2069,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must contain a specific header whose value ends with a specified suffix.
     /// This function ensures that the specified header is present and its value ends with the given suffix.
@@ -2162,7 +2118,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must contain a specific header whose value does not start with a specified prefix.
     /// This function ensures that the specified header is present and its value does not start with the given prefix.
@@ -2212,7 +2167,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must contain a specific header whose value does not end with a specified suffix.
     /// This function ensures that the specified header is present and its value does not end with the given suffix.
@@ -2262,7 +2216,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must contain a specific header whose key and value match the specified regular expressions.
     /// This function ensures that the specified header is present and both its key and value match the given regular expressions.
@@ -2313,7 +2266,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the requirement that the HTTP request must contain a specific number of headers whose keys and values match specified patterns.
     /// This function ensures that the specified number of headers with keys and values matching the given patterns are present in the request.
@@ -2379,7 +2331,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets the cookie that needs to exist in the HTTP request.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2428,7 +2379,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the cookie that should not exist or should not have a specific value in the HTTP request.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2477,7 +2427,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with the specified name must exist in the HTTP request.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2519,7 +2468,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.cookie_exists, name.into()));
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with the specified name must not exist in the HTTP request.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2561,7 +2509,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.cookie_missing, name.into()));
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with the specified name must exist and its value must contain the specified substring.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2610,7 +2557,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with the specified name must exist and its value must not contain the specified substring.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2659,7 +2605,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with the specified name must exist and its value must start with the specified substring.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2708,7 +2653,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with the specified name must exist and its value must end with the specified substring.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2757,7 +2701,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with the specified name must exist and its value must not start with the specified substring.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2806,7 +2749,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with the specified name must exist and its value must not end with the specified substring.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2855,7 +2797,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with a name matching the specified regex must exist and its value must match the specified regex.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2905,7 +2846,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the requirement that a cookie with a name and value matching the specified regexes must appear a specified number of times in the HTTP request.
     /// Cookie parsing follows [RFC-6265](https://tools.ietf.org/html/rfc6265.html).
@@ -2957,7 +2897,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Cookies
 
     /// Sets the required HTTP request body content.
     /// This method specifies that the HTTP request body must match the provided content exactly.
@@ -3005,7 +2944,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must not match the specified value.
     /// This method ensures that the request body does not contain the provided content exactly.
@@ -3049,7 +2987,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must contain the specified substring.
     /// This method ensures that the request body includes the provided content as a substring.
@@ -3092,7 +3029,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must not contain the specified substring.
     /// This method ensures that the request body does not include the provided content as a substring.
@@ -3135,7 +3071,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must begin with the specified substring.
     /// This method ensures that the request body starts with the provided content as a substring.
@@ -3178,7 +3113,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must end with the specified substring.
     /// This method ensures that the request body concludes with the provided content as a substring.
@@ -3221,7 +3155,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must not begin with the specified substring.
     /// This method ensures that the request body does not start with the provided content as a substring.
@@ -3264,7 +3197,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must not end with the specified substring.
     /// This method ensures that the request body does not conclude with the provided content as a substring.
@@ -3307,7 +3239,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must match the specified regular expression.
     /// This method ensures that the request body fully conforms to the provided regex pattern.
@@ -3348,7 +3279,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.body_matches, pattern.into()));
         self
     }
-    // @docs-group: Body
 
     /// Sets the condition that the HTTP request body content must match the specified JSON structure.
     /// This method ensures that the request body exactly matches the JSON value provided.
@@ -3400,7 +3330,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the expected JSON body using a serializable serde object.
     /// This function automatically serializes the given object into a JSON string using serde.
@@ -3460,7 +3389,6 @@ impl When {
         let json_value = serde_json::to_value(body).expect("Cannot serialize json body to JSON");
         self.json_body(json_value)
     }
-    // @docs-group: Body
 
     /// Sets the expected partial JSON body to check for specific content within a larger JSON structure.
     ///
@@ -3529,7 +3457,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.json_body_includes, value));
         self
     }
-    // @docs-group: Body
 
     /// Sets the expected partial JSON body to ensure that specific content is not present within a larger JSON structure.
     ///
@@ -3597,7 +3524,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.json_body_excludes, value));
         self
     }
-    // @docs-group: Body
 
     /// Adds a key-value pair to the requirements for an `application/x-www-form-urlencoded` request body.
     ///
@@ -3653,7 +3579,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Adds a key-value pair to the negative requirements for an `application/x-www-form-urlencoded` request body.
     ///
@@ -3708,7 +3633,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement for the existence of a key in an `application/x-www-form-urlencoded` request body.
     ///
@@ -3760,7 +3684,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement that a key must be absent in an `application/x-www-form-urlencoded` request body.
     ///
@@ -3812,7 +3735,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement that a key's value in an `application/x-www-form-urlencoded` request body must contain a specific substring.
     ///
@@ -3869,7 +3791,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement that a key's value in an `application/x-www-form-urlencoded` request body must not contain a specific substring.
     ///
@@ -3925,7 +3846,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement that a key's value in an `application/x-www-form-urlencoded` request body must start with a specific prefix.
     ///
@@ -3982,7 +3902,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement that a key's value in an `application/x-www-form-urlencoded` request body must not start with a specific prefix.
     ///
@@ -4039,7 +3958,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement that a key's value in an `application/x-www-form-urlencoded` request body must end with a specific suffix.
     ///
@@ -4096,7 +4014,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement that a key's value in an `application/x-www-form-urlencoded` request body must not end with a specific suffix.
     ///
@@ -4153,7 +4070,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement that a key-value pair in an `application/x-www-form-urlencoded` request body must match specific regular expressions.
     ///
@@ -4216,7 +4132,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets a requirement for the number of times a key-value pair matching specific regular expressions appears in an `application/x-www-form-urlencoded` request body.
     ///
@@ -4283,7 +4198,6 @@ impl When {
         });
         self
     }
-    // @docs-group: Body
 
     /// Adds a custom matcher for expected HTTP requests. If this function returns true, the request
     /// is considered a match, and the mock server will respond to the request
@@ -4323,7 +4237,6 @@ impl When {
     pub fn matches(self, matcher: impl Fn(&HttpMockRequest) -> bool + Sync + Send + 'static) -> Self {
         self.is_true(matcher)
     }
-    // @docs-group: Custom
 
     /// Adds a custom matcher for expected HTTP requests. If this function returns true, the request
     /// is considered a match, and the mock server will respond to the request
@@ -4363,7 +4276,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.is_true, Arc::new(matcher)));
         self
     }
-    // @docs-group: Custom
 
     /// Adds a custom matcher for expected HTTP requests. If this function returns false, the request
     /// is considered a match, and the mock server will respond to the request
@@ -4403,7 +4315,6 @@ impl When {
         update_mutex(&self.expectations, |e| push_to(&mut e.is_false, Arc::new(matcher)));
         self
     }
-    // @docs-group: Custom
 
     /// Applies a specified function to enhance or modify the `When` instance. This method allows for the
     /// encapsulation of multiple matching conditions into a single function, maintaining a clear and fluent
@@ -4443,7 +4354,6 @@ impl When {
     pub fn and(self, func: impl FnOnce(When) -> When) -> Self {
         func(self)
     }
-    // @docs-group: Miscellaneous
 }
 
 /// Represents the configuration of HTTP responses in a mock server environment.
@@ -4500,7 +4410,6 @@ impl Then {
         });
         self
     }
-    // @docs-group: Status
 
     /// Configures the HTTP response body that the mock server will return.
     ///
@@ -4544,7 +4453,6 @@ impl Then {
         });
         self
     }
-    // @docs-group: Body
 
     /// Configures the HTTP response body with content loaded from a specified file on the mock server.
     ///
@@ -4603,7 +4511,6 @@ impl Then {
         });
         self.body(content)
     }
-    // @docs-group: Body
 
     /// Sets the JSON body for the HTTP response that will be returned by the mock server.
     ///
@@ -4664,7 +4571,6 @@ impl Then {
         });
         self
     }
-    // @docs-group: Body
 
     /// Sets the JSON body that will be returned by the mock server using a serializable serde object.
     ///
@@ -4736,7 +4642,6 @@ impl Then {
         let json_body = serde_json::to_value(body).expect("Failed to serialize object to JSON string");
         self.json_body(json_body)
     }
-    // @docs-group: Body
 
     /// Sets an HTTP header that the mock server will return in the response.
     ///
@@ -4791,7 +4696,6 @@ impl Then {
         });
         self
     }
-    // @docs-group: Headers
 
     /// Sets a delay for the mock server response.
     ///
@@ -4854,7 +4758,6 @@ impl Then {
         });
         self
     }
-    // @docs-group: Network
 
     /// Limits the mock to serving up to `n` calls.
     ///
@@ -4914,7 +4817,6 @@ impl Then {
         });
         self
     }
-    // @docs-group: Miscellaneous
 
     /// Applies a custom function to modify a `Then` instance, enhancing flexibility and readability
     /// in setting up mock server responses.
@@ -4957,7 +4859,6 @@ impl Then {
     pub fn and(self, func: impl FnOnce(Then) -> Then) -> Self {
         func(self)
     }
-    // @docs-group: Miscellaneous
 
     /// Sets a **dynamic responder** that is invoked for every request matching the `when`
     /// conditions. The provided closure receives the full `HttpMockRequest` and must
