@@ -1006,6 +1006,32 @@ pub struct ActiveRecording {
     pub mocks: Vec<MockDefinition>,
 }
 
+/// A request the server answered without a mock matching it.
+#[derive(Serialize, Deserialize, Clone, Debug, PartialEq, Eq)]
+pub(crate) struct UnmatchedRequest {
+    pub method: String,
+    /// Path and query string, without the host.
+    pub path: String,
+    pub headers: Vec<(String, String)>,
+}
+
+impl UnmatchedRequest {
+    pub(crate) fn from_request(request: &HttpMockRequest) -> Self {
+        let path = request
+            .uri()
+            .path_and_query()
+            .map(http::uri::PathAndQuery::as_str)
+            .unwrap_or("/")
+            .to_string();
+
+        Self {
+            method: request.method_str().to_string(),
+            path,
+            headers: request.headers_vec().clone(),
+        }
+    }
+}
+
 #[derive(Serialize, Deserialize)]
 pub struct ClosestMatch {
     pub request: HttpMockRequest,

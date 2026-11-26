@@ -26,7 +26,7 @@ use pollster::FutureExt;
 use crate::{
     Mock,
     api::{
-        LocalMockServerAdapter, ServerAdapter,
+        LocalMockServerAdapter, ServerAdapter, output,
         spec::{Then, When},
     },
     common::{
@@ -426,6 +426,90 @@ impl MockServer {
         with_retry(3, || self.server_adapter.reset())
             .await
             .expect("Cannot reset mock server (task: delete mocks).");
+    }
+
+    /// Asserts that every request still recorded by the server matched a mock.
+    ///
+    /// The server decides this when the request arrives. Deleting a mock afterwards does not
+    /// make an earlier request unmatched, and adding a mock does not clear a request the server
+    /// already answered with a 404. Once a mock has served its [`Then::up_to_n_times`] limit,
+    /// further requests that would have matched it are unmatched. Forwarded and proxied
+    /// requests are not recorded in the history and are not counted.
+    ///
+    /// The history keeps the most recent requests, 100 by default
+    /// ([`HttpMockServerBuilder::history_limit`](crate::server::HttpMockServerBuilder::history_limit)).
+    /// [`Self::reset`] clears it. A remote server from before this method existed cannot answer
+    /// the assertion.
+    ///
+    /// # Example
+    /// ```rust
+    /// use httpmock::prelude::*;
+    /// use reqwest::blocking::get;
+    ///
+    /// let server = MockServer::start();
+    ///
+    /// let mock = server.mock(|when, then| {
+    ///     when.method(GET).path("/hello");
+    ///     then.status(200);
+    /// });
+    ///
+    /// get(server.url("/hello")).unwrap();
+    ///
+    /// mock.assert();
+    /// server.assert_no_unmatched_requests();
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics if a recorded request matched no mock. The message lists each request's method,
+    /// path and query string, and headers. Also panics if the server cannot be contacted.
+    pub fn assert_no_unmatched_requests(&self) {
+        self.assert_no_unmatched_requests_async().block_on()
+    }
+
+    /// Asynchronously asserts that every request still recorded by the server matched a mock.
+    ///
+    /// See [`Self::assert_no_unmatched_requests`] for which requests count and how a failure is
+    /// reported.
+    ///
+    /// # Example
+    /// ```rust
+    /// use httpmock::prelude::*;
+    /// use reqwest::get;
+    ///
+    /// let rt = tokio::runtime::Runtime::new().unwrap();
+    /// rt.block_on(async {
+    ///     let server = MockServer::start_async().await;
+    ///
+    ///     let mock = server
+    ///         .mock_async(|when, then| {
+    ///             when.method(GET).path("/hello");
+    ///             then.status(200);
+    ///         })
+    ///         .await;
+    ///
+    ///     get(server.url("/hello")).await.unwrap();
+    ///
+    ///     mock.assert_async().await;
+    ///     server.assert_no_unmatched_requests_async().await;
+    /// });
+    /// ```
+    ///
+    /// # Panics
+    ///
+    /// Panics in the same cases as [`Self::assert_no_unmatched_requests`].
+    pub async fn assert_no_unmatched_requests_async(&self) {
+        let unmatched = self
+            .server_adapter
+            .unmatched_requests()
+            .await
+            .expect("cannot read unmatched requests from the mock server");
+
+        if unmatched.is_empty() {
+            return;
+        }
+
+        output::fail_unmatched(&unmatched);
     }
 }
 
