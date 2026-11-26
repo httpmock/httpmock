@@ -9,7 +9,7 @@
 //! | a forwarding rule matches | `Serve` with `Reply::Forward` | none |
 //! | a proxy rule matches and no forwarding rule does | `Serve` with `Reply::Proxy` | none |
 //! | a mock matches and is not exhausted | `Serve` with `Reply::Mock` and the mock's delay | request appended to the history, call counter incremented |
-//! | nothing matches, including a management path with another method | `Serve` with a 404 `Reply::Mock` | request appended to the history |
+//! | nothing matches, including a management path with another method | `Serve` with a 404 `Reply::Mock` | request appended to the history and marked unmatched |
 //!
 //! After an `Action::Serve` the transport passes the response and the time it took to
 //! [`Handler::finish`], which turns them into mock definitions for every recording whose rule
@@ -151,6 +151,7 @@ enum RoutePath {
     SingleMockUpToNTimes,
     History,
     Verify,
+    Unmatched,
     #[cfg(feature = "proxy")]
     SingleForwardingRule,
     #[cfg(feature = "proxy")]
@@ -188,6 +189,7 @@ impl Handler {
             path_tree.insert("/__httpmock__/mocks/:id/up_to_n_times", RoutePath::SingleMockUpToNTimes);
             path_tree.insert("/__httpmock__/verify", RoutePath::Verify);
             path_tree.insert("/__httpmock__/history", RoutePath::History);
+            path_tree.insert("/__httpmock__/unmatched", RoutePath::Unmatched);
 
             #[cfg(feature = "proxy")]
             {
@@ -239,6 +241,7 @@ impl Handler {
             (RoutePath::SingleMockUpToNTimes, &Method::PUT) => self.handle_set_up_to_n_times(params, req),
             (RoutePath::History, &Method::DELETE) => self.handle_delete_history(),
             (RoutePath::Verify, &Method::POST) => self.handle_verify(req),
+            (RoutePath::Unmatched, &Method::GET) => self.handle_unmatched(),
             #[cfg(feature = "proxy")]
             (RoutePath::ForwardingRuleCollection, &Method::POST) => self.handle_add_forwarding_rule(req),
             #[cfg(feature = "proxy")]
@@ -349,6 +352,10 @@ impl Handler {
         let closest_match = self.state.verify(&requirements);
         let status_code = closest_match.as_ref().map_or(StatusCode::NOT_FOUND, |_| StatusCode::OK);
         response(status_code, closest_match)
+    }
+
+    fn handle_unmatched(&self) -> Result<Response<Bytes>, Error> {
+        response(StatusCode::OK, Some(self.state.unmatched_requests()))
     }
 
     #[cfg_attr(
@@ -697,6 +704,32 @@ mod tests {
         };
         let closest = handler.state.verify(&unmatched).expect("the history holds the request");
         assert_eq!(closest.request.uri().path(), "/hello");
+    }
+
+    #[test]
+    fn unmatched_route_lists_requests_no_mock_served() {
+        let handler = handler();
+        handler.state.add_mock(mock("/hello", 200, None)).unwrap();
+        handler.handle(request("GET", "http://localhost/hello")).unwrap();
+
+        let mut missed = request("POST", "http://localhost/missing?x=1");
+        missed.headers_mut().insert("x-trace", "unmatched".parse().unwrap());
+        handler.handle(missed).unwrap();
+
+        let Action::Respond(finished) = handler
+            .handle(request("GET", "http://localhost/__httpmock__/unmatched"))
+            .unwrap()
+        else {
+            panic!("expected a management response");
+        };
+
+        let response = finished.into_response();
+        assert_eq!(response.status(), 200);
+        let body: Vec<crate::common::data::UnmatchedRequest> = serde_json::from_slice(response.body()).unwrap();
+        assert_eq!(body.len(), 1);
+        assert_eq!(body[0].method, "POST");
+        assert_eq!(body[0].path, "/missing?x=1");
+        assert_eq!(body[0].headers, vec![("x-trace".to_string(), "unmatched".to_string())]);
     }
 
     #[test]

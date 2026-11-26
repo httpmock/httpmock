@@ -20,6 +20,7 @@ mod reset_tests;
 mod showcase_tests;
 mod standalone_tests;
 mod string_body_tests;
+mod unmatched_requests_tests;
 mod up_to_n_times_tests;
 mod url_matching_tests;
 mod x_www_form_urlencoded_tests;

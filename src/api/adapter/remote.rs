@@ -17,7 +17,8 @@ use crate::{
     },
     common::{
         data::{
-            ActiveMock, ClosestMatch, MockDefinition, MockServerHttpResponse, RequestRequirements, UpToNTimesConfig,
+            ActiveMock, ClosestMatch, MockDefinition, MockServerHttpResponse, RequestRequirements, UnmatchedRequest,
+            UpToNTimesConfig,
         },
         http::HttpMockHttpClient,
     },
@@ -254,6 +255,30 @@ impl MockServerAdapter for RemoteMockServerAdapter {
         let response: ClosestMatch = serde_json::from_str(&body).map_err(JsonDeserializationError)?;
 
         Ok(Some(response))
+    }
+
+    async fn unmatched_requests(&self) -> Result<Vec<UnmatchedRequest>, ServerAdapterError> {
+        let request = self.build_request(Method::GET, "unmatched", None)?;
+        let (status, body) = self.do_request(request).await?;
+
+        // A server from before this route answers the GET like any other request.
+        if status == StatusCode::NOT_FOUND {
+            return Err(UpstreamError(
+                "The mock server does not support assert_no_unmatched_requests. Upgrade the mock server to use it."
+                    .to_string(),
+            ));
+        }
+
+        if status != StatusCode::OK {
+            return Err(UpstreamError(format!(
+                "Could not read unmatched requests. Expected response status {} but was {} (response body = '{}')",
+                StatusCode::OK.as_u16(),
+                status.as_u16(),
+                body
+            )));
+        }
+
+        serde_json::from_str(&body).map_err(JsonDeserializationError)
     }
 
     #[cfg(feature = "proxy")]

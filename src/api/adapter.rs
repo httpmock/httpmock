@@ -6,7 +6,7 @@ use thiserror::Error;
 
 #[cfg(feature = "proxy")]
 use crate::common::data::{ActiveForwardingRule, ActiveProxyRule, ForwardingRuleConfig, ProxyRuleConfig};
-use crate::common::data::{ActiveMock, ClosestMatch, MockDefinition, RequestRequirements};
+use crate::common::data::{ActiveMock, ClosestMatch, MockDefinition, RequestRequirements, UnmatchedRequest};
 #[cfg(feature = "record")]
 use crate::common::data::{ActiveRecording, RecordingRuleConfig};
 
@@ -55,6 +55,8 @@ pub(super) trait MockServerAdapter {
         &self,
         rr: &RequestRequirements,
     ) -> impl Future<Output = Result<Option<ClosestMatch>, ServerAdapterError>> + Send;
+
+    fn unmatched_requests(&self) -> impl Future<Output = Result<Vec<UnmatchedRequest>, ServerAdapterError>> + Send;
 
     #[cfg(feature = "proxy")]
     fn create_forwarding_rule(
@@ -143,6 +145,10 @@ impl ServerAdapter {
 
     pub(super) async fn verify(&self, rr: &RequestRequirements) -> Result<Option<ClosestMatch>, ServerAdapterError> {
         dispatch!(self, adapter => adapter.verify(rr).await)
+    }
+
+    pub(super) async fn unmatched_requests(&self) -> Result<Vec<UnmatchedRequest>, ServerAdapterError> {
+        dispatch!(self, adapter => adapter.unmatched_requests().await)
     }
 
     #[cfg(feature = "proxy")]

@@ -7,7 +7,7 @@ use crate::{
     common::{
         data::{
             ClosestMatch, Diff, DiffResult, FunctionComparison, KeyValueComparison, KeyValueComparisonKeyValuePair,
-            Mismatch, SingleValueComparison,
+            Mismatch, SingleValueComparison, UnmatchedRequest,
         },
         util::title_case,
     },
@@ -16,6 +16,25 @@ use crate::{
 
 /// Indentation of the lines listed under a heading.
 const INDENT: &str = "    ";
+
+pub fn fail_unmatched(requests: &[UnmatchedRequest]) {
+    panic!("{}", unmatched_requests_message(requests))
+}
+
+fn unmatched_requests_message(requests: &[UnmatchedRequest]) -> String {
+    let count = requests.len();
+    let noun = if count == 1 { "request" } else { "requests" };
+    let mut output = format!("{count} {noun} did not match any mock:\n");
+
+    for (idx, request) in requests.iter().enumerate() {
+        writeln!(output, "\n{INDENT}{}. {} {}", idx + 1, request.method, request.path).unwrap();
+        for (name, value) in &request.headers {
+            writeln!(output, "{INDENT}{INDENT}{name}: {value}").unwrap();
+        }
+    }
+
+    output
+}
 
 pub fn fail_with(actual_hits: usize, expected_hits: usize, closest_match: Option<ClosestMatch>) {
     let closest_match = closest_match.expect("No request has been received by the mock server.");
@@ -324,11 +343,11 @@ fn remove_trailing_linebreak(s: &str) -> String {
 
 #[cfg(test)]
 mod test {
-    use super::create_mismatch_output;
+    use super::{create_mismatch_output, unmatched_requests_message};
     use crate::{
         common::data::{
             Diff, DiffResult, KeyValueComparison, KeyValueComparisonAttribute, KeyValueComparisonKeyValuePair,
-            Mismatch, SingleValueComparison, Tokenizer,
+            Mismatch, SingleValueComparison, Tokenizer, UnmatchedRequest,
         },
         server::matchers::generic::MatchingStrategy,
     };
@@ -397,6 +416,34 @@ mod test {
                 tokenizer: Tokenizer::Line,
             }),
         }
+    }
+
+    #[test]
+    fn unmatched_requests_message_lists_method_path_and_headers() {
+        let requests = [
+            UnmatchedRequest {
+                method: "GET".to_string(),
+                path: "/missing?x=1".to_string(),
+                headers: vec![("x-trace".to_string(), "unmatched".to_string())],
+            },
+            UnmatchedRequest {
+                method: "POST".to_string(),
+                path: "/other".to_string(),
+                headers: Vec::new(),
+            },
+        ];
+
+        assert_eq!(
+            unmatched_requests_message(&requests),
+            "\
+2 requests did not match any mock:
+
+    1. GET /missing?x=1
+        x-trace: unmatched
+
+    2. POST /other
+"
+        );
     }
 
     #[test]

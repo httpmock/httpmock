@@ -12,7 +12,10 @@ use std::{
 use thiserror::Error;
 
 use crate::{
-    common::data::{ActiveMock, ClosestMatch, Mismatch, MockDefinition, MockServerHttpResponse, RequestRequirements},
+    common::data::{
+        ActiveMock, ClosestMatch, Mismatch, MockDefinition, MockServerHttpResponse, RequestRequirements,
+        UnmatchedRequest,
+    },
     prelude::HttpMockRequest,
     server::{
         matchers,
@@ -38,13 +41,19 @@ pub enum Error {
 /// no explicit limit is configured.
 pub(crate) const DEFAULT_HISTORY_LIMIT: usize = 100;
 
+/// A request kept in the history, and whether a mock served it when it arrived.
+pub(crate) struct RecordedRequest {
+    request: Arc<HttpMockRequest>,
+    matched: bool,
+}
+
 /// The mock server's mutable state: the registered mocks, the request history,
 /// and the active forwarding, proxy and recording rules.
 pub(crate) struct MockServerState {
     next_mock_id: usize,
     history_limit: usize,
     pub mocks: BTreeMap<usize, ActiveMock>,
-    pub history: Vec<Arc<HttpMockRequest>>,
+    pub history: Vec<RecordedRequest>,
     #[cfg(feature = "proxy")]
     proxy: proxy::State,
     #[cfg(feature = "record")]
@@ -206,7 +215,8 @@ impl HttpMockStateManager {
         let non_matching_requests: Vec<&Arc<HttpMockRequest>> = state
             .history
             .iter()
-            .filter(|req| !request_matches(req, requirements))
+            .filter(|entry| !request_matches(&entry.request, requirements))
+            .map(|entry| &entry.request)
             .collect();
 
         let request_distances = get_distances(&non_matching_requests, requirements);
@@ -229,17 +239,19 @@ impl HttpMockStateManager {
 
         let req = Arc::new(req.clone());
 
+        let found_mock_id = state
+            .mocks
+            .values()
+            .find(|&mock| !mock.is_exhausted() && request_matches(&req, &mock.definition.request))
+            .map(|mock| mock.id);
+
         if state.history.len() > state.history_limit {
             state.history.remove(0);
         }
-        state.history.push(req.clone());
-
-        let result = state
-            .mocks
-            .values()
-            .find(|&mock| !mock.is_exhausted() && request_matches(&req, &mock.definition.request));
-
-        let found_mock_id = result.map(|mock| mock.id);
+        state.history.push(RecordedRequest {
+            request: Arc::clone(&req),
+            matched: found_mock_id.is_some(),
+        });
 
         if let Some(found_id) = found_mock_id {
             tracing::debug!("Matched mock with id={} to the following request: {:#?}", found_id, req);
@@ -253,6 +265,16 @@ impl HttpMockStateManager {
         tracing::debug!("Could not match any mock to the following request: {:#?}", req);
 
         None
+    }
+
+    pub(crate) fn unmatched_requests(&self) -> Vec<UnmatchedRequest> {
+        let state = self.state.lock().unwrap();
+        state
+            .history
+            .iter()
+            .filter(|entry| !entry.matched)
+            .map(|entry| UnmatchedRequest::from_request(&entry.request))
+            .collect()
     }
 }
 
@@ -464,5 +486,88 @@ mod tests {
     fn default_history_limit_is_preserved() {
         let manager = HttpMockStateManager::default();
         assert_eq!(manager.state.lock().unwrap().history_limit, DEFAULT_HISTORY_LIMIT);
+    }
+
+    fn request(method: &str, uri: &str, headers: Vec<(&str, &str)>) -> HttpMockRequest {
+        HttpMockRequest::new(
+            "http".to_string(),
+            uri.to_string(),
+            method.to_string(),
+            headers
+                .into_iter()
+                .map(|(name, value)| (name.to_string(), value.to_string()))
+                .collect(),
+            "HTTP/1.1".to_string(),
+            HttpMockBytes::from(bytes::Bytes::new()),
+        )
+    }
+
+    #[test]
+    fn only_requests_no_mock_served_are_unmatched() {
+        let manager = HttpMockStateManager::default();
+        manager
+            .add_mock(MockDefinition {
+                request: RequestRequirements {
+                    path: Some("/ok".to_string()),
+                    ..Default::default()
+                },
+                response: MockServerHttpResponse::default(),
+                up_to_n_times: None,
+            })
+            .unwrap();
+
+        assert!(
+            manager
+                .serve_mock(&request("GET", "http://127.0.0.1/ok", vec![]))
+                .is_some()
+        );
+        assert!(
+            manager
+                .serve_mock(&request(
+                    "POST",
+                    "http://127.0.0.1/missing?x=1",
+                    vec![("x-trace", "unmatched")],
+                ))
+                .is_none()
+        );
+
+        assert_eq!(
+            manager.unmatched_requests(),
+            vec![UnmatchedRequest {
+                method: "POST".to_string(),
+                path: "/missing?x=1".to_string(),
+                headers: vec![("x-trace".to_string(), "unmatched".to_string())],
+            }]
+        );
+
+        // A mock added afterwards does not rewrite the decision made on arrival.
+        manager
+            .add_mock(MockDefinition {
+                request: RequestRequirements {
+                    path: Some("/missing".to_string()),
+                    ..Default::default()
+                },
+                response: MockServerHttpResponse::default(),
+                up_to_n_times: None,
+            })
+            .unwrap();
+        assert_eq!(manager.unmatched_requests().len(), 1);
+
+        manager.delete_history();
+        assert!(manager.unmatched_requests().is_empty());
+    }
+
+    #[test]
+    fn request_an_exhausted_mock_does_not_serve_is_unmatched() {
+        let manager = HttpMockStateManager::default();
+        manager.add_mock(limited_mock(Some(1))).unwrap();
+
+        assert!(manager.serve_mock(&dummy_request()).is_some());
+        assert!(manager.serve_mock(&dummy_request()).is_none());
+
+        let unmatched = manager.unmatched_requests();
+        assert_eq!(unmatched.len(), 1);
+        assert_eq!(unmatched[0].method, "GET");
+        assert_eq!(unmatched[0].path, "/test");
     }
 }

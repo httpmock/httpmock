@@ -45,6 +45,10 @@ fn getting_started_testxx() {
 Notice how `mock.assert()` is used to verify that the mock you defined earlier has been called **exactly once**.
 If you expect a different number of calls, use [Mock::assert_calls](https://docs.rs/httpmock/latest/httpmock/struct.Mock.html#method.assert_calls).
 
+To check that no other request reached the server without matching a mock, use
+[MockServer::assert_no_unmatched_requests](https://docs.rs/httpmock/latest/httpmock/struct.MockServer.html#method.assert_no_unmatched_requests).
+It fails with the method, path and headers of each such request, so a catch-all mock is no longer needed for that.
+
 Since the path of the request that was actually sent to the mock server differs from the expected one,
 `hello_mock.assert()` will panic and cause the test to fail with the following message:
 

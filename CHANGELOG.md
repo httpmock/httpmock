@@ -2,6 +2,17 @@
 
 ## Unreleased
 
+### Improvements
+
+- A test can assert that every request matched a mock with
+  `MockServer::assert_no_unmatched_requests` and
+  `MockServer::assert_no_unmatched_requests_async`
+  ([#336](https://github.com/httpmock/httpmock/issues/336)). The panic lists each
+  unmatched request's method, path and headers. Whether a request matched is fixed
+  when it arrives. Only requests still in the server's history are considered, and
+  requests handled by a forwarding or proxy rule are not. A remote server older
+  than this release does not support the assertion.
+
 ### Changes
 
 - The `record` feature now reads and writes YAML with

@@ -12,7 +12,7 @@ use crate::{
         MockServerAdapter, ServerAdapterError,
         ServerAdapterError::{MockNotFound, UpstreamError},
     },
-    common::data::{ActiveMock, ClosestMatch, MockDefinition, RequestRequirements},
+    common::data::{ActiveMock, ClosestMatch, MockDefinition, RequestRequirements, UnmatchedRequest},
     server::state,
 };
 
@@ -81,6 +81,10 @@ impl MockServerAdapter for LocalMockServerAdapter {
 
     async fn verify(&self, mock_rr: &RequestRequirements) -> Result<Option<ClosestMatch>, ServerAdapterError> {
         Ok(self.state.verify(mock_rr))
+    }
+
+    async fn unmatched_requests(&self) -> Result<Vec<UnmatchedRequest>, ServerAdapterError> {
+        Ok(self.state.unmatched_requests())
     }
 
     #[cfg(feature = "proxy")]
